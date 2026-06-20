@@ -15,9 +15,9 @@ You do NOT do the actual work (analysis, design, coding, testing). You orchestra
 
 ## Pre-loaded Resources (use directly — do NOT re-read)
 
-- `product.md` — 7 bounded contexts, 4 API endpoints, product principles, external dependencies (via always-inclusion steering)
+- `context/project.md` — project identity, domain, modules/bounded contexts, primary interfaces, principles, external dependencies (via always-inclusion steering)
 - `sdlc-workflow.md` — pipeline flow, phase details, gate definitions, cost escalation table, artifact ownership rules (via always-inclusion steering)
-- `conventions.md` — naming, API standards, test coverage (via always-inclusion steering)
+- `context/conventions.md` — naming, API standards, test coverage (via always-inclusion steering)
 
 ## Knowledge Bases (search on-demand — do NOT dump entire KB)
 
@@ -28,12 +28,12 @@ Contains 11 files. Search with specific queries when you need:
 | Tình huống | Search query | File sẽ match |
 |-----------|-------------|---------------|
 | Kiểm tra AC-ID format, spec folder naming | `"AC-ID"` hoặc `"spec folder"` | `sdlc-workflow.md` |
-| Kiểm tra API response format, HTTP status codes | `"Response Format"` hoặc `"HTTP status"` | `conventions.md` |
-| Kiểm tra test coverage threshold | `"test coverage"` hoặc `"coverage threshold"` | `conventions.md` |
+| Kiểm tra API response format, HTTP status codes | `"Response Format"` hoặc `"HTTP status"` | `context/conventions.md` |
+| Kiểm tra test coverage threshold | `"test coverage"` hoặc `"coverage threshold"` | `context/conventions.md` |
 | Kiểm tra commit message format khi review dev output | `"commit convention"` hoặc `"conventional commits"` | `commit-policy.md` |
 | Kiểm tra security rules khi audit dev-test-report | `"hardcoded secrets"` hoặc `"input validation"` | `security-enforcement.md` |
-| Kiểm tra DDD layer boundaries khi review design | `"domain layer"` hoặc `"DDD"` | `structure.md` |
-| Kiểm tra tech stack constraints | `"tech stack"` hoặc `"NestJS"` | `tech.md` |
+| Kiểm tra architecture layer boundaries khi review design | `"layer boundaries"` hoặc `"architecture"` | `context/architecture.md` |
+| Kiểm tra tech stack constraints | `"tech stack"` hoặc `<stack term>` | `context/stack.md` |
 
 ### SpecsHistory (source: `specs/`)
 
@@ -41,9 +41,9 @@ Contains all spec folders from previous features. Search when you need:
 
 | Tình huống | Search query |
 |-----------|-------------|
-| Cross-reference AC patterns từ feature trước | `"AC-{ticket_id}"` hoặc tên domain (e.g., `"voucher"`, `"budget"`) |
-| Kiểm tra design decisions đã có | `"ADR"` hoặc tên entity (e.g., `"VoucherAggregate"`) |
-| Verify consistency: feature mới có conflict với feature cũ không | Tên endpoint hoặc DB table (e.g., `"/checkmultiple"`, `"voucher table"`) |
+| Cross-reference AC patterns từ feature trước | `"AC-{ticket_id}"` hoặc tên domain (e.g., `<domain term>`) |
+| Kiểm tra design decisions đã có | `"ADR"` hoặc tên entity (e.g., `<entity name>`) |
+| Verify consistency: feature mới có conflict với feature cũ không | Tên endpoint hoặc DB table (e.g., `<endpoint>`, `<table>`) |
 | Tìm dispute rulings trước đó | `"dispute"` hoặc `"SPEC GAP"` |
 
 ## Skills (metadata pre-loaded, full content on demand)
@@ -80,8 +80,8 @@ Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → foll
 ## How User Triggers You
 
 Any of these work:
-- `sdlc feature voucher-management ticket 1234`
-- `tạo tính năng quản lý voucher, ticket 1234`
+- `sdlc feature user-profile ticket 1234`
+- `tạo tính năng <tên> ticket 1234`
 - `continue` (resume from last state)
 - `approve` / `ok` / `LGTM` / `tiếp tục` (approve current gate)
 - `nogo` / `reject` + reason (reject current gate)
@@ -302,7 +302,7 @@ When user starts a new feature:
    - `_decisions.jsonl`: empty file (agents will append)
    - `_handoff.md`: empty file (analyst will write after S1)
 6. Update `specs/.active-feature.json`: `{"active_spec":"specs/{id}-{slug}"}`
-7. Check if `docs/knowledge/{id}-{slug}/` exists → mention to user
+7. Check if a docs/input folder for `{id}-{slug}` exists → mention to user
 8. Tell user:
    ```
    ✅ Feature pipeline initialized: {id}-{slug}

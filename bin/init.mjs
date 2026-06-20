@@ -8,6 +8,7 @@ import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout, argv, exit } from 'node:process';
+import { applyContextMap } from './lib/context-map.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const KIT_ROOT = resolve(__dirname, '..');
@@ -90,6 +91,16 @@ async function main() {
   }
   log(`\n  ✓ copied ${copied} files (${tokened} with substitutions)`);
 
+  // Copy the context-map engine into the project so the onboarder agent / context-mapper
+  // skill can re-run it in-place (node .kiro/tools/context-map.mjs).
+  const engineSrc = join(KIT_ROOT, 'bin', 'lib', 'context-map.mjs');
+  if (existsSync(engineSrc)) {
+    const engineDst = join(kiroDir, 'tools', 'context-map.mjs');
+    mkdirSync(dirname(engineDst), { recursive: true });
+    copyFileSync(engineSrc, engineDst);
+    log('  ✓ installed .kiro/tools/context-map.mjs');
+  }
+
   // Scaffold project-specific dirs + symlinks (single source of truth at repo root)
   for (const d of ['specs', 'memory']) {
     const real = join(TARGET, d);
@@ -108,9 +119,18 @@ async function main() {
     log('  ✓ seeded specs/.active-feature.json');
   }
 
+  // Wire context → each agent's resources[] from .kiro/context-map.json
+  log('\n  Wiring context → agents (context-map):');
+  try {
+    applyContextMap({ kiroDir, log });
+  } catch (e) {
+    log(`  ! context-map skipped: ${e.message}`);
+  }
+
   log('\n  Done. Next steps:');
-  log('   1. Open the project in Kiro — agents appear as ctrl+0..4 (sdlc/analyst/architect/developer/qa)');
-  log('   2. Review .kiro/steering/ — customize api-standards.md, stack-*.md, ai/ for your stack');
+  log('   1. Open the project in Kiro — agents: ctrl+0..4 (sdlc/analyst/architect/developer/qa) + ctrl+9 (onboarder)');
+  log('   2. Run the ONBOARDER agent (ctrl+9): it scans the repo, asks for gaps,');
+  log('      fills .kiro/context/*.md, and re-wires context to each agent.');
   log('   3. Start a feature:  say "sdlc feature {slug} ticket {id}" to the sdlc agent\n');
 }
 

@@ -61,6 +61,10 @@ AGENT_RULES = {
         "prefixes": ["specs/", ".kiro/memory/"],
         "exact": ["specs/.active-feature.json"],
     },
+    "onboarder": {
+        "prefixes": [".kiro/context/"],
+        "exact": [".kiro/context-map.json"],
+    },
 }
 
 
@@ -75,7 +79,7 @@ def normalize_path(path: str) -> str:
         return path[len(cwd) + 1 :]
 
     # Strategy 2: find known segment markers in path
-    markers = ["specs/", ".kiro/memory/", "docs/", "src/", "apps/", "prisma/", "test/", "tests/", "docker/"]
+    markers = ["specs/", ".kiro/memory/", ".kiro/context/", ".kiro/context-map.json", "docs/", "src/", "apps/", "prisma/", "test/", "tests/", "docker/"]
     for marker in markers:
         idx = path.find("/" + marker)
         if idx != -1:

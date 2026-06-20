@@ -1,60 +1,78 @@
 # kiro-sdlc-kit
 
-Reusable **Kiro IDE** SDLC kit, extracted from the GotIt Merchant APIs setup.
-Drop a complete S1→S6 pipeline (orchestrator + 4 role agents + 24 skills + steering
-rules + hooks) into any project with one command.
+A **project-agnostic** Kiro IDE SDLC kit. Drop a full S1→S6 pipeline (orchestrator + 4
+role agents + 24 skills + steering rules + hooks) into any project with one command,
+then fill a small **context contract** so the agents understand *your* project.
 
-## What's inside
+The framework (agents/skills/process) is generic and frozen. Everything project-specific
+lives in one place — `.kiro/context/` — and is wired to each agent declaratively. No
+project domain is baked into the agents.
+
+## Two layers
 
 ```
-kit/
-  agents/      6 Kiro agents (JSON config + MD prompt) + scripts/ + examples/
-                 sdlc (ctrl+0) · analyst (1) · architect (2) · developer (3) · qa (4) · rtk
-  skills/      24 skills — spec-auditor, cross-artifact-audit, qa-*, coding-standards, …
-  steering/    8 always-on rules — sdlc-workflow, commit-policy, security, api-standards, …
-  ai/          5 backend coding/sonar rule files
-  hooks/       Kiro hook(s)
-  settings/    lsp.json
-bin/init.mjs   zero-dependency installer
+FRAMEWORK (generic, never edited per project)        CONTEXT (filled per project)
+  .kiro/agents/    6 agents + scripts + examples        .kiro/context/
+  .kiro/skills/    24 skills                               project.md       stack.md
+  .kiro/steering/  5 generic rules (sdlc-workflow,         conventions.md   architecture.md
+                   commit-policy, security, registry,      glossary.md      legacy-ref.md
+                   rtk)
+  .kiro/ai/        generic quality rules (sonar)        .kiro/context-map.json  ← wiring
 ```
 
-`specs/` and `memory/` are **not** shipped — they are per-project workspace and are
-scaffolded fresh (as repo-root dirs, symlinked from `.kiro/`) on init.
+Agents (`sdlc` ctrl+0 · `analyst` 1 · `architect` 2 · `developer` 3 · `qa` 4 ·
+`onboarder` ctrl+9 · `rtk`).
 
-## Usage
+## Install
 
 From the target project root:
 
 ```bash
-# via npx against the git repo
-npx github:gotit/kiro-sdlc-kit          # or your GitLab remote
-
-# or clone once, then run anywhere
 node /path/to/kiro-sdlc-kit/bin/init.mjs            # into current dir
 node /path/to/kiro-sdlc-kit/bin/init.mjs ../other   # into another project
+# or, once pushed:  npx gitlab:<group>/kiro-sdlc-kit
 ```
 
-Flags: `--force` (overwrite existing kit files; never touches your `specs/`/`memory/`),
-`--yes` (accept defaults, no prompts).
+Flags: `--force` (overwrite kit files; never touches `specs/`/`memory/`), `--yes`
+(defaults, no prompts).
 
-The installer prompts for:
+`init` copies the framework, scaffolds `specs/` + `memory/` (symlinked from `.kiro/`),
+installs the mapper engine at `.kiro/tools/context-map.mjs`, and **wires context → agents**
+by running the mapper once.
 
-| Placeholder        | Used for                                                |
-|--------------------|---------------------------------------------------------|
-| `PROJECT_TITLE`    | Human-readable project name in agent prompts / steering |
-| `LEGACY_REF_PATH`  | Path to a legacy/reference codebase (or `N/A`)          |
+## Fill the context (the part that makes it yours)
 
-## After init
+Open the **`onboarder`** agent (ctrl+9). It:
 
-1. Open in Kiro — agents bind to `ctrl+0..4`.
-2. **Customize for your stack** — the shipped steering/examples are NestJS + Prisma +
-   voucher-domain samples. Edit `steering/api-standards.md`, `steering/stack-*.md`, and
-   `ai/*` to match the new project. Examples under `agents/examples/` are reference
-   samples; replace them as your project accumulates real specs.
-3. Drive the pipeline: tell the `sdlc` agent `sdlc feature {slug} ticket {id}`.
+1. **Scans the repo** (package.json / lockfiles / schema / folder layout / README) to
+   auto-detect stack & architecture.
+2. **Asks only for gaps** (domain, API/status policy, boundaries, glossary, legacy/parity).
+3. **Writes** `.kiro/context/*.md`.
+4. **Re-wires** context → agents via the `context-mapper` skill.
 
-## Model
+You can also edit `.kiro/context/*.md` by hand and re-run `node .kiro/tools/context-map.mjs`.
 
-A single source of truth: edit `kit/` here, re-run init (`--force`) in consumer projects
-to pull updates. Because each project owns its copy after init, there is no submodule
-coupling and no framework/project file mixing.
+## How context maps to each agent
+
+`.kiro/context-map.json` declares, **per agent**, which skills + context files + project
+doc folders it consumes. The mapper regenerates each agent's `resources[]` from it,
+**skipping anything that doesn't exist** (so references never break):
+
+```jsonc
+"architect": {
+  "skills": ["cross-artifact-audit", "api-design"],
+  "knowledgeBase": ["ai", "context/stack.md", "context/architecture.md", "context/conventions.md"]
+},
+"extraDocs": { "architect": ["docs/architecture"] }   // optional project doc folders
+```
+
+Edit the map (or let the onboarder do it), then `node .kiro/tools/context-map.mjs`.
+Never hand-edit `resources[]` in an agent JSON — it gets overwritten.
+
+## Notes
+
+- `agents/examples/` are **illustrative format samples** (a reference domain); only their
+  structure is meant to be reused. Replace with your own over time.
+- `specs/` and `memory/` are per-project workspace and are never shipped by the kit.
+- Each project owns its copy after `init` — no submodule coupling, no framework/project
+  file mixing. To pull kit updates, re-run `init --force`.
