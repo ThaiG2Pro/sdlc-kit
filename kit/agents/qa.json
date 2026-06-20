@@ -1,0 +1,165 @@
+{
+  "name": "qa",
+  "description": "SDLC S5 (QA). Test scenarios t\u1eeb AC, auto + manual test, bug classification, RCA. Trigger: /s5",
+  "prompt": "file://./qa.md",
+  "tools": ["read", "write", "shell", "@redmine", "@figma"],
+  "allowedTools": ["read", "write", "shell", "@redmine/redmine_request", "@figma/get_figma_data"],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": ["specs/**", "apps/cms/e2e/**"]
+    },
+    "shell": {
+      "allowedCommands": [
+        "npx",
+        "npm",
+        "rtk",
+        "grep",
+        "cat",
+        "curl",
+        "docker",
+        "docker compose",
+        "docker-compose",
+        "sleep",
+        "python3",
+        "node",
+        "wc",
+        "head",
+        "tail"
+      ]
+    }
+  },
+  "resources": [
+    "skill://.kiro/skills/qa-test-design/SKILL.md",
+    "skill://.kiro/skills/qa-analysis/SKILL.md",
+    "skill://.kiro/skills/qa-execution/SKILL.md",
+    "skill://.kiro/skills/security-audit/SKILL.md",
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/steering",
+      "name": "SteeringDocs",
+      "description": "SDLC rules, gate checklists, conventions. Search: \"S5 QA gate\", \"GO/NO-GO criteria\", \"bug severity\", \"AC-ID format\", \"Response Format\", \"HTTP status\".",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/ai",
+      "name": "AIRules",
+      "description": "Security + backend coding rules for verification (5 files). Search: \"OWASP\", \"SQL injection\", \"input validation\", \"authentication\", \"brute force\", \"hardcoded secrets\", \"use case rules\", \"aggregate rules\", \"error handling\", \"sonar rules\", \"code smell\", \"sonar policy\".",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/PARITY-RULES.md",
+      "name": "ParityRules",
+      "description": "MANDATORY test assertions: 15 bug-for-bug preservation rules. Each rule is a parity-test gate. Search: \"verbatim\", \"typo vảo Gía\", \"state 11 virtual\", \"HTTP 200 brute force\", \"FAILED_ATTEMPS\", \"APP_TIMEZONE\", \"scheme_budget TTL\", \"Compound prefix\". Reviewer checklist in this file = QA gate checklist.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/00-onboarding/02-glossary.md",
+      "name": "Glossary",
+      "description": "Term definitions only. Search ONLY when encountering an unfamiliar term: PSR-4 hijack, bridge worker, Compound prefix, CONTRACT vs ACCIDENT, biz.configure, Shadow Traffic Test.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/00-onboarding/06-for-qa.md",
+      "name": "QA-Onboarding",
+      "description": "QA path: 3-tier strategy (unit, integration, parity), parity definition, 14 scenario index ~401 cases, shadow test plan deferred Phase 4, common QA traps.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/50-tests",
+      "name": "TestDesign",
+      "description": "PRIMARY QA reference. 16 files. Test strategy 3 tiers (01), parity test case templates per endpoint (02), 14 atomic scenario files in 03-scenarios/ (~401 verified cases): auth-bruteforce, input-validation, voucher-state, rule-engine, redemption, budget, check-multiple, reserve, unreserve, use-multiple, redeemable-skus-cache, middleware, edge-cases, integration. Index in README. PRIMARY source for test plan + bug repro + RCA.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/10-php-contract",
+      "name": "PhpContract-Assert",
+      "description": "Verbatim values to assert in parity tests. 8 files. Search: 58 error codes (01), per-endpoint response shape with field order (02), state semantics + state=11 virtual (03), code regex GI prefix (04), Compound prefix Redis keys (05), HTTP 200 for every business error (06), thresholds (07), vendor surface (08).",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/20-business",
+      "name": "BusinessAC",
+      "description": "Conditional rules + redemption + use cases — translate to test cases. Search: \"7 rules\", \"expression AND OR\", \"invariant\", \"aggregate state\", \"redemption percent cash\".",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/60-operations/05-security-audit.md",
+      "name": "Security",
+      "description": "OWASP audit + 40 findings + 6 PoCs. Search: \"OWASP\", \"CRITICAL HIGH MEDIUM\", \"PoC\", \"PIN brute force\", \"rate limit\", \"code oracle\", \"debug crash\". Use for security regression checks during S5.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/60-operations/01-production-risks.md",
+      "name": "ProductionRisks",
+      "description": "Deployment risks + shadow test plan + canary stages. Use when writing release readiness or pre-cutover regression scope.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/openapi.yaml",
+      "name": "OpenAPI",
+      "description": "Endpoint contract — assert response payloads against schemas in parity tests.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/specs",
+      "name": "SpecsHistory",
+      "description": "Existing feature specs. Search for AC patterns, test scenarios from previous features.",
+      "indexType": "best",
+      "autoUpdate": true
+    }
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "python3 .kiro/agents/scripts/agent-spawn-context.py qa",
+        "timeout_ms": 5000,
+        "cache_ttl_seconds": 15
+      }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "fs_write",
+        "command": "python3 .kiro/agents/scripts/check-write-path.py qa",
+        "timeout_ms": 3000
+      }
+    ],
+    "stop": [
+      {
+        "command": "echo '' && echo '=== Uncommitted ===' && git diff --stat specs/ 2>/dev/null | tail -5 || true",
+        "timeout_ms": 5000
+      }
+    ],
+    "userPromptSubmit": [
+      {
+        "command": "python3 -c \"\nimport json,sys,re\nd=json.load(sys.stdin)\nmsg=d.get('user_message','')\nm=re.search(r'\\b(\\d{4,6})\\b',msg)\nif m: print(f'[Auto-context] ticket_id detected: {m.group(1)}')\n\" 2>/dev/null||true",
+        "timeout_ms": 1000
+      }
+    ]
+  },
+  "includeMcpJson": true,
+  "model": "claude-sonnet-4.6",
+  "keyboardShortcut": "ctrl+4",
+  "welcomeMessage": "QA s\u1eb5n s\u00e0ng. D\u00f9ng /s5 {ticket_id} {feature-slug} \u0111\u1ec3 b\u1eaft \u0111\u1ea7u ki\u1ec3m th\u1eed."
+}

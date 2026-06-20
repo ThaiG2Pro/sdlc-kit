@@ -1,0 +1,22 @@
+{
+  "name": "@gotit/kiro-sdlc-kit",
+  "version": "1.0.0",
+  "description": "Reusable Kiro IDE SDLC kit — 6 agents (S1–S6 orchestrator + analyst/architect/developer/qa), 24 skills, steering rules, hooks. Init into any project with one command.",
+  "type": "module",
+  "bin": {
+    "kiro-sdlc-init": "bin/init.mjs"
+  },
+  "scripts": {
+    "init": "node bin/init.mjs"
+  },
+  "files": [
+    "bin/",
+    "kit/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

@@ -1,0 +1,191 @@
+{
+  "name": "developer",
+  "description": "SDLC S4 (Build) + S6 (Release Prep). Code gen theo design, unit tests \u226580%, self-review, release checklist. Trigger: /s4, /s6",
+  "prompt": "file://./developer.md",
+  "tools": ["read", "write", "shell", "code"],
+  "allowedTools": ["read", "write", "code", "shell"],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": [
+        "src/**",
+        "apps/**",
+        "prisma/**",
+        "test/**",
+        "tests/**",
+        "docker/**",
+        "specs/**",
+        ".kiro/memory/**",
+        "specs/.active-feature.json",
+        "package.json",
+        "package-lock.json",
+        "tsconfig.json",
+        "tsconfig.build.json",
+        "vitest.config.ts",
+        "nest-cli.json",
+        ".env.example",
+        ".env.node.example",
+        "prisma.config.ts",
+        "eslint.config.js",
+        "eslint.config.mjs",
+        ".prettierrc",
+        ".prettierignore",
+        "docker-compose.yml",
+        "docker-compose.local.yml",
+        "docker-compose.dev.yml",
+        "docker-compose.node.yml",
+        "Dockerfile",
+        "Dockerfile.node",
+        "README.md",
+        "ROADMAP.md",
+        ".gitlab-ci.yml",
+        "mise.toml"
+      ]
+    },
+    "shell": {
+      "allowedCommands": ["*"]
+    }
+  },
+  "resources": [
+    "skill://.kiro/skills/verification-loop/SKILL.md",
+    "skill://.kiro/skills/commit-message-helper/SKILL.md",
+    "skill://.kiro/skills/security-review/SKILL.md",
+    "skill://.kiro/skills/test-generator/SKILL.md",
+    "skill://.kiro/skills/coding-standards/SKILL.md",
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/steering",
+      "name": "SteeringDocs",
+      "description": "Project conventions (CRITICAL). Search: \"naming convention\", \"Response Format\", \"Database\", \"test coverage\", \"Vitest\", \"commit convention\", \"security enforcement\", \"commit policy\".",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/ai",
+      "name": "AIRules",
+      "description": "Backend coding rules for NestJS + Prisma + DDD (5 files). Search: \"use case rules\", \"aggregate rules\", \"port rules\", \"error handling\", \"concurrency\", \"Prisma\", \"Zod\", \"input validation\", \"sonar policy\", \"sonar rules\", \"code smell\", \"cognitive complexity\", \"AI behavior\".",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/PARITY-RULES.md",
+      "name": "ParityRules",
+      "description": "MANDATORY pre-commit check for any code touching response format, error codes, voucher state, cache TTLs, brute-force config, or HTTP status. 15 bug-for-bug preservation rules — IDE will want to \"fix\" 3 (typos vảo/Gía), 4 (VI=EN identical), 5 (empty messages), 6 (GI_PIN_INVALID_LENGTH name), 13 (FAILED_ATTEMPS typo). Hold the line. Each rule is a non-negotiable.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/00-onboarding/02-glossary.md",
+      "name": "Glossary",
+      "description": "Term definitions only. Search ONLY when encountering an unfamiliar term: PSR-4 hijack, bridge worker, Compound prefix, CONTRACT vs ACCIDENT, biz.configure, Port/Adapter, Command vs Query, Bounded Context.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/00-onboarding/05-for-dev.md",
+      "name": "Dev-Onboarding",
+      "description": "Dev path: layered architecture, 7 bounded contexts, parity traps, first-endpoint walkthrough for /v6.0/checkmultiple, IDE warnings to silence, 16-file deep reading list.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/10-php-contract",
+      "name": "PhpContract-Impl",
+      "description": "IMPLEMENT-AGAINST: verbatim values for code. 8 files. Search: 58 error codes verbatim (01), field-order per endpoint (02), state enum + state=11 virtual + state=10 magic (03), code regex GI prefix passthrough (04), Cache::put TTL seconds-not-minutes + Compound prefix (05), HTTP 200 always (06), thresholds + biz.configure keys + brute-force typo (07), vendor functions to rewrite by hand (08).",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/30-architecture",
+      "name": "Architecture",
+      "description": "Implementation rules — PR gate checklists. 9 files. Search: dependency direction ESLint (03), port interfaces (04), execution step-by-step per use case (05), transaction boundaries + lock model (06), error→return_code mapping table (07 — large 31K), 11 anti-patterns to reject in PR (08), 38 hard implementation constraints (09). MUST consult 03+08+09 before opening PR.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/40-mapping",
+      "name": "Mapping-Impl",
+      "description": "PHP→Node translation. 7 files. Search: PHP method → Node file mapping (01), vendor package per-package strategy (02), Prisma queries + cross-DB biz.* fully-qualified SQL (03), undici HTTP adapters with retry+timeout (04), Redis bridge worker push format (05), prom-client labels matching PHP metrics (06), local infra topology + env vars (07).",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/20-business",
+      "name": "BusinessRules",
+      "description": "Use case orchestration + 7 conditional rules + redemption calculator details. Consult only when implementing a use case or rule logic — not for general parity.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/openapi.yaml",
+      "name": "OpenAPI",
+      "description": "Endpoint schemas. Generate Zod schemas / DTOs / @ApiResponse decorators from this.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/60-operations/03-local-dev-setup.md",
+      "name": "LocalDev",
+      "description": "Local dev environment setup (docker-compose, MySQL, Redis). Use only when scaffolding new test runner or fixing dev setup.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./docs/60-operations/04-env-vars.md",
+      "name": "EnvVars",
+      "description": "Env var reference with verified PHP defaults. Consult when adding/changing config or writing ConfigService.",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/specs",
+      "name": "SpecsHistory",
+      "description": "Existing feature specs. Search for existing code patterns, design decisions from previous features.",
+      "indexType": "best",
+      "autoUpdate": true
+    }
+  ],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "python3 .kiro/agents/scripts/agent-spawn-context.py developer",
+        "timeout_ms": 5000,
+        "cache_ttl_seconds": 15
+      }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "fs_write",
+        "command": "python3 .kiro/agents/scripts/check-write-path.py developer",
+        "timeout_ms": 3000
+      }
+    ],
+    "stop": [
+      {
+        "command": "SPEC=$(python3 -c \"import json;print(json.load(open('specs/.active-feature.json')).get('active_spec',''))\" 2>/dev/null)\nif [ -n \"$SPEC\" ] && [ -f \"${SPEC}/tasks.md\" ]; then\n  TOTAL=$(grep -c '^\\- \\[' \"${SPEC}/tasks.md\" 2>/dev/null || echo 0)\n  DONE=$(grep -c '^\\- \\[x\\]' \"${SPEC}/tasks.md\" 2>/dev/null || echo 0)\n  echo \"\"\n  echo \"=== Tasks: ${DONE}/${TOTAL} ===\"\n  NEXT=$(grep -m1 '^\\- \\[ \\]' \"${SPEC}/tasks.md\" 2>/dev/null | head -1)\n  [ -n \"$NEXT\" ] && echo \"Next: ${NEXT}\"\n  echo \"\"\n  echo \"=== Uncommitted ===\"\n  git diff --stat specs/ src/ apps/ 2>/dev/null | tail -3 || true\nfi",
+        "timeout_ms": 5000
+      }
+    ],
+    "userPromptSubmit": [
+      {
+        "command": "python3 -c \"\nimport json,sys,re\nd=json.load(sys.stdin)\nmsg=d.get('user_message','')\nm=re.search(r'\\b(\\d{4,6})\\b',msg)\nif m: print(f'[Auto-context] ticket_id detected: {m.group(1)}')\n\" 2>/dev/null||true",
+        "timeout_ms": 1000
+      }
+    ]
+  },
+  "includeMcpJson": true,
+  "model": "claude-sonnet-4.6",
+  "keyboardShortcut": "ctrl+3",
+  "welcomeMessage": "Developer s\u1eb5n s\u00e0ng. D\u00f9ng /s4 {ticket_id} {feature-slug} \u0111\u1ec3 b\u1eaft \u0111\u1ea7u build."
+}
