@@ -166,6 +166,18 @@ folders are NOT — you map them. **GREENFIELD repos usually have no docs yet �
 4. After confirmation, write the approved entries into `extraDocs.<agent>` in
    `.kiro/context-map.json`. Paths are project-root-relative.
 
+### Phase 4b — Mirror context into OpenSpec
+
+This kit uses **OpenSpec** as its spec backend. OpenSpec's own change-authoring skills
+(`/opsx:propose` etc.) read project context from `openspec/config.yaml → context:`. Mirror a
+**concise** summary there so those skills are project-aware (don't duplicate the whole files):
+
+- Set `context:` in `openspec/config.yaml` to ~5–10 lines distilled from `context/project.md`
+  (domain + modules), `context/stack.md` (language/framework/db), and `context/conventions.md`
+  (API/status policy). Keep it tight — it's prepended to every OpenSpec artifact prompt.
+- Optionally add per-artifact `rules:` (e.g. proposal/tasks conventions) if the project has them.
+- Leave the rest of `openspec/config.yaml` (`schema: spec-driven`) untouched.
+
 ### Phase 5 — Wire + verify
 
 Run the mapper and read its output:
@@ -224,5 +236,5 @@ Report:
   decision is `UNKNOWN`, not an invented default.
 - **Keep context tight.** These files are loaded by every agent on every task.
 - **Update mode preserves human edits.** Never overwrite a filled field without asking.
-- **Touch only** `.kiro/context/`, `.kiro/context-map.json`, and run the mapper. Do not edit
-  agent prompts, skills, or steering.
+- **Touch only** `.kiro/context/`, `.kiro/context-map.json`, `openspec/config.yaml`, and run
+  the mapper. Do not edit agent prompts, skills, or steering.

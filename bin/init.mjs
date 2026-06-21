@@ -8,6 +8,7 @@ import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout, argv, exit } from 'node:process';
+import { execSync } from 'node:child_process';
 import { applyContextMap } from './lib/context-map.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -103,22 +104,36 @@ async function main() {
     }
   }
 
-  // Scaffold project-specific dirs + symlinks (single source of truth at repo root)
-  for (const d of ['specs', 'memory']) {
-    const real = join(TARGET, d);
-    if (!existsSync(real)) { mkdirSync(real, { recursive: true }); log(`  ✓ created ${d}/`); }
-    const link = join(kiroDir, d);
+  // memory/ workspace (lessons learned) + symlink
+  {
+    const real = join(TARGET, 'memory');
+    if (!existsSync(real)) { mkdirSync(real, { recursive: true }); log('  ✓ created memory/'); }
+    const link = join(kiroDir, 'memory');
     if (!existsSync(link)) {
-      try { symlinkSync(join('..', d), link); log(`  ✓ symlink .kiro/${d} -> ../${d}`); }
-      catch (e) { log(`  ! could not symlink .kiro/${d} (${e.code}) — create manually`); }
+      try { symlinkSync(join('..', 'memory'), link); log('  ✓ symlink .kiro/memory -> ../memory'); }
+      catch (e) { log(`  ! could not symlink .kiro/memory (${e.code})`); }
     }
   }
 
-  // Seed active-feature pointer
-  const af = join(TARGET, 'specs', '.active-feature.json');
-  if (!existsSync(af)) {
-    writeFileSync(af, JSON.stringify({ active_spec: null, current_phase: null, last_agent: null, last_updated: null }, null, 2) + '\n');
-    log('  ✓ seeded specs/.active-feature.json');
+  // OpenSpec workspace (spec-driven backend): openspec/{changes,specs,config.yaml} + opsx skills/prompts
+  let hasOpenspec = false;
+  try { execSync('openspec --version', { stdio: 'ignore' }); hasOpenspec = true; } catch { /* not installed */ }
+  if (hasOpenspec) {
+    try {
+      execSync('openspec init --tools kiro --force', { cwd: TARGET, stdio: 'ignore' });
+      log('  ✓ openspec init (openspec/ + opsx skills/prompts)');
+    } catch (e) { log(`  ! openspec init failed: ${e.message}`); }
+  } else {
+    log('  ! openspec CLI not found — this kit uses OpenSpec as its spec workspace. Install then re-run init:');
+    log('      npm install -g @fission-ai/openspec@latest');
+  }
+  // symlink .kiro/openspec -> ../openspec so agents read the workspace via knowledgeBase
+  if (existsSync(join(TARGET, 'openspec'))) {
+    const link = join(kiroDir, 'openspec');
+    if (!existsSync(link)) {
+      try { symlinkSync(join('..', 'openspec'), link); log('  ✓ symlink .kiro/openspec -> ../openspec'); }
+      catch (e) { log(`  ! could not symlink .kiro/openspec (${e.code})`); }
+    }
   }
 
   // Wire context → each agent's resources[] from .kiro/context-map.json
@@ -131,9 +146,11 @@ async function main() {
 
   log('\n  Done. Next steps:');
   log('   1. Open the project in Kiro — agents: ctrl+0..4 (sdlc/analyst/architect/developer/qa) + ctrl+9 (onboarder)');
-  log('   2. Run the ONBOARDER agent (ctrl+9): it scans the repo, asks for gaps,');
-  log('      fills .kiro/context/*.md, and re-wires context to each agent.');
-  log('   3. Start a feature:  say "sdlc feature {slug} ticket {id}" to the sdlc agent\n');
+  log('   2. Run the ONBOARDER agent (ctrl+9): fills .kiro/context/*.md, mirrors it into');
+  log('      openspec/config.yaml, and re-wires context to each agent.');
+  log('   3. Start a feature: tell the sdlc agent "sdlc feature {slug}" — it drives the');
+  log('      OpenSpec lifecycle (propose → apply → archive) across S1–S6 in openspec/changes/.\n');
+  if (!hasOpenspec) log('   ⚠ Install the openspec CLI first (see warning above) — the workspace needs it.\n');
 }
 
 main().catch((e) => die(e.message));

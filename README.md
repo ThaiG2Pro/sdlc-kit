@@ -23,6 +23,15 @@ FRAMEWORK (generic, never edited per project)        CONTEXT (filled per project
 Agents (`sdlc` ctrl+0 · `analyst` 1 · `architect` 2 · `developer` 3 · `qa` 4 ·
 `onboarder` ctrl+9 · `rtk`).
 
+## Prerequisite — OpenSpec CLI
+
+This kit uses **[OpenSpec](https://github.com/Fission-AI/OpenSpec)** as its spec-driven
+workspace backend. Install it first:
+
+```bash
+npm install -g @fission-ai/openspec@latest
+```
+
 ## Install
 
 From the target project root:
@@ -33,12 +42,12 @@ node /path/to/kiro-sdlc-kit/bin/init.mjs ../other   # into another project
 # or, once pushed:  npx gitlab:<group>/kiro-sdlc-kit
 ```
 
-Flags: `--force` (overwrite kit files; never touches `specs/`/`memory/`), `--yes`
+Flags: `--force` (overwrite kit files; never touches `openspec/`/`memory/`), `--yes`
 (defaults, no prompts).
 
-`init` copies the framework, scaffolds `specs/` + `memory/` (symlinked from `.kiro/`),
-installs the mapper engine at `.kiro/tools/context-map.mjs`, and **wires context → agents**
-by running the mapper once.
+`init` copies the framework, runs `openspec init --tools kiro` (scaffolds `openspec/` +
+the `/opsx:*` skills), scaffolds `memory/`, symlinks `.kiro/openspec` + `.kiro/memory`,
+installs the `.kiro/tools/` engines, and **wires context → agents** via the mapper.
 
 ## Fill the context (the part that makes it yours)
 
@@ -108,6 +117,11 @@ for an unfilled context is fine before onboarding).
 
 - `agents/examples/` are **illustrative format samples** (a reference domain); only their
   structure is meant to be reused. Replace with your own over time.
-- `specs/` and `memory/` are per-project workspace and are never shipped by the kit.
+- **Workspace = OpenSpec**: features are OpenSpec *changes* at `openspec/changes/<name>/`
+  (proposal + spec deltas + design + tasks); the orchestrator drives the lifecycle
+  `openspec new change → /opsx:apply → openspec archive` across S1–S6, and `archive` folds
+  the change's spec deltas into the living `openspec/specs/`. The onboarder mirrors the
+  context contract into `openspec/config.yaml` so OpenSpec's own skills are project-aware.
+- `openspec/` and `memory/` are per-project workspace and are never shipped by the kit.
 - Each project owns its copy after `init` — no submodule coupling, no framework/project
   file mixing. To pull kit updates, re-run `init --force`.

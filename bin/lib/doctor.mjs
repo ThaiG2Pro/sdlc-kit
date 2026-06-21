@@ -6,6 +6,7 @@
 
 import { readFileSync, existsSync, readdirSync, lstatSync } from 'node:fs';
 import { join, resolve, normalize } from 'node:path';
+import { execSync } from 'node:child_process';
 
 const projectDir = resolve(process.argv[2] || '.');
 const kiro = join(projectDir, '.kiro');
@@ -24,10 +25,16 @@ for (const f of ['context-map.json', 'tools/context-map.mjs', 'tools/context-che
   existsSync(join(kiro, f)) ? ok(`file .kiro/${f}`) : fail(`missing .kiro/${f}`);
 }
 
-// 2. Symlinks (single-source workspace)
-for (const link of ['specs', 'memory']) {
+// 2. OpenSpec backend (workspace) + CLI
+try { execSync('openspec --version', { stdio: 'ignore' }); ok('openspec CLI installed'); }
+catch { fail('openspec CLI missing — `npm i -g @fission-ai/openspec` (workspace depends on it)'); }
+existsSync(join(projectDir, 'openspec', 'config.yaml')) ? ok('openspec/ workspace present')
+  : fail('no openspec/config.yaml — run `openspec init --tools kiro`');
+
+// 3. Symlinks (workspace reachable from .kiro/)
+for (const link of ['openspec', 'memory']) {
   const p = join(kiro, link);
-  if (!existsSync(p)) { warn(`no .kiro/${link} (workspace symlink) — run init`); continue; }
+  if (!existsSync(p)) { warn(`no .kiro/${link} symlink — run init`); continue; }
   try { lstatSync(p).isSymbolicLink() ? ok(`symlink .kiro/${link}`) : warn(`.kiro/${link} is not a symlink`); }
   catch { warn(`.kiro/${link} unreadable`); }
 }

@@ -69,7 +69,7 @@ AGENT_RULES = {
         "exact": ["specs/.active-feature.json"],
     },
     "onboarder": {
-        "prefixes": [".kiro/context/"],
+        "prefixes": [".kiro/context/", "openspec/", ".kiro/openspec/"],
         "exact": [".kiro/context-map.json"],
     },
 }
@@ -87,7 +87,7 @@ def normalize_path(path: str) -> str:
 
     # Strategy 2: find known segment markers in path (resolve to project-relative)
     markers = [
-        "specs/", ".kiro/memory/", ".kiro/context/", ".kiro/context-map.json", "docs/",
+        "specs/", "openspec/", ".kiro/memory/", ".kiro/context/", ".kiro/context-map.json", "docs/",
         "src/", "app/", "apps/", "lib/", "pkg/", "internal/", "cmd/",
         "prisma/", "migrations/", "database/", "db/",
         "test/", "tests/", "spec/", "__tests__/", "docker/", "scripts/", "config/", ".github/",
