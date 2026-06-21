@@ -196,6 +196,7 @@ Contains all spec folders from previous features. Search when you need to:
 | **Step 4b: Clarification** | [RISKY] assumptions | — | `clarification-generator` |
 | **Step 4c: Edge Cases** | Clarified requirements | `security.md` + security audit doc (if any) for security edge cases | `edge-case-enumerator` |
 | **Step 4d: Legacy Behavior Audit** | Legacy source, schema, `context/legacy-ref.md` | `context/legacy-ref.md`, any `extraDocs` legacy analysis | `php-implicit-behavior-audit` (legacy/PHP migrations only) |
+| **Step 4e: Threat Model** | ACs, endpoints, data flows | `.kiro/sdlc.config.json` (`security.stride_analysis`) | `stride-analysis` — run per config (`always`, or `auto` when feature touches auth/payment/PII/tokens/upload/admin); feed its threats into Early Risk Flags |
 | **Step 5: Write S1** | All above | `sdlc-workflow.md` (AC-ID format), `context/conventions.md` (Response Format) | — |
 | **S2 Step 2: Write ACs** | S1 requirements | `context/architecture.md` (error codes), `context/legacy-ref.md` (parity scenarios, if applicable), `security.md` (auth ACs), `context/conventions.md` (Response Format) | — |
 | **S2 Step 3: Audit** | requirements.md | — | `spec-auditor` |

@@ -11,11 +11,11 @@
       "knowledgeBase": ["context/conventions.md"]
     },
     "analyst": {
-      "skills": ["assumption-detector", "clarification-generator", "edge-case-enumerator", "php-implicit-behavior-audit", "spec-auditor"],
+      "skills": ["assumption-detector", "clarification-generator", "edge-case-enumerator", "php-implicit-behavior-audit", "spec-auditor", "stride-analysis"],
       "knowledgeBase": ["context/conventions.md", "context/legacy-ref.md"]
     },
     "architect": {
-      "skills": ["cross-artifact-audit", "api-design"],
+      "skills": ["cross-artifact-audit", "api-design", "stride-analysis"],
       "knowledgeBase": ["ai", "context/stack.md", "context/architecture.md", "context/conventions.md", "context/legacy-ref.md"]
     },
     "developer": {

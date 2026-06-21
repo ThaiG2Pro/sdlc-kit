@@ -187,6 +187,15 @@ Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → foll
 **When in execution**: Sub-phase B (writing design.md §API Design + §Error Mapping), Sub-phase C (writing openapi.yaml)
 **How to use**: Load skill → follow its REST API patterns for endpoint naming → use its error response template → ensure response format matches the project's API conventions (see `context/conventions.md`)
 
+### stride-analysis — Dùng khi: feature đụng bảo mật (theo `.kiro/sdlc.config.json → security.stride_analysis`)
+
+**Trigger**: Sub-phase B design, when `security.stride_analysis` = `always`, or `auto` and the
+feature touches auth/payment/PII/tokens/upload/admin/external integration.
+**Input**: requirements.md + the design so far (+ analyst's `stride-threat-model.md` if S2 produced one).
+**Output**: threat list + mitigations + gate (PASS/WARNING/BLOCK) → `specs/{ticket}-{slug}/stride-threat-model.md`.
+**How to use**: design.md §Security MUST address every Critical/High threat with a concrete
+mitigation. A `BLOCK` gate stops the DESIGN REVIEW — resolve before proceeding to S4.
+
 ## Golden Examples (read on demand via `read` tool — NOT pre-loaded)
 
 - `.kiro/agents/examples/design-example.md` — design.md structure with all 13 sections
