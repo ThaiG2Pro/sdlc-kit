@@ -93,12 +93,14 @@ async function main() {
 
   // Copy the context-map engine into the project so the onboarder agent / context-mapper
   // skill can re-run it in-place (node .kiro/tools/context-map.mjs).
-  const engineSrc = join(KIT_ROOT, 'bin', 'lib', 'context-map.mjs');
-  if (existsSync(engineSrc)) {
-    const engineDst = join(kiroDir, 'tools', 'context-map.mjs');
-    mkdirSync(dirname(engineDst), { recursive: true });
-    copyFileSync(engineSrc, engineDst);
-    log('  ✓ installed .kiro/tools/context-map.mjs');
+  for (const tool of ['context-map.mjs', 'context-check.mjs']) {
+    const toolSrc = join(KIT_ROOT, 'bin', 'lib', tool);
+    if (existsSync(toolSrc)) {
+      const toolDst = join(kiroDir, 'tools', tool);
+      mkdirSync(dirname(toolDst), { recursive: true });
+      copyFileSync(toolSrc, toolDst);
+      log(`  ✓ installed .kiro/tools/${tool}`);
+    }
   }
 
   // Scaffold project-specific dirs + symlinks (single source of truth at repo root)
