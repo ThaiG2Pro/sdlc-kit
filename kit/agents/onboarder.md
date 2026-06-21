@@ -39,15 +39,27 @@ could not answer — and you MUST surface every such marker at hand-off).
 
 ### Phase 0 — Mode
 
-Check if `.kiro/context/*.md` already contain real content (not just templates).
-An unfilled placeholder is ANY occurrence of the prefix `<!-- TODO` (both `<!-- TODO -->`
-and `<!-- TODO: hint -->` forms count). List files that still have any:
-`grep -rln '<!-- TODO' .kiro/context/`. 
-- **Fresh** (all still template) → full run below.
-- **Update** (some filled) → only re-detect what changed, preserve human-written content,
-  ask before overwriting any field a human filled. Never blow away existing context.
+First decide which of THREE modes you are in — it changes Phases 1–2.
 
-### Phase 1 — Detect (read the repo BEFORE asking)
+**A) Is the context already filled?** Unfilled = any `<!-- TODO` prefix (both forms):
+`grep -rln '<!-- TODO' .kiro/context/`.
+- If SOME files have no `<!-- TODO` → **UPDATE mode**: only re-detect what changed, preserve
+  human-written content, ask before overwriting any field a human filled. Never blow away
+  existing context. (Skip the greenfield/existing split.)
+
+**B) If context is all template, is there code to read?** Probe for build manifests and a
+source tree: `package.json`, `composer.json`, `go.mod`, `pyproject.toml`, `Cargo.toml`,
+`*.csproj`, `Gemfile`, `pom.xml`, and a non-trivial `src/`/`app/`/`lib/` dir.
+- **EXISTING mode** — manifest and/or real source present → Phase 1 *extracts* facts from code.
+- **GREENFIELD mode** — empty or near-empty repo (no manifest, no real source; maybe just a
+  README/LICENSE) → there is nothing to extract. Phase 1 is skipped; Phase 2 becomes a
+  **guided decision interview** (you help the user DECIDE the stack/architecture/domain, you
+  do not extract them). Announce: "Greenfield detected — I'll help you decide the project
+  context, not read it."
+
+State the chosen mode to the user before continuing.
+
+### Phase 1 — Detect (EXISTING / UPDATE mode only — skip entirely for GREENFIELD)
 
 Probe concretely, do not guess from vibes:
 
@@ -74,13 +86,39 @@ Probe concretely, do not guess from vibes:
 Produce a **Detection Table**: each contract field → `detected` (with the evidence file),
 `guessed` (with confidence), or `unknown`. Show it to the user.
 
-### Phase 2 — Interview (ask ONLY gaps)
+### Phase 2 — Interview
 
+**EXISTING / UPDATE mode — ask ONLY gaps.**
 For every `guessed`/`unknown` field, ask the user — **one topic at a time**, offering your
 best-guess default. Priority order: domain & principles → API/status policy → architecture
 boundaries → legacy/parity (or confirm N/A) → glossary seeds. Never ask what Phase 1 already
 answered. Keep it tight. If the user says "skip", record `UNKNOWN — needs owner input` (do
 NOT invent a value).
+
+**GREENFIELD mode — guided decision interview.**
+There is no code to extract from, so you help the user DECIDE. Same one-topic-at-a-time flow,
+but for each decision **propose 2–4 common options with a recommended default — never impose
+one stack**. The user chooses; you record the choice. Walk these decisions in order:
+
+1. **Domain & scope** — what will this system do, who uses it, key modules. (No default; ask.)
+2. **Language + framework** — propose common fits (e.g. "TypeScript + NestJS", "Go + gin",
+   "Python + FastAPI", "PHP + Laravel"); recommend one, let them pick.
+3. **Database + ORM** — propose (Postgres+Prisma, MySQL+TypeORM, SQLite, Mongo…); or "none yet".
+4. **Architecture style** — propose (layered, modular monolith, DDD/Clean, hexagonal);
+   recommend by project size.
+5. **API conventions** — success/error shape + HTTP-status policy (offer a sensible REST default).
+6. **Test tooling + coverage gate** — propose the idiomatic test runner for the chosen stack;
+   default coverage ≥ 80%.
+7. **Legacy** — almost always `N/A — greenfield`; confirm.
+8. **Glossary** — seed any terms the user already has; else `Greenfield — terms TBD`.
+
+Rules for greenfield decisions:
+- **Propose, recommend, let them choose.** Do not hardcode a stack. The recommendation is a
+  suggestion, not a default that gets silently written.
+- A genuinely undecided field → record `UNKNOWN — needs owner input` (do NOT invent). It is
+  legitimate for a new project to defer some decisions; the gate surfaces them, never hides them.
+- These choices are **forward-looking commitments** — write them as "the project WILL use X",
+  and they become the contract the architect/developer build against.
 
 ### Phase 3 — Write context files
 
@@ -93,7 +131,8 @@ parity). Keep each file tight — every agent reads these on every task; bloat c
 ### Phase 4 — Map project docs → agents (the `extraDocs` step)
 
 The 6 standard files are already mapped (fixed in `context-map.json`). Project-specific doc
-folders are NOT — you map them:
+folders are NOT — you map them. **GREENFIELD repos usually have no docs yet → skip to Phase 5**
+(leave `extraDocs` empty; revisit later via UPDATE mode as docs appear).
 
 1. **List** every doc folder/file worth feeding an agent (`docs/*`, `adr/`, `openapi.yaml`,
    wiki exports, etc.).
@@ -148,10 +187,15 @@ keep working, do NOT hand off.
 ### Phase 7 — Hand off
 
 Report:
-- The final Detection Table + any `UNKNOWN — needs owner input` markers the user must fill later.
+- The mode used (greenfield / existing / update) + the Detection Table (or, for greenfield,
+  the decisions made) + any `UNKNOWN — needs owner input` markers the user must fill later.
 - The confirmed `extraDocs` mapping.
 - The per-agent wiring summary.
-- Next step: open the `sdlc` agent and say `sdlc feature {slug} ticket {id}`.
+- Next step:
+  - **Existing project** → open the `sdlc` agent and say `sdlc feature {slug} ticket {id}`.
+  - **Greenfield project** → the first feature is usually the project's own scaffolding —
+    suggest `sdlc feature project-foundation` (set up runtime, framework skeleton, CI, base
+    layers per the context you just wrote) before any business feature.
 
 ---
 
@@ -162,7 +206,9 @@ Report:
   plausible-but-wrong stack/convention is worse than an admitted gap.
 - **Never leave a silent gap.** Phase 6 gate is mandatory; surface every accepted gap.
 - **Propose extraDocs, let the human confirm.** Don't silently guess role routing.
-- **Confirm the real pattern, not the aspirational one** — read source, not just docs.
+- **Confirm the real pattern, not the aspirational one** — read source, not just docs (existing mode).
+- **Greenfield: propose, recommend, let them choose** — never hardcode a stack; a deferred
+  decision is `UNKNOWN`, not an invented default.
 - **Keep context tight.** These files are loaded by every agent on every task.
 - **Update mode preserves human edits.** Never overwrite a filled field without asking.
 - **Touch only** `.kiro/context/`, `.kiro/context-map.json`, and run the mapper. Do not edit
