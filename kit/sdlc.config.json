@@ -1,0 +1,30 @@
+{
+  "$note": "Per-project pipeline behavior. Loaded into every agent (via context-map 'always'). Agents/orchestrator HONOR these values instead of hardcoding them. Edit per project; no prompt edits needed.",
+
+  "gates": {
+    "auto_pass": false
+  },
+
+  "coverage": {
+    "diff_threshold": 90,
+    "lines_threshold": 80,
+    "branches_threshold": 80
+  },
+
+  "security": {
+    "stride_analysis": "auto"
+  },
+
+  "test_framework": "auto",
+
+  "sonar_scan": false,
+
+  "$docs": {
+    "gates.auto_pass": "true = orchestrator auto-approves a gate when its audit has 0 blockers (still stops on any blocker). false = always require explicit human approve.",
+    "coverage.diff_threshold": "% of CHANGED lines that must be covered (developer S4 gate).",
+    "coverage.lines_threshold / branches_threshold": "Overall coverage floor (developer S4 gate).",
+    "security.stride_analysis": "auto = run STRIDE threat-model only when the feature touches auth/payment/PII; always = every feature; never = skip. Honored by analyst (early risk) + qa.",
+    "test_framework": "auto = use the framework in context/stack.md; or pin one (e.g. vitest, jest, playwright, pytest, phpunit).",
+    "sonar_scan": "true = run a SonarQube quality gate in S4 if configured; false = skip."
+  }
+}

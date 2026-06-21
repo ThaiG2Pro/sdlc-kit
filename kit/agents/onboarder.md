@@ -122,7 +122,20 @@ Rules for greenfield decisions:
 
 ### Phase 3 — Write context files
 
-Fill every `.kiro/context/*.md`: replace every `<!-- TODO … -->` marker (both forms),
+**First, apply a stack preset if one matches** (saves filling stack.md/conventions.md by hand).
+List available presets: `node .kiro/tools/apply-stack.mjs --list`. If the detected/chosen
+stack matches one (e.g. `nestjs`, `laravel`, `nextjs`):
+
+```bash
+node .kiro/tools/apply-stack.mjs <stack>
+```
+
+This seeds `context/stack.md` + `context/conventions.md`, installs the stack's skill pack
+into `.kiro/skills/`, wires those skills to architect/developer/qa, and re-runs the mapper.
+Then you only refine those two files and fill the rest. If no preset matches, write all
+files by hand.
+
+Fill every remaining `.kiro/context/*.md`: replace every `<!-- TODO … -->` marker (both forms),
 remove the `>` banner lines,
 substitute leftover `{{PROJECT_TITLE}}`/`{{LEGACY_REF_PATH}}`. Be concrete and specific to
 THIS project. If `legacy-ref` doesn't apply, set `Status: N/A — greenfield` (agents then skip

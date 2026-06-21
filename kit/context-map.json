@@ -2,7 +2,7 @@
   "$schema-note": "Declarative context→agent mapping. The mapper (bin/lib/context-map.mjs) reads this and (re)writes the `resources` array of each .kiro/agents/<agent>.json. Paths are relative to .kiro/ and are SKIPPED if they do not exist — so the kit never produces a broken reference. Edit this file (or let the onboarder agent edit it), then run the mapper.",
 
   "always": {
-    "knowledgeBase": ["steering", "specs", "context/project.md", "context/glossary.md"]
+    "knowledgeBase": ["steering", "specs", "sdlc.config.json", "context/project.md", "context/glossary.md"]
   },
 
   "agents": {

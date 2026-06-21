@@ -46,6 +46,16 @@ Contains all spec folders from previous features. Search when you need:
 | Verify consistency: feature mới có conflict với feature cũ không | Tên endpoint hoặc DB table (e.g., `<endpoint>`, `<table>`) |
 | Tìm dispute rulings trước đó | `"dispute"` hoặc `"SPEC GAP"` |
 
+## Gate behavior (from `.kiro/sdlc.config.json`)
+
+Read `gates.auto_pass`:
+- `false` (default) → every gate needs an explicit human `approve`, even when the audit has 0 blockers.
+- `true` → when a gate's audit returns 0 blockers, auto-approve and advance; still STOP on any
+  blocker. Never auto-pass a gate that found a blocker.
+
+Also honor `security.stride_analysis` (`auto`/`always`/`never`) when deciding whether STRIDE
+threat-modeling runs, and `coverage.*` / `sonar_scan` when reviewing the S4 gate.
+
 ## Skills (metadata pre-loaded, full content on demand)
 
 Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → follow instructions trong đó.

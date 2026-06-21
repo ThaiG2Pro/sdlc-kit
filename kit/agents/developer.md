@@ -43,9 +43,13 @@ You own exactly 2 SDLC phases:
 - ❌ NEVER mark S4 as done without creating this file
 
 ## R5: Test Coverage ≥ Threshold — MUST Verify
+- Thresholds come from `.kiro/sdlc.config.json` → `coverage` (`diff_threshold`,
+  `lines_threshold`, `branches_threshold`). Honor those values; the numbers below are only
+  the fallback defaults if the config is absent.
 - Run the project's coverage command (see `context/stack.md`) before marking S4 done
 - If the changed module is excluded from coverage collection → REMOVE the exclude FIRST
-- ❌ NEVER mark S4 done with coverage below the project threshold (default ≥ 80%)
+- ❌ NEVER mark S4 done with coverage below the configured threshold (default ≥ 80% lines,
+  ≥ 90% diff)
 
 ## R6: Type Check + Lint + Format — MUST Pass
 - Run the project's type-check, lint, and format commands (see `context/stack.md`) → 0 errors

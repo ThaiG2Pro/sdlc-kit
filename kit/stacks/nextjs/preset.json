@@ -1,0 +1,9 @@
+{
+  "stack": "nextjs",
+  "contextFiles": ["stack.md", "conventions.md"],
+  "skills": {
+    "architect": ["gi-nextjs-figma-code-connect", "gi-nextjs-frontend-patterns"],
+    "developer": ["gi-nextjs-frontend-patterns", "gi-nextjs-figma-to-vuexy"],
+    "qa": ["gi-nextjs-figma-visual-qa"]
+  }
+}

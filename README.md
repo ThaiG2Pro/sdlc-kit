@@ -69,6 +69,41 @@ doc folders it consumes. The mapper regenerates each agent's `resources[]` from 
 Edit the map (or let the onboarder do it), then `node .kiro/tools/context-map.mjs`.
 Never hand-edit `resources[]` in an agent JSON — it gets overwritten.
 
+## Stack presets (multi-stack)
+
+A preset pre-fills the stack-determined context and installs a stack-specific skill pack,
+so onboarding a `nestjs`/`laravel`/`nextjs` project is "pick a stack, go" instead of
+answering everything by hand.
+
+```bash
+node .kiro/tools/apply-stack.mjs --list      # nestjs · laravel · nextjs
+node .kiro/tools/apply-stack.mjs nestjs      # seed stack.md+conventions.md, install skills, wire
+```
+
+It seeds `context/stack.md` + `context/conventions.md`, copies the stack's skills into
+`.kiro/skills/`, merges them into `context-map.json` (architect/developer/qa), and re-runs
+the mapper. The onboarder runs this automatically when a stack matches; you then fill the
+project-specific files (project/architecture/glossary). Add a new stack by dropping a folder
+under `kit/stacks/<name>/` (`context/`, `skills/`, `preset.json`).
+
+## Pipeline config
+
+`.kiro/sdlc.config.json` tunes pipeline behavior per project — **no prompt edits needed**.
+It is loaded into every agent (via `context-map` `always`). Keys: `gates.auto_pass`,
+`coverage.{diff,lines,branches}_threshold`, `security.stride_analysis` (auto/always/never),
+`test_framework`, `sonar_scan`. The orchestrator honors `gates.auto_pass`; developer honors
+`coverage.*`; analyst/qa honor `security.stride_analysis`.
+
+## Health check
+
+```bash
+node .kiro/tools/doctor.mjs       # verify the whole install
+```
+
+Checks structure, agent JSON validity, that every prompt/skill/knowledge-base reference
+resolves, workspace symlinks, and context completeness. Exits non-zero on any FAIL (WARN
+for an unfilled context is fine before onboarding).
+
 ## Notes
 
 - `agents/examples/` are **illustrative format samples** (a reference domain); only their
