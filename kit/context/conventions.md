@@ -1,7 +1,7 @@
 # API & Code Conventions
 
-> Architect/developer/qa read this for API contract + naming rules. This replaces the
-> old `conventions.md` / `api-standards.md`. Replace `<!-- TODO -->`.
+> Architect/developer/qa read this for API contract + naming rules.
+> Replace every `<!-- TODO -->`.
 
 ## API Response Format
 <!-- TODO: success shape and error shape. Example:

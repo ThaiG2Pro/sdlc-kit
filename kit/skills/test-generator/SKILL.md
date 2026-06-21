@@ -8,7 +8,7 @@ description: >
 
 # Test Generator — {{PROJECT_TITLE}}
 
-Test generation patterns cho NestJS + Vitest, align với `.kiro/steering/conventions.md`.
+Test generation patterns cho NestJS + Vitest, align với `.kiro/context/conventions.md`.
 
 ## When to Activate
 

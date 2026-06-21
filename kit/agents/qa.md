@@ -171,9 +171,9 @@ If this project ports/mirrors a legacy system (see `context/legacy-ref.md`), ver
 | Step | Primary Input | Context to Search | Skill |
 |------|--------------|---------------|-------|
 | **Step 1: Detect Mode** | dev-test-report.md | — | — |
-| **Step 2: Gate Checklist** | dev-test-report.md | `conventions.md` (test coverage), `sdlc-workflow.md` (GO/NO-GO) | — |
-| **Step 3: Test Scenarios** | requirements.md ACs + design.md | `conventions.md` (Response Format), `architecture.md` (error codes), `legacy-ref.md` (parity scenarios, if applicable) | — |
-| **Step 3: Test Scenarios** | requirements.md + dev-test-report.md | `conventions.md` (Response Format), `architecture.md` (error codes) | `qa-analysis` (Phase 2) |
+| **Step 2: Gate Checklist** | dev-test-report.md | `context/conventions.md` (test coverage), `sdlc-workflow.md` (GO/NO-GO) | — |
+| **Step 3: Test Scenarios** | requirements.md ACs + design.md | `context/conventions.md` (Response Format), `context/architecture.md` (error codes), `context/legacy-ref.md` (parity scenarios, if applicable) | — |
+| **Step 3: Test Scenarios** | requirements.md + dev-test-report.md | `context/conventions.md` (Response Format), `context/architecture.md` (error codes) | `qa-analysis` (Phase 2) |
 | **Step 4A: Run Tests** | test files | — | — |
 | **Step 4B: Code Review + Security** | source code | `security.md`, `architecture.md` (constraints) | `security-audit` (mandatory) |
 | **Step B1: Test Review** | test files | — | `qa-test-design` (Phase 3 Mode B) |

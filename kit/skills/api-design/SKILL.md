@@ -7,7 +7,7 @@ description: >
 
 # API Design — {{PROJECT_TITLE}}
 
-Patterns cho NestJS REST API, align với `.kiro/steering/conventions.md`.
+Patterns cho NestJS REST API, align với `.kiro/context/conventions.md`.
 
 ## When to Activate
 

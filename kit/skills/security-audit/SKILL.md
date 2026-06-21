@@ -8,7 +8,7 @@ description: >
 
 # Security Audit — {{PROJECT_TITLE}}
 
-Deep security review theo OWASP Top 10, align với `ai/security-rules.md`.
+Deep security review theo OWASP Top 10, align với `.kiro/steering/security.md`.
 
 ## When to Activate
 

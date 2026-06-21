@@ -1,7 +1,7 @@
 # Architecture
 
-> Architect/developer read this to respect layer boundaries and patterns. Replaces the
-> old `structure.md`. Replace `<!-- TODO -->`.
+> Architect/developer read this to respect layer boundaries and patterns.
+> Replace every `<!-- TODO -->`.
 
 ## Style
 <!-- TODO: e.g. Layered / Clean Architecture / DDD 4-layer / Modular monolith / Hexagonal. -->

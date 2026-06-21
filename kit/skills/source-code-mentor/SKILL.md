@@ -33,7 +33,7 @@ Project này là nền tảng quản lý quà tặng (gift management platform):
 - Cấu trúc: Module-based (domain-driven)
 - Các domain chính: product, order, campaign, supplier, inventory, physical-gift, webhook, audit
 - Layer pattern: Controller → Service → Repository → Entity
-- Conventions: xem `.kiro/steering/conventions.md`
+- Conventions: xem `.kiro/context/conventions.md`
 
 Cấu trúc thực tế mỗi module:
 ```

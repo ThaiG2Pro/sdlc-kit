@@ -31,7 +31,7 @@ Contains 11 files. Search with specific queries when you need:
 | Kiểm tra API response format, HTTP status codes | `"Response Format"` hoặc `"HTTP status"` | `context/conventions.md` |
 | Kiểm tra test coverage threshold | `"test coverage"` hoặc `"coverage threshold"` | `context/conventions.md` |
 | Kiểm tra commit message format khi review dev output | `"commit convention"` hoặc `"conventional commits"` | `commit-policy.md` |
-| Kiểm tra security rules khi audit dev-test-report | `"hardcoded secrets"` hoặc `"input validation"` | `security-enforcement.md` |
+| Kiểm tra security rules khi audit dev-test-report | `"hardcoded secrets"` hoặc `"input validation"` | `security.md` |
 | Kiểm tra architecture layer boundaries khi review design | `"layer boundaries"` hoặc `"architecture"` | `context/architecture.md` |
 | Kiểm tra tech stack constraints | `"tech stack"` hoặc `<stack term>` | `context/stack.md` |
 

@@ -25,32 +25,39 @@ AGENT_RULES = {
         "exact": ["specs/.active-feature.json"],
     },
     "developer": {
-        "prefixes": ["src/", "apps/", "prisma/", "test/", "tests/", "docker/", "specs/", ".kiro/memory/"],
+        # Stack-agnostic source / test / migration / tooling dirs.
+        "prefixes": [
+            "src/", "app/", "apps/", "lib/", "pkg/", "internal/", "cmd/",
+            "prisma/", "migrations/", "database/", "db/",
+            "test/", "tests/", "spec/", "__tests__/",
+            "docker/", "scripts/", "config/", "specs/", ".kiro/memory/", ".github/",
+        ],
+        # Common project-root manifests across stacks (Node, PHP, Go, Python, Rust, generic).
         "exact": [
             "specs/.active-feature.json",
-            "package.json",
-            "package-lock.json",
-            "tsconfig.json",
-            "tsconfig.build.json",
-            "vitest.config.ts",
-            "nest-cli.json",
-            ".env.example",
-            ".env.node.example",
-            "prisma.config.ts",
-            "eslint.config.js",
-            "eslint.config.mjs",
-            ".prettierrc",
-            ".prettierignore",
-            "docker-compose.yml",
-            "docker-compose.local.yml",
-            "docker-compose.dev.yml",
-            "docker-compose.node.yml",
-            "Dockerfile",
-            "Dockerfile.node",
-            "README.md",
-            "ROADMAP.md",
-            ".gitlab-ci.yml",
-            "mise.toml",
+            # Node / TS
+            "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "nest-cli.json",
+            # PHP
+            "composer.json", "composer.lock", "artisan", "phpunit.xml", "phpunit.xml.dist",
+            # Go
+            "go.mod", "go.sum",
+            # Python
+            "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "requirements-dev.txt",
+            "pytest.ini", "tox.ini", "Pipfile", "Pipfile.lock",
+            # Rust
+            "Cargo.toml", "Cargo.lock",
+            # generic
+            "Makefile", "Dockerfile", "README.md", "ROADMAP.md", "mise.toml", ".gitlab-ci.yml",
+            ".env.example", ".env.sample", ".env.local.example",
+            "docker-compose.yml", "docker-compose.yaml", "docker-compose.dev.yml",
+            "docker-compose.local.yml", "docker-compose.override.yml", "compose.yml", "compose.yaml",
+        ],
+        # Config-file patterns (endswith) — covers *.config.ts, tsconfig.json, lint/format configs, etc.
+        "suffixes": [
+            ".config.ts", ".config.js", ".config.mjs", ".config.cjs",
+            "tsconfig.json", "tsconfig.build.json", "jsconfig.json",
+            ".prettierrc", ".prettierignore", ".eslintrc", ".eslintrc.js", ".eslintrc.json",
+            "biome.json", "Dockerfile",
         ],
     },
     "qa": {
@@ -78,43 +85,21 @@ def normalize_path(path: str) -> str:
     if path.startswith(cwd + "/"):
         return path[len(cwd) + 1 :]
 
-    # Strategy 2: find known segment markers in path
-    markers = ["specs/", ".kiro/memory/", ".kiro/context/", ".kiro/context-map.json", "docs/", "src/", "apps/", "prisma/", "test/", "tests/", "docker/"]
+    # Strategy 2: find known segment markers in path (resolve to project-relative)
+    markers = [
+        "specs/", ".kiro/memory/", ".kiro/context/", ".kiro/context-map.json", "docs/",
+        "src/", "app/", "apps/", "lib/", "pkg/", "internal/", "cmd/",
+        "prisma/", "migrations/", "database/", "db/",
+        "test/", "tests/", "spec/", "__tests__/", "docker/", "scripts/", "config/", ".github/",
+    ]
     for marker in markers:
         idx = path.find("/" + marker)
         if idx != -1:
             return path[idx + 1 :]
 
-    # Strategy 3: check exact filenames at end of path
-    basename_matches = [
-        "package.json",
-        "package-lock.json",
-        "tsconfig.json",
-        "tsconfig.build.json",
-        "vitest.config.ts",
-        "nest-cli.json",
-        ".env.example",
-        ".env.node.example",
-        "eslint.config.js",
-        "eslint.config.mjs",
-        ".prettierrc",
-        ".prettierignore",
-        "docker-compose.yml",
-        "docker-compose.local.yml",
-        "docker-compose.dev.yml",
-        "docker-compose.node.yml",
-        "Dockerfile",
-        "Dockerfile.node",
-        "README.md",
-        "ROADMAP.md",
-        ".gitlab-ci.yml",
-        "mise.toml",
-    ]
-    for bm in basename_matches:
-        if path.endswith("/" + bm):
-            return bm
-
-    return path
+    # Strategy 3 (fallback): treat as a project-root file → match by basename.
+    # exact/suffix rules then decide. This is stack-agnostic (no hardcoded filenames).
+    return os.path.basename(path)
 
 
 def main():
@@ -138,6 +123,10 @@ def main():
 
     # Check prefix matches
     if any(path.startswith(p) for p in rules["prefixes"]):
+        sys.exit(0)
+
+    # Check suffix (config-file pattern) matches
+    if any(path.endswith(s) for s in rules.get("suffixes", [])):
         sys.exit(0)
 
     sys.stderr.write(f"BLOCKED: {agent} cannot write to {path}")
