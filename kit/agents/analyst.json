@@ -18,9 +18,8 @@
   "toolsSettings": {
     "write": {
       "allowedPaths": [
-        "specs/**",
-        "docs/knowledge/**",
-        "specs/.active-feature.json"
+        "openspec/**",
+        "docs/knowledge/**"
       ]
     },
     "shell": {
@@ -116,7 +115,7 @@
     ],
     "stop": [
       {
-        "command": "echo \"\" && echo \"=== Uncommitted Changes ===\" && git diff --stat specs/ 2>/dev/null | tail -5 || true",
+        "command": "echo \"\" && echo \"=== Uncommitted Changes ===\" && git diff --stat openspec/ 2>/dev/null | tail -5 || true",
         "timeout_ms": 5000
       }
     ],

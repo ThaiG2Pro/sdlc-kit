@@ -6,7 +6,7 @@
   "allowedTools": ["read", "write", "shell", "@redmine/redmine_request", "@figma/get_figma_data"],
   "toolsSettings": {
     "write": {
-      "allowedPaths": ["specs/**", "apps/cms/e2e/**"]
+      "allowedPaths": ["openspec/**", "test/**", "tests/**", "e2e/**", "__tests__/**", "apps/cms/e2e/**"]
     },
     "shell": {
       "allowedCommands": [
@@ -147,7 +147,7 @@
     ],
     "stop": [
       {
-        "command": "echo '' && echo '=== Uncommitted ===' && git diff --stat specs/ 2>/dev/null | tail -5 || true",
+        "command": "echo '' && echo '=== Uncommitted ===' && git diff --stat openspec/ 2>/dev/null | tail -5 || true",
         "timeout_ms": 5000
       }
     ],

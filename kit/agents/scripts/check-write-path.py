@@ -4,12 +4,13 @@ Shared preToolUse hook: validate fs_write paths against allowed prefixes.
 
 Usage: echo '{"tool_input":{"path":"..."}}' | python3 check-write-path.py <agent_name>
 
-Agent allowed paths:
-  analyst:     specs/, docs/knowledge/
-  architect:   specs/, docs/
-  developer:   src/, apps/, prisma/, test/, tests/, specs/
-  qa:          specs/, apps/cms/e2e/
-  sdlc:        specs/
+Agent allowed paths (OpenSpec-backed workspace — artifacts live in openspec/changes/<name>/):
+  analyst:     openspec/, docs/knowledge/
+  architect:   openspec/, docs/
+  developer:   src/, apps/, prisma/, test/, tests/, openspec/
+  qa:          openspec/, test/, tests/, e2e/
+  sdlc-full:   openspec/, .kiro/memory/   (orchestrator: feature/cr/rebuild)
+  sdlc-fast:   openspec/, .kiro/memory/   (orchestrator: bugfix/hotfix)
 
 Exit 0 = allowed, Exit 2 = blocked
 """
@@ -17,12 +18,12 @@ import json, sys, os
 
 AGENT_RULES = {
     "analyst": {
-        "prefixes": ["specs/", "docs/knowledge/"],
-        "exact": ["specs/.active-feature.json"],
+        "prefixes": ["openspec/", "docs/knowledge/"],
+        "exact": [],
     },
     "architect": {
-        "prefixes": ["specs/", "docs/"],
-        "exact": ["specs/.active-feature.json"],
+        "prefixes": ["openspec/", "docs/"],
+        "exact": [],
     },
     "developer": {
         # Stack-agnostic source / test / migration / tooling dirs.
@@ -30,11 +31,10 @@ AGENT_RULES = {
             "src/", "app/", "apps/", "lib/", "pkg/", "internal/", "cmd/",
             "prisma/", "migrations/", "database/", "db/",
             "test/", "tests/", "spec/", "__tests__/",
-            "docker/", "scripts/", "config/", "specs/", ".kiro/memory/", ".github/",
+            "docker/", "scripts/", "config/", "openspec/", ".kiro/memory/", ".github/",
         ],
         # Common project-root manifests across stacks (Node, PHP, Go, Python, Rust, generic).
         "exact": [
-            "specs/.active-feature.json",
             # Node / TS
             "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "nest-cli.json",
             # PHP
@@ -61,12 +61,16 @@ AGENT_RULES = {
         ],
     },
     "qa": {
-        "prefixes": ["specs/", ".kiro/memory/", "apps/cms/e2e/"],
+        "prefixes": ["openspec/", ".kiro/memory/", "test/", "tests/", "e2e/", "spec/", "__tests__/", "apps/cms/e2e/"],
         "exact": [],
     },
-    "sdlc": {
-        "prefixes": ["specs/", ".kiro/memory/"],
-        "exact": ["specs/.active-feature.json"],
+    "sdlc-full": {
+        "prefixes": ["openspec/", ".kiro/memory/"],
+        "exact": [],
+    },
+    "sdlc-fast": {
+        "prefixes": ["openspec/", ".kiro/memory/"],
+        "exact": [],
     },
     "onboarder": {
         "prefixes": [".kiro/context/", "openspec/", ".kiro/openspec/"],

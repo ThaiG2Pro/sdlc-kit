@@ -37,13 +37,32 @@ def read_first_line_match(path, prefix):
         pass
     return None
 
-# 1. Find active spec
-active = read_json('specs/.active-feature.json')
-if not active or not active.get('active_spec'):
-    print(f"No active feature. Say: sdlc feature {{name}} ticket {{id}}")
+# 1. Find the active OpenSpec change.
+# Workspace is OpenSpec-backed: active changes live in openspec/changes/<name>/ (each with a
+# _state.json); archived ones in openspec/changes/archive/. There is no .active-feature.json.
+# Pick the change whose _state.json was modified most recently = the one being worked on.
+def find_active_change():
+    base = 'openspec/changes'
+    if not os.path.isdir(base):
+        return None
+    candidates = []
+    for name in os.listdir(base):
+        if name == 'archive':
+            continue
+        d = os.path.join(base, name)
+        st = os.path.join(d, '_state.json')
+        if os.path.isdir(d) and os.path.isfile(st):
+            candidates.append((os.path.getmtime(st), d))
+    if not candidates:
+        return None
+    candidates.sort(reverse=True)
+    return candidates[0][1]
+
+spec_dir = find_active_change()
+if not spec_dir:
+    print("No active change. Say: sdlc <feature|cr|bugfix|hotfix|rebuild> {slug} ticket {id}")
     sys.exit(0)
 
-spec_dir = active['active_spec']
 state = read_json(f'{spec_dir}/_state.json')
 if not state:
     print(f"No _state.json in {spec_dir}")
@@ -54,8 +73,11 @@ tid = state.get('ticket_id', '?')
 slug = state.get('feature_slug', '?')
 phase = state.get('current_phase', '?')
 last_agent = state.get('last_agent', '?')
+wtype = state.get('type', 'feature')          # which pipeline (feature/cr/bugfix/hotfix/rebuild)
+phases = state.get('phases', [])
 
-print(f"Feature: {tid}-{slug}")
+print(f"Change: {tid}-{slug}  ({spec_dir})")
+print(f"Type: {wtype}{('  pipeline: ' + '→'.join(phases)) if phases else ''}")
 print(f"Phase: {phase} | Last agent: {last_agent}")
 
 # 3. CPP artifacts status
