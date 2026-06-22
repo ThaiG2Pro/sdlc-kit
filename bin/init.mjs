@@ -94,7 +94,7 @@ async function main() {
 
   // Copy the context-map engine into the project so the onboarder agent / context-mapper
   // skill can re-run it in-place (node .kiro/tools/context-map.mjs).
-  for (const tool of ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs']) {
+  for (const tool of ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs']) {
     const toolSrc = join(KIT_ROOT, 'bin', 'lib', tool);
     if (existsSync(toolSrc)) {
       const toolDst = join(kiroDir, 'tools', tool);

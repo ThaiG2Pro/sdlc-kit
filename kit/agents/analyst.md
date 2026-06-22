@@ -1,8 +1,8 @@
 ---
 name: analyst
 description: "SDLC S1 (Req Intake) + S2 (Func Spec). Phân tích yêu cầu, tạo requirement pack, functional spec với AC testable. Trigger: /s1, /s2"
-tools: ["read", "write", "shell"]
-model: claude-sonnet-4
+tools: ["read", "write", "shell", "@bookstack", "@redmine"]
+model: claude-opus-4.8
 ---
 
 # ROLE
@@ -87,6 +87,7 @@ These rules are non-negotiable. If ANY rule is violated, your output is invalid.
 - Stop when: all critical gaps resolved OR user says "done" OR reach 5 questions
 
 ## R11: Context Preservation Protocol (CPP) — MANDATORY
+- ⏱️ **APPEND-AS-YOU-GO**: ghi vào `_decisions.jsonl` NGAY khi chốt mỗi AC/assumption/clarification — đừng để dồn tới Step 6. Append-only. Cuối phase chỉ tổng hợp `_handoff.md`. (Quên = stop-hook nhắc khi bạn dừng, và gate S2 bị `pipeline-guard` CHẶN.)
 - Before completing S1 or S2, you MUST produce these CPP artifacts in `{CHANGE_DIR}`:
   - `_glossary.md` — domain terms with definitions (append rows, never delete)
   - `_decisions.jsonl` — append 1 JSON line per decision (see format below)
@@ -350,16 +351,17 @@ Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → foll
     "active_concerns": ["{top concerns for S2}"],
     "terminology": {},
     "next_action": {
-      "agent": "analyst",
-      "command": "/s2 {ticket_id} {change-name}",
+      "agent": "sdlc",
+      "command": "continue",
       "prerequisite": "S1 review by user",
       "blocker": null,
+      "routes_to": "analyst /s2 (same agent owns S1+S2 — orchestrator confirms S1 artifacts, then routes back here)",
       "priority_reading": ["proposal.md (assumptions/non-goals) — validate these in S2"],
       "watch_items": ["{items needing attention in S2}"]
     }
   }
   ```
-- Tell user: "S1 done. Review `{CHANGE_DIR}/proposal.md`, then run `/s2 {ticket_id} {change-name}` to continue."
+- Tell user: "S1 done. Review `{CHANGE_DIR}/proposal.md`, then return to the SDLC orchestrator (`/agent swap` → sdlc) and say 'continue' — it advances the change to S2. Do NOT self-run `/s2`."
 
 ## When triggered with `/s2 {ticket_id} {change-name}`
 
@@ -407,10 +409,11 @@ Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → foll
     "active_concerns": ["{top 3-5 concerns for architect}"],
     "terminology": {"{term}": "{definition}", "...": "..."},
     "next_action": {
-      "agent": "architect",
-      "command": "/s3 {ticket_id} {change-name}",
+      "agent": "sdlc",
+      "command": "approve s2",
       "prerequisite": "SPEC LOCK — BA+Dev+QC sign-off",
       "blocker": "AWAITING SPEC LOCK",
+      "routes_to": "architect /s3 {ticket_id} {change-name} (orchestrator routes here only after the SPEC LOCK gate PASSES)",
       "priority_reading": [
         "proposal.md — why/what/non-goals, AC counts",
         "_handoff.md — analyst reasoning, contentious points, risky areas",
@@ -446,15 +449,17 @@ Review checklist:
   - [ ] No [MISSING] tags remaining
   - [ ] openspec change validate "{change-name}" passes
 
-When all 3 have approved, run:
-  /agent swap → architect → /s3 {ticket_id} {change-name}
+When all 3 have approved, return to the SDLC orchestrator to run the SPEC LOCK gate:
+  /agent swap → sdlc → "approve s2"
+The orchestrator runs the gate (pipeline-guard + spec-auditor + openspec validate + CPP),
+clears the blocker on PASS, then routes to architect for /s3. Do NOT swap straight to architect.
 
 ⛔ DO NOT proceed without sign-off. Cost of spec gap found later: 5-25× current cost.
 ```
 
 - ❌ NEVER suggest user skip SPEC LOCK
 - ❌ NEVER auto-proceed to S3
-- ✅ If user says "approved" or "locked" → update `{CHANGE_DIR}/_state.json` `next_action.blocker` to null
+- ✅ If user says "approved" or "locked" → route to the SDLC orchestrator to run the gate; it clears the blocker on audit PASS: `/agent swap` → sdlc → 'approve s2'. Do NOT self-clear the blocker.
 - ✅ If user provides feedback → iterate S2 (cost 1×, cheapest investment)
 - ✅ After fixing: tell user "Switch to SDLC to re-run audit: `/agent swap` → sdlc → 'approve s2'"
 - ❌ NEVER suggest user skip SDLC audit after fix

@@ -73,6 +73,10 @@ if (!state) die(`unreadable _state.json in ${CHANGE_DIR}`);
 
 const type = state.type;
 const current = (state.current_phase || 'NEW').toUpperCase();
+// A phase may carry a sub-phase suffix while an agent works through mini-gates (e.g. "S3-B" during
+// architect's design loop). For order/legality checks we compare the base phase; `current` keeps the
+// raw value for display so the user still sees the precise sub-phase.
+const currentBase = current.split('-')[0];
 const gates = state.gates || {};
 const optional = (type && types[type] && types[type].optionalPhases) || [];
 
@@ -88,13 +92,13 @@ if (driftWarn) console.log(`  ⚠ persisted phases differ from pipelines.json[${
 
 // current_phase legality (NEW = not started, DONE/ARCHIVED = finished)
 const SENTINELS = ['NEW', 'DONE', 'ARCHIVED'];
-if (!SENTINELS.includes(current) && !phases.includes(current)) {
+if (!SENTINELS.includes(currentBase) && !phases.includes(currentBase)) {
   die(`ILLEGAL STATE: current_phase ${current} is not in the ${type} pipeline (${phases.join('→')}). The change is running the wrong pipeline or state is corrupt.`);
 }
 
 function nextPhase() {
-  if (current === 'NEW') return phases[0] || null;
-  const i = phases.indexOf(current);
+  if (currentBase === 'NEW') return phases[0] || null;
+  const i = phases.indexOf(currentBase);
   return i >= 0 && i < phases.length - 1 ? phases[i + 1] : null;
 }
 
@@ -127,13 +131,29 @@ if (gatePhase) {
   if (!phases.includes(gatePhase)) die(`ILLEGAL: ${gatePhase} is not a phase of the ${type} pipeline (${phases.join('→')}).`);
   const gateName = phaseCatalog[gatePhase] && phaseCatalog[gatePhase].gate;
   if (!gateName) die(`${gatePhase} has no gate in phaseCatalog — nothing to approve here.`);
-  if (current !== gatePhase) die(`OUT OF ORDER: you are at ${current}, not ${gatePhase}. Cannot approve the ${gateName} gate now.`);
+  if (currentBase !== gatePhase) die(`OUT OF ORDER: you are at ${current}, not ${gatePhase}. Cannot approve the ${gateName} gate now.`);
 
   const unmet = unmetPriorGates(gatePhase);
   if (unmet.length) die(`FENCE-JUMP: earlier gate(s) not passed before ${gatePhase}: ${unmet.join(', ')}. Pass them first.`);
 
   const missing = artifactsPresent(gatePhase);
   if (missing.length) die(`MISSING ARTIFACTS for ${gatePhase} (${gateName}): ${missing.join(', ')}. The phase agent must produce these before the gate.`);
+
+  // CPP context contract (deterministic) — the orchestrator's prose "CPP Contract Checks" turned
+  // into an exit code, so a gate cannot pass when the handoff baton (handoff/decisions/glossary/
+  // state) is missing — even if both the role agent AND the orchestrator forgot to verify it.
+  try {
+    const { checkCpp, checkTrailing } = await import('./cpp-guard.mjs');
+    const cpp = checkCpp({ changeDir: CHANGE_DIR, gatePhase });
+    if (!cpp.ok) die(`MISSING CONTEXT (CPP) for ${gatePhase} (${gateName}): ${cpp.problems.join('; ')}. The phase agent must write its handoff/decisions/glossary/state baton before the gate.`);
+    // Trailing: side-effects the orchestrator owed at the PRIOR gate's approval (cross-spec + progress).
+    const trail = checkTrailing({ projectRoot: projectDir, changeDir: CHANGE_DIR, state });
+    if (!trail.ok) die(`MISSING RECORDS (orchestrator) before ${gatePhase} (${gateName}): ${trail.problems.join('; ')}. The orchestrator must record these when approving the prior gate.`);
+  } catch (e) {
+    if (e && e.code === 'ERR_MODULE_NOT_FOUND') {
+      console.log('  ⚠ cpp-guard.mjs not found — CPP context NOT enforced (re-run init to install it).');
+    } else throw e;
+  }
 
   const next = nextPhase();
   console.log(`  ✓ ${gateName} gate at ${gatePhase} MAY be approved (artifacts present, prior gates passed).`);

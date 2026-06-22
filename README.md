@@ -198,7 +198,11 @@ node .kiro/tools/apply-stack.mjs --list     # list stack presets
 node .kiro/tools/apply-stack.mjs nestjs     # apply a stack preset
 node .kiro/tools/pipeline-guard.mjs --gate S3   # deterministic phase/gate guard (the orchestrator
                                                 # calls this before every approve: blocks out-of-order
-                                                # gates, fence-jumps, and missing-artifact approvals)
+                                                # gates, fence-jumps, missing-artifact AND missing-CPP-
+                                                # context approvals — it calls cpp-guard.mjs internally)
+node .kiro/tools/cpp-guard.mjs --gate S3        # deterministic CPP context-baton check for a gate
+node .kiro/tools/cpp-guard.mjs --role architect # advisory stop-hook check (reminds an agent that made
+                                                # its deliverable but forgot the handoff/decisions baton)
 
 # OpenSpec lifecycle (driven by the agents, but runnable by hand)
 openspec list                               # active changes (pipeline state)

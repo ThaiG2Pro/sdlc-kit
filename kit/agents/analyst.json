@@ -29,8 +29,7 @@
         "cat",
         "head",
         "wc",
-        "grep",
-        "rtk"
+        "grep"
       ]
     }
   },
@@ -40,67 +39,46 @@
     "skill://.kiro/skills/edge-case-enumerator/SKILL.md",
     "skill://.kiro/skills/php-implicit-behavior-audit/SKILL.md",
     "skill://.kiro/skills/spec-auditor/SKILL.md",
+    "skill://.kiro/skills/stride-analysis/SKILL.md",
     {
       "type": "knowledgeBase",
       "source": "file://./.kiro/steering",
-      "name": "SteeringDocs",
-      "description": "Project conventions and SDLC rules. Search: \"AC-ID format\", \"SPEC LOCK gate\", \"cost escalation\", \"spec folder naming\", \"Response Format\", \"HTTP status\".",
+      "name": "Steering",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./docs/PARITY-RULES.md",
-      "name": "ParityRules",
-      "description": "MANDATORY for any AC touching response format, error codes, voucher state, cache TTLs, brute-force config, or HTTP status. 15 bug-for-bug preservation rules. Search keywords: \"parity\", \"verbatim\", \"typo vảo Gía\", \"state 11\", \"HTTP 200 brute force\", \"FAILED_ATTEMPS\", \"APP_TIMEZONE budget\", \"scheme_budget TTL\", \"GI_PIN_INVALID_LENGTH\", \"state 10\". Each rule is a non-negotiable AC.",
+      "source": "file://./.kiro/sdlc.config.json",
+      "name": "Sdlc.config",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./docs/00-onboarding/02-glossary.md",
+      "source": "file://./.kiro/context/project.md",
+      "name": "Project",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/context/glossary.md",
       "name": "Glossary",
-      "description": "Term definitions only. Search ONLY when encountering an unfamiliar term: PSR-4 hijack, bridge worker, Compound prefix, CONTRACT vs ACCIDENT, biz.configure, VOUCHER_WAS_*, Conformist, Customer/Supplier, Shared Kernel. Do not retrieve for general context.",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./docs/00-onboarding/04-for-ba.md",
-      "name": "BA-Onboarding",
-      "description": "BA canonical entry path. 4 endpoints, 58 error codes summary, 7 conditional rules, state machine, AC template aligned with AC-{ticket}-NNN format, stakeholder verification list. Read FIRST when starting S1/S2 for this project.",
+      "source": "file://./.kiro/context/conventions.md",
+      "name": "Conventions",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./docs/10-php-contract",
-      "name": "PhpContract-Surface",
-      "description": "PHP behavior ground-truth bottom-up from source. 8 files. Anchor every AC to verbatim PHP source. Search: error codes 58 verbatim (01), response envelope per endpoint (02), voucher state semantics + state=11 virtual (03), code format regex GI prefix (04), Cache::put TTL seconds-not-minutes Compound prefix (05), HTTP 200 always contract (06), magic-number thresholds + biz.configure keys (07), vendor surface PSR-4 hijack (08). Use during S1 knowledge gathering and S2 AC writing.",
-      "indexType": "best",
-      "autoUpdate": false
-    },
-    {
-      "type": "knowledgeBase",
-      "source": "file://./docs/20-business",
-      "name": "BusinessDomain",
-      "description": "Domain model + business logic abstraction. 6 files. Search: \"context map\" + 7 bounded contexts (01), \"aggregate invariant\" VoucherAggregate + 9 invariants (02), \"use case overview\" 3 commands + 1 query (03), \"use case details\" per-UC orchestration (04), \"conditional rule\" 7 verifiers + expression AND/OR (05), \"redemption\" discount calculator (06). PRIMARY source for use-case spec and AC business-rule sections.",
-      "indexType": "best",
-      "autoUpdate": false
-    },
-    {
-      "type": "knowledgeBase",
-      "source": "file://./.kiro/specs",
-      "name": "SpecsHistory",
-      "description": "Existing feature specs in this repo. Search for AC-ID patterns, glossary terms, and business decisions made in prior features. Use only for cross-feature reuse — NOT for the PHP contract.",
-      "indexType": "best",
-      "autoUpdate": true
-    },
-    {
-      "type": "knowledgeBase",
-      "source": "file://./docs/knowledge",
-      "name": "FeatureKnowledgePointers",
-      "description": "Per-feature POINTER docs (NOT content cache). 8 files (SPEC-01..07 + SPEC-RULES) each ~100 lines containing: feature scope + R3 reading order + PHP grep targets + applicable PARITY-RULES + Node API mapping + pitfalls 1-liners. DRY principle: pointer docs tell you WHERE to read, NOT what to read. Workflow: load pointer doc → follow R3 reading order section 2 → grep PHP source from section 3 → cross-check PARITY-RULES section 4 → use Node API hooks section 5. Always run freshness check (section 8) before /s1 — if R3 docs newer than digest sync date, re-read R3 first.",
+      "source": "file://./.kiro/context/legacy-ref.md",
+      "name": "LegacyRef",
       "indexType": "best",
       "autoUpdate": false
     }
@@ -117,6 +95,10 @@
       {
         "command": "echo \"\" && echo \"=== Uncommitted Changes ===\" && git diff --stat openspec/ 2>/dev/null | tail -5 || true",
         "timeout_ms": 5000
+      },
+      {
+        "command": "node .kiro/tools/cpp-guard.mjs --role analyst 2>/dev/null || true",
+        "timeout_ms": 4000
       }
     ],
     "preToolUse": [
@@ -134,7 +116,7 @@
     ]
   },
   "includeMcpJson": true,
-  "model": "claude-sonnet-4.6",
+  "model": "claude-opus-4.8",
   "keyboardShortcut": "ctrl+1",
   "welcomeMessage": "Analyst sẵn sàng. Dùng /s1 {ticket_id} {feature-slug} để bắt đầu phân tích yêu cầu."
 }

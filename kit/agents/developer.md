@@ -121,6 +121,7 @@ This project is driven by **OpenSpec**. You work inside a per-feature **change w
 - ✅ Check watch_items — these are specific warnings from architect
 
 ### On Completion (WRITE — before presenting BUILD gate / at each checkpoint)
+- ⏱️ **APPEND-AS-YOU-GO**: ghi vào `_decisions.jsonl` NGAY khoảnh khắc bạn chốt một deviation/implementation choice — đừng để dồn tới cuối S4. Append-only nên không sợ trùng. Cuối phase chỉ tổng hợp `_handoff.md`. (Quên = stop-hook nhắc khi bạn dừng, và gate S4 bị `pipeline-guard` CHẶN.)
 - **`_glossary.md`**: APPEND rows if you define new technical terms during implementation
 - **`_decisions.jsonl`**: APPEND entries for:
   - Every design deviation (minor or major): `{"type":"deviation",...}`

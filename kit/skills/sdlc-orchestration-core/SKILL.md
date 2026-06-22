@@ -130,10 +130,11 @@ present ALL blockers, do NOT update `_state.json`, do NOT proceed → if all pas
 set `gates["<phase>"]="passed"` + next_action, mark `_progress.md`, and (S3 only) append the
 Cross-Spec Context block.
 
-> Division of labour: **pipeline-guard** enforces *order + artifact existence + prior gates*
-> (you can't approve out of sequence, skip a phase, or pass a gate with missing artifacts).
-> The **audit skills** judge *quality* (is the spec testable, does design cover the ACs).
-> The guard is cheap and absolute; the audit is the judgment call. Both must pass.
+> Division of labour: **pipeline-guard** enforces *order + artifact existence + prior gates +
+> CPP context baton* (you can't approve out of sequence, skip a phase, pass a gate with missing
+> artifacts, OR pass a gate when the handoff/decisions/glossary/state baton is missing — it calls
+> `cpp-guard.mjs` internally). The **audit skills** judge *quality* (is the spec testable, does
+> design cover the ACs). The guard is cheap and absolute; the audit is the judgment call. Both must pass.
 
 **Per-phase gate overrides** come from `types[<type>].gateOverrides` in `pipelines.json` (e.g.
 bugfix S5 = regression-only; hotfix S4 = minimal fix + one regression test). Apply them.
@@ -151,6 +152,12 @@ orchestrator is the only agent that sees all gates, so it owns the authoritative
 | approve S5 | `S5 Testing & Review` |
 
 Read `_progress.md`, find `## Overall Progress`, replace `- [ ] {phase}` → `- [x] {phase}`.
+
+> **Trailing enforcement:** progress marking + cross-spec append are orchestrator side-effects
+> recorded *during* an approval (after STEP 0). `pipeline-guard` therefore verifies them at the
+> NEXT gate (via `cpp-guard` checkTrailing): once S3 has passed, a later gate fails with "MISSING
+> RECORDS" if `openspec/_cross-spec-context.md` has no block for this change, or if `_progress.md`
+> wasn't marked. (The final S5→S6/archive transition has no later gate, so confirm it manually.)
 
 ### Cross-Spec Context (MANDATORY on S3 approval)
 
@@ -174,6 +181,12 @@ must follow). Focus on INTERFACES, exact names. Append only — never modify exi
 ```
 
 ### CPP Contract Checks (run at EVERY gate)
+
+> These checks are now **deterministically enforced**: `pipeline-guard.mjs` (STEP 0) calls
+> `cpp-guard.mjs`, which fails the gate (exit 1, "MISSING CONTEXT (CPP)") if the baton below is
+> absent — so a forgotten handoff cannot slip through even if you skip the manual review. Run the
+> manual check too for the *content* nuance the guard can't judge; the guard is the safety net.
+
 
 **S2→S3 (SPEC LOCK)**: `_handoff.md` has all 5 sections (Key Decisions, Contentious Points,
 Implicit Assumptions, Risky Areas, Recommended Reading Order); `_decisions.jsonl` ≥1

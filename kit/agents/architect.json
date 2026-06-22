@@ -2,8 +2,20 @@
   "name": "architect",
   "description": "SDLC S3 (Design). Validate spec → thiết kế giải pháp kỹ thuật đầy đủ. Trigger: /s3",
   "prompt": "file://./architect.md",
-  "tools": ["read", "write", "shell", "code", "@bookstack", "@redmine"],
-  "allowedTools": ["read", "code", "shell", "@bookstack"],
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "code",
+    "@bookstack",
+    "@redmine"
+  ],
+  "allowedTools": [
+    "read",
+    "code",
+    "shell",
+    "@bookstack"
+  ],
   "toolsSettings": {
     "write": {
       "allowedPaths": [
@@ -12,99 +24,82 @@
       ]
     },
     "shell": {
-      "allowedCommands": ["ls", "find", "cat", "head", "wc", "grep", "rtk"]
+      "allowedCommands": [
+        "ls",
+        "find",
+        "cat",
+        "head",
+        "wc",
+        "grep"
+      ]
     }
   },
   "resources": [
     "skill://.kiro/skills/cross-artifact-audit/SKILL.md",
     "skill://.kiro/skills/api-design/SKILL.md",
+    "skill://.kiro/skills/stride-analysis/SKILL.md",
     {
       "type": "knowledgeBase",
       "source": "file://./.kiro/steering",
-      "name": "SteeringDocs",
-      "description": "Project conventions and SDLC rules. Search: \"Response Format\", \"HTTP status\", \"DB naming\", \"DESIGN REVIEW\", \"cost escalation\", \"AC-ID\", \"test coverage\".",
+      "name": "Steering",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/sdlc.config.json",
+      "name": "Sdlc.config",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/context/project.md",
+      "name": "Project",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/context/glossary.md",
+      "name": "Glossary",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
       "source": "file://./.kiro/ai",
-      "name": "AIRules",
-      "description": "Backend coding rules for NestJS + Prisma + DDD (5 files). Search: \"use case rules\", \"aggregate rules\", \"port rules\", \"error handling\", \"concurrency\", \"security headers\", \"input validation\", \"sonar policy\", \"sonar rules\", \"code smell\", \"cognitive complexity\", \"AI behavior\", \"agent guidelines\".",
+      "name": "Ai",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./docs/PARITY-RULES.md",
-      "name": "ParityRules",
-      "description": "MANDATORY for any design decision touching response format, error codes, voucher state, cache TTLs, brute-force config, or HTTP status. 15 bug-for-bug preservation rules. Search keywords: \"parity\", \"verbatim\", \"typo vảo Gía\", \"state 11\", \"HTTP 200 brute force\", \"FAILED_ATTEMPS\", \"APP_TIMEZONE\", \"scheme_budget TTL\", \"Compound prefix\". Each rule is a non-negotiable constraint on design.",
+      "source": "file://./.kiro/context/stack.md",
+      "name": "Stack",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./docs/00-onboarding/02-glossary.md",
-      "name": "Glossary",
-      "description": "Term definitions only. Search ONLY when encountering an unfamiliar term: PSR-4 hijack, bridge worker, Compound prefix, CONTRACT vs ACCIDENT, biz.configure, Conformist, Customer/Supplier, Shared Kernel, Port/Adapter.",
-      "indexType": "best",
-      "autoUpdate": false
-    },
-    {
-      "type": "knowledgeBase",
-      "source": "file://./docs/00-onboarding/05-for-dev.md",
-      "name": "Dev-Onboarding",
-      "description": "Architecture roadmap: layered DDD, 7 bounded contexts, dependency rule, first-endpoint walkthrough, 16-file deep reading list. Use as compass at start of S3.",
-      "indexType": "best",
-      "autoUpdate": false
-    },
-    {
-      "type": "knowledgeBase",
-      "source": "file://./docs/10-php-contract",
-      "name": "PhpContract-Design",
-      "description": "PHP behavior contract — anchor design to verbatim source. 8 files. Search: response shape per endpoint (02), state machine quirks (03), Cache TTL trap Compound prefix (05), HTTP 200 contract (06), magic numbers + biz.configure keys (07), PSR-4 hijack vendor inventory (08). Use to validate ADRs.",
-      "indexType": "best",
-      "autoUpdate": false
-    },
-    {
-      "type": "knowledgeBase",
-      "source": "file://./docs/20-business",
-      "name": "BusinessDomain",
-      "description": "Domain model to design against. 6 files. Search: \"context map relationship\", \"aggregate invariant\", \"use case orchestration\", \"conditional rule expression engine\", \"redemption calculator\". Required for design.md domain sections.",
-      "indexType": "best",
-      "autoUpdate": false
-    },
-    {
-      "type": "knowledgeBase",
-      "source": "file://./docs/30-architecture",
+      "source": "file://./.kiro/context/architecture.md",
       "name": "Architecture",
-      "description": "PRIMARY design artifacts. 9 files. Tech stack decisions (01), domain layer DO/DON'T (02), dependency direction enforcement (03), port interfaces (04), execution step-by-step per use case (05), transaction boundaries (06), error model with vendor exception → return_code mapping (07), 11 anti-patterns (08), 38 implementation constraints (09). PRIMARY source for ADR + design.md.",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./docs/40-mapping",
-      "name": "Mapping",
-      "description": "PHP→Node translation strategy. 7 files. Search: \"method mapping\" PHP method → Node file (01), \"vendor package strategy\" 7 packages × 4 strategies (02), \"Prisma db pull biz.* cross-DB\" (03), \"external API Fee Tracking FraudStream\" (04), \"event queue bridge worker\" (05), \"Prometheus replication\" (06), \"infrastructure topology Redis prefix\" (07). Required for design.md tech sections.",
+      "source": "file://./.kiro/context/conventions.md",
+      "name": "Conventions",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./docs/openapi.yaml",
-      "name": "OpenAPI",
-      "description": "OpenAPI 3.0 spec for 4 endpoints — authoritative response/request schemas. Architect owns updates here when API changes.",
+      "source": "file://./.kiro/context/legacy-ref.md",
+      "name": "LegacyRef",
       "indexType": "best",
       "autoUpdate": false
-    },
-    {
-      "type": "knowledgeBase",
-      "source": "file://./.kiro/specs",
-      "name": "SpecsHistory",
-      "description": "Existing feature specs. Search for existing design patterns, ADRs, DB schemas from previous features.",
-      "indexType": "best",
-      "autoUpdate": true
     }
   ],
   "hooks": {
@@ -119,6 +114,10 @@
       {
         "command": "echo '' && echo '=== Uncommitted ===' && git diff --stat openspec/ 2>/dev/null | tail -5 || true",
         "timeout_ms": 5000
+      },
+      {
+        "command": "node .kiro/tools/cpp-guard.mjs --role architect 2>/dev/null || true",
+        "timeout_ms": 4000
       }
     ],
     "preToolUse": [
