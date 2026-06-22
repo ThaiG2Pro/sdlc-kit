@@ -1,13 +1,18 @@
 ---
 name: cross-artifact-audit
 description: >
-  Cross-artifact consistency audit between requirements.md, design.md, openapi.yaml, and tasks.md.
+  Cross-artifact consistency audit between proposal.md + spec deltas, design.md, openapi.yaml, and tasks.md.
   Inspired by SpecKit's speckit.analyze. Detects: coverage gaps (AC without task), orphan tasks
   (task without AC), terminology drift, API contract mismatches, DB schema gaps.
   Run between S3→S4 (before build) or S4→S5 (before QA). Read-only — produces report, no file edits.
 ---
 
 # Cross-Artifact Audit
+
+> **Convergence:** at `rigor=full` the orchestrator re-invokes this audit in a loop until the
+> CRITICAL/gap set is empty and unchanged `gates.stable_rounds` times (sdlc-orchestration-core
+> §Convergence loop). Keep findings **deterministic** — same artifacts → same gap set, stable
+> AC-ID / gap keys — so the loop terminates. At `rigor=lite` it runs exactly once.
 
 ## When to Use
 - After S3 (architect) completes design.md + tasks.md — before S4 build starts
@@ -17,18 +22,18 @@ description: >
 ## Execution
 
 ### Step 1: Load Artifacts
-Read from SPEC_DIR (`specs/{ticket_id}-{feature-slug}/`):
-- `requirements.md` — extract all AC-IDs, BR-IDs, INT-IDs from Structured Extract
+Read from CHANGE_DIR (`openspec/changes/<change>/`):
+- `proposal.md` + spec deltas — extract all AC-IDs, BR-IDs, INT-IDs from the Structured Extract / scenarios
 - `design.md` — extract API endpoints, DB tables, error mappings
 - `openapi.yaml` — extract paths, methods, request/response schemas
 - `tasks.md` — extract all task items with AC-ID references and file paths
 
 ### Step 2: Build Coverage Matrix
 
-| AC-ID | In requirements? | In design? | In openapi? | In tasks? | In code? | Status |
+| AC-ID | In spec? | In design? | In openapi? | In tasks? | In code? | Status |
 |-------|-----------------|------------|-------------|-----------|----------|--------|
 
-For each AC-ID from requirements.md:
+For each AC-ID from the spec deltas:
 - Check if design.md references it
 - Check if tasks.md has at least 1 task referencing it
 - Check if openapi.yaml covers the endpoint (for API-related ACs)
@@ -70,7 +75,7 @@ For each AC-ID from requirements.md:
 Date: {date}
 
 ### Coverage Matrix
-| AC-ID | requirements | design | openapi | tasks | Status |
+| AC-ID | spec | design | openapi | tasks | Status |
 |-------|-------------|--------|---------|-------|--------|
 
 ### Findings

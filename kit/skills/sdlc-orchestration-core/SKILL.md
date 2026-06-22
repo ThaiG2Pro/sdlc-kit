@@ -32,6 +32,23 @@ Read `gates.auto_pass`:
 Also honor `security.stride_analysis` (`auto`/`always`/`never`) and `coverage.*` / `sonar_scan`
 when reviewing the S4 gate.
 
+## Rigor & convergence (how hard the quality gates run)
+
+Heavy gate machinery (the convergence loop + `.xlsx` test cases) is **opt-in and scaled to the
+work**, not mandatory — it suits important, business-logic-tight features and wastes time on small
+fixes. Two outcomes: **`full`** (convergence loop on the spec/design gates + `.xlsx` test cases) or
+**`lite`** (single-pass audits + markdown). Resolve `rigor` ONCE per change, in this order:
+
+1. **Runtime flag** — if the `sdlc …` command carried `--rigor=full` or `--rigor=lite`, use it. (Also `--xlsx`/`--no-xlsx` overrides just the test-case format.) No question asked.
+2. **Type floor** — read `types[<type>].rigor` from `pipelines.json`. If it is `lite` (bugfix, hotfix), rigor is **forced lite** — never ask, never loop, even if config says `always`.
+3. **Config `gates.convergence`** (only reached for rigor-eligible types: feature/cr/rebuild):
+   - `always` → `full`; `never` → `lite`;
+   - `auto` (default) → **ASK the user one question at kickoff**:
+     > ⚖️ Mức độ gate cho change này? **full** = convergence loop (spec+design lặp tới khi ổn định) + xuất test case `.xlsx` — cho feature quan trọng / business logic chặt. **lite** = audit 1 lượt + markdown — cho thay đổi nhỏ. [full/lite]
+
+Persist the result to `_state.json` as `"rigor":"full"|"lite"` so later sessions never re-ask.
+When `rigor=lite`, every gate is single-pass (legacy behavior); skip the convergence loop entirely.
+
 ## OpenSpec Workspace Contract
 
 The pipeline is **OpenSpec-backed**. No per-ticket spec folder, no active-feature pointer file.
@@ -78,10 +95,11 @@ Run `openspec list` → enumerate active changes (source of truth).
 - Exactly one active change → that is `<CHANGE_DIR>`.
 - Multiple → use the name in the user's message; if ambiguous, ASK.
 - Run `openspec status --change "<name>" --json`; read `<CHANGE_DIR>/_state.json` for CPP context.
-- **Read `type` + `phases` from `_state.json`** — this is the active pipeline. On
-  `continue`/`approve`/`status`, the work type comes from state, NOT from the message and NOT
-  re-derived. The message only sets `type` on a brand-new change. If `_state.json` lacks `type`
-  (legacy change), infer it once from `phases`/`current_phase`, write it back, and proceed.
+- **Read `type` + `phases` + `rigor` from `_state.json`** — this is the active pipeline. On
+  `continue`/`approve`/`status`, the work type and rigor come from state, NOT from the message and
+  NOT re-derived. The message only sets `type` on a brand-new change. If `_state.json` lacks `type`
+  (legacy change), infer it once from `phases`/`current_phase`, write it back, and proceed. If it
+  lacks `rigor`, resolve it once (§Rigor & convergence — type floor, then config), write it back.
 - **Flow-ownership guard**: the calling flow agent verifies `type` ∈ its own set and refuses a
   mismatch (telling the user which orchestrator to open). Honor that — never operate a change
   whose `type` is outside the loaded flow's set.
@@ -130,6 +148,31 @@ present ALL blockers, do NOT update `_state.json`, do NOT proceed → if all pas
 set `gates["<phase>"]="passed"` + next_action, mark `_progress.md`, and (S3 only) append the
 Cross-Spec Context block.
 
+#### Convergence loop (only when `rigor=full` AND this gate ∈ `gates.convergence_gates`)
+
+For `lite` rigor, or gates outside `convergence_gates`, run the audit ONCE (above) — skip this.
+
+When it applies (default: SPEC_LOCK at S2, DESIGN_REVIEW at S3), the audit must **stabilize**, not
+just pass once — this catches gaps the agent fixes in one round but reopens in the next:
+
+1. Run the audit skill; capture its blocker/gap list as a normalized set (AC-IDs / gap keys, order-independent).
+2. Compare to the previous round's set.
+   - **Different** (or any blocker present) → reset the stable counter to 0; if blockers exist, return them to the phase agent to fix, then re-run from step 1. If the set merely *changed* with 0 blockers, re-run once more to confirm.
+   - **Identical AND 0 blockers** → increment the stable counter.
+3. PASS only when the counter reaches `gates.stable_rounds` (default 3) — i.e. the gap list is empty and unchanged that many consecutive runs.
+4. Record `convergence` progress in `_state.json` per gate: `"convergence":{"<PHASE>":{"rounds":N,"stable":M}}` where `stable` is the consecutive-identical-rounds counter. Update it on EVERY round.
+
+Bound the loop: if it has not stabilized after `stable_rounds + 3` rounds, STOP and surface the
+oscillating items to the human — do not loop forever.
+
+> **Deterministically enforced (trailing):** this is not prompt-trust. `cpp-guard.checkTrailing`
+> (run by `pipeline-guard` STEP 0) fails the NEXT gate with "MISSING RECORDS … convergence not
+> reached" if a convergence gate was marked `passed` at `rigor=full` without
+> `_state.json.convergence[<PHASE>].stable >= gates.stable_rounds`. So you cannot skip the loop and
+> just stamp the gate — the omission surfaces as an exit-1 block at the following gate (like the
+> cross-spec / progress trailing checks). At `rigor=lite`, or `gates.convergence="never"`, the check
+> is inert.
+
 > Division of labour: **pipeline-guard** enforces *order + artifact existence + prior gates +
 > CPP context baton* (you can't approve out of sequence, skip a phase, pass a gate with missing
 > artifacts, OR pass a gate when the handoff/decisions/glossary/state baton is missing — it calls
@@ -153,11 +196,13 @@ orchestrator is the only agent that sees all gates, so it owns the authoritative
 
 Read `_progress.md`, find `## Overall Progress`, replace `- [ ] {phase}` → `- [x] {phase}`.
 
-> **Trailing enforcement:** progress marking + cross-spec append are orchestrator side-effects
-> recorded *during* an approval (after STEP 0). `pipeline-guard` therefore verifies them at the
-> NEXT gate (via `cpp-guard` checkTrailing): once S3 has passed, a later gate fails with "MISSING
-> RECORDS" if `openspec/_cross-spec-context.md` has no block for this change, or if `_progress.md`
-> wasn't marked. (The final S5→S6/archive transition has no later gate, so confirm it manually.)
+> **Trailing enforcement:** progress marking, cross-spec append, and (at `rigor=full`) the
+> convergence loop are orchestrator side-effects recorded *during* an approval (after STEP 0).
+> `pipeline-guard` therefore verifies them at the NEXT gate (via `cpp-guard` checkTrailing): a later
+> gate fails with "MISSING RECORDS" if `openspec/_cross-spec-context.md` has no block for this change,
+> if `_progress.md` wasn't marked, or if a passed convergence gate never stabilized
+> (`convergence[<PHASE>].stable < stable_rounds`). (The final S5→S6/archive transition has no later
+> gate, so confirm it manually.)
 
 ### Cross-Spec Context (MANDATORY on S3 approval)
 
@@ -208,11 +253,13 @@ Any check fails → block the gate, name the agent that must complete the artifa
 
 1. Derive kebab-case `<change-name>` from ticket_id + slug. If ticket_id missing → ASK.
 2. `openspec new change "<change-name>"` → creates `<CHANGE_DIR>`.
-3. Create `_state.json` inside `<CHANGE_DIR>`. **MANDATORY: persist `type` + `phases`** (from
-   `pipelines.json`) so a later session knows which pipeline runs — never re-derive type from
-   conversation, read it here.
+   - **Resolve `rigor` now** (see §Rigor & convergence): runtime flag → type floor → config. For a
+     rigor-eligible type with `gates.convergence=auto`, ASK the one kickoff question before writing state.
+3. Create `_state.json` inside `<CHANGE_DIR>`. **MANDATORY: persist `type` + `phases` + `rigor`**
+   (from `pipelines.json` + the resolution above) so a later session knows which pipeline runs and
+   how hard the gates run — never re-derive type or re-ask rigor from conversation, read it here.
    ```json
-   {"ticket_id":"{id}","feature_slug":"{slug}","change_name":"{change-name}","type":"{type}","phases":{phases_array},"current_phase":"NEW","gates":{},"last_updated":"{date}","last_agent":"orchestrator","phase_history":[],"active_concerns":[],"terminology":{},"next_action":{"agent":"{first_phase_agent}","command":"{first_phase_command}","prerequisite":null,"blocker":null,"priority_reading":[],"watch_items":[]}}
+   {"ticket_id":"{id}","feature_slug":"{slug}","change_name":"{change-name}","type":"{type}","rigor":"{rigor}","phases":{phases_array},"current_phase":"NEW","gates":{},"convergence":{},"last_updated":"{date}","last_agent":"orchestrator","phase_history":[],"active_concerns":[],"terminology":{},"next_action":{"agent":"{first_phase_agent}","command":"{first_phase_command}","prerequisite":null,"blocker":null,"priority_reading":[],"watch_items":[]}}
    ```
    - `{phases_array}` = `types[<type>].phases`. `{first_phase_agent}`/`{first_phase_command}` =
      first phase via `phaseCatalog` (feature/cr/rebuild → `analyst`,`/s1 {id} {slug}`;

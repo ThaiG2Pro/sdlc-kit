@@ -3,7 +3,7 @@ name: qa-analysis
 description: >
   QA Analysis — Risk scanning + Spec-TC gap review trong 1 session.
   Gộp SA2 (Risk Scout + Bug Hunter) + SA10 (Spec-TC Gap Reviewer).
-  Gọi sau khi S2 done, trước hoặc song song S3. Output vào specs/{feature}/qa/
+  Gọi sau khi S2 done, trước hoặc song song S3. Output vào openspec/changes/<change>/qa/
 ---
 
 # QA Analysis — Risk Scan + Spec-TC Gap Review
@@ -19,7 +19,7 @@ Chạy trong 1 session để tiết kiệm context load.
 
 ## Input
 
-1. `specs/{feature}/requirements.md` — đọc `_Structured Extract` trước
+1. `openspec/changes/<change>/proposal.md` + spec deltas — đọc `_Structured Extract` trước
 2. `docs/knowledge/{ticket}/` — nếu tồn tại
 3. `docs/knowledge/_shared/lesson-learned.md` — bug patterns đã biết
 4. `dev-test-report.md` — nếu có (cho gap review)
@@ -78,7 +78,7 @@ Chạy trong 1 session để tiết kiệm context load.
 
 ### Bước 3: Output risk report
 
-Lưu: `specs/{feature}/qa/risk_analysis.md`
+Lưu: `openspec/changes/<change>/qa/risk_analysis.md`
 
 ```markdown
 # Risk Analysis — {ticket-id}
@@ -146,7 +146,7 @@ OK         : Có TC + có code
 
 ### Output gap report
 
-Lưu: `specs/{feature}/qa/spec_tc_gap_report.md`
+Lưu: `openspec/changes/<change>/qa/spec_tc_gap_report.md`
 
 ```markdown
 # Spec-TC Gap Report — {ticket-id}
@@ -179,6 +179,6 @@ AC Coverage: X/X (X%) — P1: X% | P2: X%
 - Risk scan: X risks (Critical: X, High: X)
 - Gap review: {PASS/WARNING/BLOCK} — AC coverage X%
 - Files:
-  - specs/{feature}/qa/risk_analysis.md
-  - specs/{feature}/qa/spec_tc_gap_report.md
+  - openspec/changes/<change>/qa/risk_analysis.md
+  - openspec/changes/<change>/qa/spec_tc_gap_report.md
 ```

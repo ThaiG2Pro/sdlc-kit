@@ -106,7 +106,7 @@ For each PHP behavior the spec inherits, run all 5 checks:
 
 ## Output Format
 
-Append this section to `requirements.md` (S1 §3.5 — between assumptions and edge cases):
+Append this section to `proposal.md` / the spec deltas (S1 §3.5 — between assumptions and edge cases):
 
 ```markdown
 ## §3.5 PHP Implicit Behavior Audit

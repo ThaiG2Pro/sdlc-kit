@@ -1,7 +1,7 @@
 ---
 name: spec-auditor
 description: >
-  Audit requirements.md before SPEC LOCK gate. Checks AC completeness, testability,
+  Audit the change's proposal.md + spec deltas before the SPEC LOCK gate. Checks AC completeness, testability,
   no TBD/UNCLEAR tags, Figma URL, edge cases count, AC-ID format.
   Read-only — produces PASS/FAIL report, no file edits.
   Run by SDLC orchestrator when user approves S2 gate.
@@ -10,10 +10,17 @@ description: >
 # Spec Auditor
 
 ## Scope
-Audit ONLY `requirements.md`. Does NOT touch design.md, openapi.yaml, tasks.md, or code.
+Audit ONLY `proposal.md` + the spec deltas. Does NOT touch design.md, openapi.yaml, tasks.md, or code.
+
+> **Convergence:** when the change runs at `rigor=full`, the orchestrator re-invokes this audit in a
+> loop until the FAIL/WARNING set is empty and unchanged `gates.stable_rounds` times (see
+> sdlc-orchestration-core §Convergence loop). For that to terminate, this audit must be
+> **deterministic**: the same proposal + spec deltas → the same finding set, with stable AC-ID /
+> check-ID keys. Don't introduce run-to-run variation. At `rigor=lite` it runs exactly once.
 
 ## Input
-- `{SPEC_DIR}/requirements.md`
+- `openspec/changes/<change>/proposal.md`
+- spec deltas under `openspec/changes/<change>/specs/{capability}/spec.md`
 
 ## Checks
 

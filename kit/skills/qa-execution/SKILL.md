@@ -20,7 +20,7 @@ description: >
 ## Input
 
 1. Playwright scripts từ qa-test-design
-2. `specs/{feature}/qa/coverage_summary.md`
+2. `openspec/changes/<change>/qa/coverage_summary.md`
 3. Redmine access (MCP) — cho bug posting + milestone reading
 4. Ticket ID (parse từ spec folder name)
 
@@ -47,7 +47,7 @@ Phân loại kết quả:
 
 ### Bug report format
 
-Lưu: `specs/{feature}/qa/bugs/{BUG_ID}/report.md`
+Lưu: `openspec/changes/<change>/qa/bugs/{BUG_ID}/report.md`
 
 ```markdown
 # {BUG_ID} — {Tên bug ngắn}
@@ -87,7 +87,7 @@ Duplicate detection: query open bugs trước khi post.
 
 ### Quality Sign-off
 
-Lưu: `specs/{feature}/qa/quality_signoff.md`
+Lưu: `openspec/changes/<change>/qa/quality_signoff.md`
 
 ```markdown
 # Quality Sign-off — {ticket-id}
@@ -132,7 +132,7 @@ Trigger: Bug Critical hoặc High được phát hiện.
 
 ### Output
 
-Lưu: `specs/{feature}/qa/rca/{BUG_ID}_rca.md`
+Lưu: `openspec/changes/<change>/qa/rca/{BUG_ID}_rca.md`
 
 ```markdown
 # RCA — {BUG_ID}
@@ -161,7 +161,7 @@ Trigger: Dev fix xong 1 bug → cần verify.
 3. KHÔNG mở rộng indirect impact — scope nhỏ, nhanh
 ```
 
-Output: `specs/{feature}/qa/retest_scope.md`
+Output: `openspec/changes/<change>/qa/retest_scope.md`
 ```
 Bug: {BUG_ID} | Fix type: {type}
 TC verify fix: {TC-ID}
@@ -180,7 +180,7 @@ Trigger: Phần lớn bugs trong Milestone đã Resolved.
 5. Deduplicate → regression suite
 ```
 
-Output: `specs/{feature}/qa/regression_scope.md`
+Output: `openspec/changes/<change>/qa/regression_scope.md`
 ```
 Milestone: {name} | Bugs fixed: X | Modules affected: X
 Total TCs: X (verify fix: X + P1/P2: X + smoke: X)
@@ -195,7 +195,7 @@ Total TCs: X (verify fix: X + P1/P2: X + smoke: X)
 - RCA: {X} reports (loop recommendations: S4×X, S3×X)
 - Sign-off: GO / NO-GO
 - Files:
-  - specs/{feature}/qa/quality_signoff.md
-  - specs/{feature}/qa/bugs/*/report.md
-  - specs/{feature}/qa/rca/*_rca.md
+  - openspec/changes/<change>/qa/quality_signoff.md
+  - openspec/changes/<change>/qa/bugs/*/report.md
+  - openspec/changes/<change>/qa/rca/*_rca.md
 ```

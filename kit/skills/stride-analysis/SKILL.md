@@ -3,8 +3,8 @@ name: stride-analysis
 description: >
   STRIDE threat modeling — analyze a feature's security threats from the spec BEFORE
   implementation (Spoofing/Tampering/Repudiation/Info-disclosure/DoS/Elevation). Produces a
-  threat list + mitigations + a security gate (PASS/WARNING/BLOCK). Run during S2 (analyst,
-  feeds Early Risk Flags) and/or S3 (architect, design security). Gated by
+  threat list + mitigations + a security gate (PASS/WARNING/BLOCK). Run during S1/S2 (analyst —
+  Step 4e, feeds Early Risk Flags) and/or S3 (architect, design security). Gated by
   `.kiro/sdlc.config.json → security.stride_analysis` (auto | always | never).
 ---
 
@@ -26,7 +26,7 @@ Read `.kiro/sdlc.config.json → security.stride_analysis`:
 ## Process
 
 ### 0. Input
-- Read `specs/{ticket}-{slug}/requirements.md` (and `design.md` if S3).
+- Read the change's `proposal.md` + spec deltas under `openspec/changes/<change>/` (and `design.md` if S3).
 - Extract: feature description, ACs, API endpoints (method/path/payloads), data flows,
   external integrations, auth/authz requirements.
 
@@ -40,7 +40,7 @@ Read `.kiro/sdlc.config.json → security.stride_analysis`:
 - Use `SECURITY_CONTEXT.md` for that domain's high-risk threats; prioritize accordingly.
 
 ### 3. Write the report
-- Output: `specs/{ticket}-{slug}/stride-threat-model.md` (template in `TEMPLATES.md`).
+- Output: `openspec/changes/<change>/stride-threat-model.md` (template in `TEMPLATES.md`).
 - Include: Executive Summary + the 6 STRIDE sections + Security Test Strategy + Dev Recommendations.
 
 ### 4. Gate status
@@ -55,7 +55,7 @@ Read `.kiro/sdlc.config.json → security.stride_analysis`:
 Threats: {n} (Critical {C} / High {H} / Medium {M} / Low {L})
 Domain : {domain}
 Gate   : PASS / WARNING / BLOCK
-Report : specs/{ticket}-{slug}/stride-threat-model.md
+Report : openspec/changes/<change>/stride-threat-model.md
 Feeds  : analyst Early Risk Flags · architect design security · qa-test-design
 ```
 

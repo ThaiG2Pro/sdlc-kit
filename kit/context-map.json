@@ -19,11 +19,11 @@
       "knowledgeBase": ["context/conventions.md", "context/legacy-ref.md"]
     },
     "architect": {
-      "skills": ["cross-artifact-audit", "api-design", "stride-analysis"],
+      "skills": ["cross-artifact-audit", "api-design", "stride-analysis", "search-first"],
       "knowledgeBase": ["ai", "context/stack.md", "context/architecture.md", "context/conventions.md", "context/legacy-ref.md"]
     },
     "developer": {
-      "skills": ["verification-loop", "commit-message-helper", "security-review", "test-generator", "coding-standards"],
+      "skills": ["verification-loop", "commit-message-helper", "security-review", "test-generator", "coding-standards", "deployment-patterns", "sonar-local", "search-first", "api-documentation-checker", "agentic-engineering"],
       "knowledgeBase": ["ai", "context/stack.md", "context/architecture.md", "context/conventions.md", "context/legacy-ref.md"]
     },
     "qa": {

@@ -38,6 +38,7 @@
     "skill://.kiro/skills/cross-artifact-audit/SKILL.md",
     "skill://.kiro/skills/api-design/SKILL.md",
     "skill://.kiro/skills/stride-analysis/SKILL.md",
+    "skill://.kiro/skills/search-first/SKILL.md",
     {
       "type": "knowledgeBase",
       "source": "file://./.kiro/steering",
@@ -135,7 +136,7 @@
     ]
   },
   "includeMcpJson": true,
-  "model": "claude-sonnet-4.6",
+  "model": "claude-opus-4.8",
   "keyboardShortcut": "ctrl+2",
   "welcomeMessage": "Architect sẵn sàng. Dùng /s3 {ticket_id} {feature-slug} để bắt đầu thiết kế."
 }

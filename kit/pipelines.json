@@ -25,21 +25,28 @@
     "RELEASE":       "migration reviewed + rollback plan + 30-min post-deploy stable"
   },
 
+  "$rigor": "Each type carries a `rigor` field = the FLOOR the orchestrator may resolve to. 'full' = eligible for the convergence loop + .xlsx test cases (heavy, slow — for important / business-logic-tight work). 'lite' = single-pass audits + markdown test cases (fast — small features, bugfix, hotfix). 'lite' is a HARD floor: a type marked lite never runs full, even if sdlc.config gates.convergence=always. Resolution order (orchestrator): (1) runtime flag --rigor=full|lite on the sdlc command; (2) this type floor (lite types stay lite); (3) sdlc.config gates.convergence: always→full, never→lite, auto→ASK the user once at kickoff (full vs lite). The chosen rigor is persisted to _state.json.rigor so later sessions don't re-ask.",
+
+  "rigorEligible": ["feature", "rebuild", "cr"],
+
   "types": {
     "feature": {
       "desc": "Full greenfield/new-capability pipeline.",
       "deltaMode": "ADDED",
+      "rigor": "full",
       "phases": ["S1", "S2", "S3", "S4", "S5", "S6"]
     },
     "rebuild": {
       "desc": "Re-implement existing behavior. Like feature, but read the existing source for parity first.",
       "deltaMode": "ADDED",
+      "rigor": "full",
       "phases": ["S1", "S2", "S3", "S4", "S5", "S6"],
       "prereq": "context-read existing source before S1"
     },
     "cr": {
       "desc": "Change request to an existing capability. Spec delta uses MODIFIED requirements.",
       "deltaMode": "MODIFIED",
+      "rigor": "full",
       "phases": ["S1", "S2", "S3", "S4", "S5", "S6"],
       "optionalPhases": ["S3"],
       "note": "S3 only if the change alters design; otherwise skip straight to S4."
@@ -47,6 +54,7 @@
     "bugfix": {
       "desc": "Fast-track: clear root cause, no design change. Skip S1-S3.",
       "deltaMode": "ADDED",
+      "rigor": "lite",
       "phases": ["S4", "S5", "S6"],
       "gateOverrides": { "S5": "regression-only (retest + regression scope; no full test design)" },
       "note": "Still `openspec new change` with a short proposal + a spec delta ONLY if behavior changes. Escalate to full feature if scope grows."
@@ -54,6 +62,7 @@
     "hotfix": {
       "desc": "Emergency production fix. Minimal build + smoke test, deploy fast.",
       "deltaMode": "ADDED",
+      "rigor": "lite",
       "phases": ["S4", "S6"],
       "gateOverrides": {
         "S4": "minimal — fix + a regression test for the incident only",

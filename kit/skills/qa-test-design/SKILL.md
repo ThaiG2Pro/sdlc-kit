@@ -18,10 +18,10 @@ description: >
 
 ## Input
 
-1. `specs/{feature}/requirements.md` — `_Structured Extract` (AC list, business rules)
-2. `specs/{feature}/qa/risk_analysis.md` — risk list từ qa-analysis
-3. `specs/{feature}/design.md` — API/DB design
-4. `specs/{feature}/openapi.yaml` — API contracts
+1. `openspec/changes/<change>/proposal.md` + spec deltas — `_Structured Extract` (AC list, business rules)
+2. `openspec/changes/<change>/qa/risk_analysis.md` — risk list từ qa-analysis
+3. `openspec/changes/<change>/design.md` — API/DB design
+4. `openspec/changes/<change>/openapi.yaml` — API contracts
 5. Source code (nếu có access) — cho selectors + mutation analysis
 
 ## Phase 1 — Test Case Design
@@ -65,18 +65,34 @@ Requirement: AC-{ticket}-{NNN} (hoặc R-{NNN} cho risk items)
 Automation: Full Auto / Partial / Manual
 ```
 
-### Bước 4: Xuất Excel (nếu cần)
+### Bước 4: Xuất test cases (format theo config)
 
-Dùng script Node.js + exceljs:
+Đọc `.kiro/sdlc.config.json` → `qa.testcase_export` và `_state.json` → `rigor`:
+
+| `qa.testcase_export` | rigor | Output |
+|----------------------|-------|--------|
+| `auto` (default)     | `full` | **`.xlsx`** — `openspec/changes/<change>/qa/testcases.xlsx` (báo cáo QA manager) |
+| `auto`               | `lite` | markdown table — `openspec/changes/<change>/qa/testcases.md` (bugfix); hotfix → bỏ qua |
+| `xlsx`               | bất kỳ | luôn `.xlsx` |
+| `md`                 | bất kỳ | luôn markdown |
+| `none`               | bất kỳ | bỏ qua artifact test-case |
+
+Runtime `--xlsx` / `--no-xlsx` (nếu orchestrator truyền xuống) override bảng trên.
+
+**Sinh `.xlsx`** (chọn 1, theo stack sẵn có — qa agent có cả `npx` và `python3`):
 ```bash
-npx tsx scripts/generate-test-excel.ts --input qa/testcases.json --output qa/testcases.xlsx
+# Node + exceljs
+npx tsx scripts/generate-test-excel.ts --input qa/testcases.json --output openspec/changes/<change>/qa/testcases.xlsx
+# hoặc Python + openpyxl
+python3 scripts/generate_test_excel.py qa/testcases.json openspec/changes/<change>/qa/testcases.xlsx
 ```
-
-Hoặc output markdown table nếu không cần Excel format.
+Cột chuẩn: `Test ID | Technique | Priority | Objective | Steps | Expected | Requirement | Automation | Status`.
+Tô màu Status (Pass=green, Fail=red, N/A=grey) để QA manager đọc nhanh. File `.xlsx` ghi vào
+`openspec/**` (nằm trong write.allowedPaths của qa).
 
 ### Bước 5: Coverage summary
 
-Lưu: `specs/{feature}/qa/coverage_summary.md`
+Lưu: `openspec/changes/<change>/qa/coverage_summary.md`
 
 ```markdown
 ## AC Coverage
@@ -184,6 +200,6 @@ Score < 60% HOẶC Hollow TC > 3               → 🚫 BLOCK → DỪNG
 - Hollow TCs: X
 - Gate: PASS / WARNING / BLOCK
 - Files:
-  - specs/{feature}/qa/coverage_summary.md
+  - openspec/changes/<change>/qa/coverage_summary.md
   - tests/e2e/{feature}/*.spec.ts
 ```

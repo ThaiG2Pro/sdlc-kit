@@ -139,11 +139,17 @@ export function checkCpp({ changeDir, gatePhase }) {
  * Trailing check: the side-effects the ORCHESTRATOR (not the role agent) owes from already-passed
  * gates — recorded as part of an `approve`, which happens AFTER pipeline-guard's STEP 0. So they
  * can only be verified at the NEXT gate. This catches a forgetful orchestrator.
- *   - cross-spec bridge: appended to openspec/_cross-spec-context.md at S3 approval.
- *   - progress marking:  _progress.md updated on every gate approval.
+ *   - cross-spec bridge:  appended to openspec/_cross-spec-context.md at S3 approval.
+ *   - progress marking:   _progress.md updated on every gate approval.
+ *   - convergence loop:   when rigor=full, a convergence gate (SPEC_LOCK/DESIGN_REVIEW) must have
+ *                         stabilized `gates.stable_rounds` times before it was marked passed.
  * NOTE: the final transition (S5→S6 / archive) has no subsequent gate, so it is not trailing-checked.
+ * (Convergence gates S2/S3 always have a later gate in the full-eligible pipelines, so they ARE checked.)
  * @returns {{ok:boolean, problems:string[]}}
  */
+// Phase → gate name (mirrors pipelines.json phaseCatalog; kept local so this guard stays self-contained).
+const PHASE_GATE = { S2: 'SPEC_LOCK', S3: 'DESIGN_REVIEW', S4: 'BUILD', S5: 'QA', S6: 'RELEASE' };
+
 export function checkTrailing({ projectRoot, changeDir, state }) {
   const problems = [];
   const gates = (state && state.gates) || {};
@@ -166,6 +172,29 @@ export function checkTrailing({ projectRoot, changeDir, state }) {
       const done = (prog.match(/\[x\]|✅/gi) || []).length;
       if (done < passedCount)
         problems.push(`_progress.md shows ${done} completed phase(s) but ${passedCount} gate(s) passed (progress not marked)`);
+    }
+  }
+
+  // 3. convergence loop — only when this change runs at rigor=full. A passed convergence gate must
+  //    carry a stabilized convergence record (stable >= stable_rounds). This is the deterministic
+  //    teeth for the orchestrator's prose "Convergence loop": you cannot mark SPEC_LOCK/DESIGN_REVIEW
+  //    passed at full rigor without the audit having actually stabilized. Verified at the NEXT gate.
+  if (state && state.rigor === 'full') {
+    const cfg = readJson(join(projectRoot, '.kiro', 'sdlc.config.json')) || {};
+    const gcfg = cfg.gates || {};
+    if (gcfg.convergence !== 'never') { // 'never' = loop intentionally disabled project-wide
+      const need = Number.isInteger(gcfg.stable_rounds) ? gcfg.stable_rounds : 3;
+      const convGateNames = Array.isArray(gcfg.convergence_gates) ? gcfg.convergence_gates : ['SPEC_LOCK', 'DESIGN_REVIEW'];
+      const conv = (state && state.convergence) || {};
+      for (const [phase, status] of Object.entries(gates)) {
+        if (status !== 'passed') continue;
+        const gateName = PHASE_GATE[phase];
+        if (!gateName || !convGateNames.includes(gateName)) continue; // not a convergence gate
+        const rec = conv[phase];
+        const stable = rec && Number.isFinite(rec.stable) ? rec.stable : 0;
+        if (stable < need)
+          problems.push(`convergence not reached for ${phase} (${gateName}): stable ${stable}/${need} round(s) — rigor=full requires the audit to stabilize before this gate is marked passed`);
+      }
     }
   }
 

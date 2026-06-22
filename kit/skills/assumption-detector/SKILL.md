@@ -3,7 +3,7 @@ name: assumption-detector
 description: >
   Scan requirements/user input for hidden assumptions that could cause spec gaps.
   Outputs tagged list: [RISKY] assumptions needing validation, [SAFE] documented assumptions.
-  Use during S1 after gathering knowledge, before writing requirements.md.
+  Use during S1 after gathering knowledge, before writing proposal.md + spec deltas.
 ---
 
 # Assumption Detector

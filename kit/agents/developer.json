@@ -89,6 +89,11 @@
     "skill://.kiro/skills/security-review/SKILL.md",
     "skill://.kiro/skills/test-generator/SKILL.md",
     "skill://.kiro/skills/coding-standards/SKILL.md",
+    "skill://.kiro/skills/deployment-patterns/SKILL.md",
+    "skill://.kiro/skills/sonar-local/SKILL.md",
+    "skill://.kiro/skills/search-first/SKILL.md",
+    "skill://.kiro/skills/api-documentation-checker/SKILL.md",
+    "skill://.kiro/skills/agentic-engineering/SKILL.md",
     {
       "type": "knowledgeBase",
       "source": "file://./.kiro/steering",
@@ -170,7 +175,7 @@
     ],
     "stop": [
       {
-        "command": "SPEC=$(python3 -c \"import json;print(json.load(open('specs/.active-feature.json')).get('active_spec',''))\" 2>/dev/null)\nif [ -n \"$SPEC\" ] && [ -f \"${SPEC}/tasks.md\" ]; then\n  TOTAL=$(grep -c '^\\- \\[' \"${SPEC}/tasks.md\" 2>/dev/null || echo 0)\n  DONE=$(grep -c '^\\- \\[x\\]' \"${SPEC}/tasks.md\" 2>/dev/null || echo 0)\n  echo \"\"\n  echo \"=== Tasks: ${DONE}/${TOTAL} ===\"\n  NEXT=$(grep -m1 '^\\- \\[ \\]' \"${SPEC}/tasks.md\" 2>/dev/null | head -1)\n  [ -n \"$NEXT\" ] && echo \"Next: ${NEXT}\"\n  echo \"\"\n  echo \"=== Uncommitted ===\"\n  git diff --stat specs/ src/ apps/ 2>/dev/null | tail -3 || true\nfi",
+        "command": "CHANGE=$(python3 -c \"import glob,os;c=[p for p in glob.glob('openspec/changes/*/_state.json') if '/archive/' not in p];print(os.path.dirname(max(c,key=os.path.getmtime)) if c else '')\" 2>/dev/null)\nif [ -n \"$CHANGE\" ] && [ -f \"${CHANGE}/tasks.md\" ]; then\n  TOTAL=$(grep -c '^- \\[' \"${CHANGE}/tasks.md\" 2>/dev/null || echo 0)\n  DONE=$(grep -c '^- \\[x\\]' \"${CHANGE}/tasks.md\" 2>/dev/null || echo 0)\n  echo \"\"\n  echo \"=== Tasks: ${DONE}/${TOTAL} ===\"\n  NEXT=$(grep -m1 '^- \\[ \\]' \"${CHANGE}/tasks.md\" 2>/dev/null | head -1)\n  [ -n \"$NEXT\" ] && echo \"Next: ${NEXT}\"\n  echo \"\"\n  echo \"=== Uncommitted ===\"\n  git diff --stat openspec/ src/ apps/ 2>/dev/null | tail -3 || true\nfi",
         "timeout_ms": 5000
       },
       {
