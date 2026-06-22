@@ -20,8 +20,7 @@ FRAMEWORK (generic, never edited per project)        CONTEXT (filled per project
   .kiro/ai/        generic quality rules (sonar)        .kiro/context-map.json  ← wiring
 ```
 
-Agents (`sdlc` ctrl+0 · `analyst` 1 · `architect` 2 · `developer` 3 · `qa` 4 ·
-`onboarder` ctrl+9 · `rtk`).
+Agents bind to `ctrl+0..4` + `ctrl+9` — see [Agents & shortcuts](#agents--shortcuts).
 
 ## Prerequisite — OpenSpec CLI
 
@@ -48,6 +47,83 @@ Flags: `--force` (overwrite kit files; never touches `openspec/`/`memory/`), `--
 `init` copies the framework, runs `openspec init --tools kiro` (scaffolds `openspec/` +
 the `/opsx:*` skills), scaffolds `memory/`, symlinks `.kiro/openspec` + `.kiro/memory`,
 installs the `.kiro/tools/` engines, and **wires context → agents** via the mapper.
+
+## Usage — end to end
+
+```
+0. Setup once   →  1. Onboard project  →  2. Run a work item  →  3. Pass gates  →  4. Archive
+   (per machine)    (per project)          (per feature/fix)      (per phase)       (auto at S6)
+```
+
+**0. Setup (once)** — install the OpenSpec CLI, then init the kit into the repo:
+```bash
+npm install -g @fission-ai/openspec@latest
+node /path/to/kiro-sdlc-kit/bin/init.mjs .
+```
+
+**1. Onboard the project (once per repo)** — open the **`onboarder`** agent (`ctrl+9`) and
+say "bắt đầu". It detects/asks your stack & domain, fills `.kiro/context/*.md`, mirrors a
+summary into `openspec/config.yaml`, and re-wires context to every agent. For a known stack
+you can pre-fill first: `node .kiro/tools/apply-stack.mjs nestjs`. Verify anytime with
+`node .kiro/tools/doctor.mjs`.
+
+**2. Run a work item** — open the orchestrator for your flow and state the work type:
+```
+# sdlc-full  (ctrl+0) — full S1→S6
+sdlc feature user-profile        # new capability (full S1–S6)
+sdlc cr update-checkout-flow     # change request (MODIFIED spec delta)
+sdlc rebuild legacy-billing      # re-implement existing behavior (parity-first)
+
+# sdlc-fast  (ctrl+5) — fast-track
+sdlc bugfix fix-login-401        # bug, clear root cause (S4–S6, QA regression-only)
+sdlc hotfix patch-payment-crash  # emergency (S4 + S6)
+```
+Natural language works too: "fix bug …", "hotfix …", "CR …", "tạo tính năng …". The
+orchestrator scaffolds an OpenSpec change (`openspec/changes/<slug>/`), persists the work
+`type` into `_state.json`, and routes each phase to the right role agent. Open the wrong
+orchestrator for a change and it redirects you to the right one.
+
+**3. Pass the gates** — reply to the orchestrator:
+- `approve` / `ok` / `LGTM` — pass the current gate.
+- `nogo <reason>` — reject and loop back.
+- `status` — show pipeline progress. · `continue` — resume from saved state.
+
+Gates auto-pass on a clean audit only if `gates.auto_pass: true` in `.kiro/sdlc.config.json`
+(default `false` = always require explicit approve).
+
+**4. Finish** — at S6 the developer agent runs `openspec archive`, folding the change's spec
+deltas into the living `openspec/specs/` and moving the change to `openspec/changes/archive/`.
+
+### Work types (`.kiro/pipelines.json`)
+
+| Type | Phases | Notes |
+|------|--------|-------|
+| `feature` | S1→S6 | full pipeline (delta `ADDED`) |
+| `rebuild` | S1→S6 | full; read existing source for parity first |
+| `cr` | S1→S6 | change request; delta `MODIFIED`; S3 optional |
+| `bugfix` | S4→S6 | fast-track, skip S1–S3; S5 = regression only |
+| `hotfix` | S4 + S6 | emergency; minimal build + post-deploy verify |
+
+Phases / gates / lifecycle are defined **once** and reused; each type only lists which phases
+it runs. Edit `pipelines.json` to tune a type per project — no prompt edits.
+
+### Agents & shortcuts
+
+| Key | Agent | SDLC phase |
+|-----|-------|------------|
+| `ctrl+0` | `sdlc-full` | orchestrator for **feature/cr/rebuild** (S1→S6) — routes + gates |
+| `ctrl+5` | `sdlc-fast` | orchestrator for **bugfix/hotfix** (fast-track S4+) — routes + gates |
+| `ctrl+1` | `analyst` | S1 Req Intake + S2 Func Spec |
+| `ctrl+2` | `architect` | S3 Design |
+| `ctrl+3` | `developer` | S4 Build + S6 Release |
+| `ctrl+4` | `qa` | S5 QA |
+| `ctrl+9` | `onboarder` | context setup (not an SDLC phase) |
+| — | `rtk` | hook-only (shell token saver) |
+
+Both orchestrators are **thin wrappers** over the shared `sdlc-orchestration-core` skill (one
+copy of the lifecycle/gate/CPP/dispute machinery); each declares only its own work types. An
+orchestrator refuses to drive a change whose persisted `type` belongs to the other (it tells you
+which to open), so you can't run the wrong pipeline.
 
 ## Fill the context (the part that makes it yours)
 
@@ -112,6 +188,25 @@ node .kiro/tools/doctor.mjs       # verify the whole install
 Checks structure, agent JSON validity, that every prompt/skill/knowledge-base reference
 resolves, workspace symlinks, and context completeness. Exits non-zero on any FAIL (WARN
 for an unfilled context is fine before onboarding).
+
+## Command cheat-sheet
+
+```bash
+# kit tools (zero-dependency Node, in .kiro/tools/)
+node .kiro/tools/doctor.mjs                 # health-check the whole install
+node .kiro/tools/context-check.mjs          # context completeness gate (exit 1 if TODO left)
+node .kiro/tools/context-map.mjs            # re-wire agents after editing context/ or context-map.json
+node .kiro/tools/apply-stack.mjs --list     # list stack presets
+node .kiro/tools/apply-stack.mjs nestjs     # apply a stack preset
+node .kiro/tools/pipeline-guard.mjs --gate S3   # deterministic phase/gate guard (the orchestrator
+                                                # calls this before every approve: blocks out-of-order
+                                                # gates, fence-jumps, and missing-artifact approvals)
+
+# OpenSpec lifecycle (driven by the agents, but runnable by hand)
+openspec list                               # active changes (pipeline state)
+openspec change validate "<change-name>"    # structural gate (deltas well-formed)
+openspec archive "<change-name>"            # merge spec deltas → openspec/specs/
+```
 
 ## Notes
 

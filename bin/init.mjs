@@ -94,7 +94,7 @@ async function main() {
 
   // Copy the context-map engine into the project so the onboarder agent / context-mapper
   // skill can re-run it in-place (node .kiro/tools/context-map.mjs).
-  for (const tool of ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs']) {
+  for (const tool of ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs']) {
     const toolSrc = join(KIT_ROOT, 'bin', 'lib', tool);
     if (existsSync(toolSrc)) {
       const toolDst = join(kiroDir, 'tools', tool);
@@ -145,11 +145,12 @@ async function main() {
   }
 
   log('\n  Done. Next steps:');
-  log('   1. Open the project in Kiro — agents: ctrl+0..4 (sdlc/analyst/architect/developer/qa) + ctrl+9 (onboarder)');
+  log('   1. Open the project in Kiro — agents: ctrl+0 sdlc-full · ctrl+5 sdlc-fast ·');
+  log('      ctrl+1..4 (analyst/architect/developer/qa) · ctrl+9 onboarder');
   log('   2. Run the ONBOARDER agent (ctrl+9): fills .kiro/context/*.md, mirrors it into');
   log('      openspec/config.yaml, and re-wires context to each agent.');
-  log('   3. Start a feature: tell the sdlc agent "sdlc feature {slug}" — it drives the');
-  log('      OpenSpec lifecycle (propose → apply → archive) across S1–S6 in openspec/changes/.\n');
+  log('   3. Start work: tell sdlc-full "sdlc feature {slug}" (or sdlc-fast "fix bug {slug}")');
+  log('      — it drives the OpenSpec lifecycle (propose → apply → archive) in openspec/changes/.\n');
   if (!hasOpenspec) log('   ⚠ Install the openspec CLI first (see warning above) — the workspace needs it.\n');
 }
 
