@@ -8,7 +8,7 @@
   "agents": {
     "sdlc": {
       "skills": ["spec-auditor", "cross-artifact-audit", "sprint-retro"],
-      "knowledgeBase": ["context/conventions.md"]
+      "knowledgeBase": ["context/conventions.md", "pipelines.json"]
     },
     "analyst": {
       "skills": ["assumption-detector", "clarification-generator", "edge-case-enumerator", "php-implicit-behavior-audit", "spec-auditor", "stride-analysis"],
