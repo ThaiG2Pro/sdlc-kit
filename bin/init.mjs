@@ -3,7 +3,7 @@
 // Materializes the Kiro SDLC kit into a target project's .kiro/ directory.
 // Zero runtime dependencies (Node >= 18 built-ins only).
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, symlinkSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, symlinkSync, copyFileSync, rmSync, rmdirSync } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
@@ -96,6 +96,31 @@ async function main() {
   // Copy kit -> .kiro with token substitution
   const files = walk(KIT_SRC);
   const isContextMd = (rel) => /^context[\/\\][^\/\\]+\.md$/.test(rel);
+
+  // Prune orphans on re-init: files the PREVIOUS kit version installed that this version no longer
+  // ships (e.g. an agent/skill that was renamed or removed). Without this, `--force` only ever
+  // adds/overwrites — stale files linger and get mis-wired by the mapper. Driven by a manifest of
+  // the last install, so user-added files (never in the manifest) are never touched.
+  const manifestPath = join(kiroDir, '.kit-manifest.json');
+  let pruned = 0;
+  if (FORCE && existsSync(manifestPath)) {
+    let oldList = [];
+    try { oldList = JSON.parse(readFileSync(manifestPath, 'utf8')); } catch { oldList = []; }
+    const nowSet = new Set(files);
+    const dirsTouched = new Set();
+    for (const rel of oldList) {
+      if (nowSet.has(rel)) continue;                 // still shipped — keep
+      if (isContextMd(rel)) continue;                // filled context is preserved, never pruned
+      const p = join(kiroDir, rel);
+      if (existsSync(p)) { rmSync(p, { force: true }); pruned++; dirsTouched.add(dirname(p)); }
+    }
+    // remove now-empty directories left behind (e.g. a removed skill's folder)
+    for (const d of dirsTouched) {
+      try { if (existsSync(d) && readdirSync(d).length === 0) rmdirSync(d); } catch { /* keep */ }
+    }
+    if (pruned) log(`  ✓ pruned ${pruned} stale file(s) from the previous kit version`);
+  }
+
   let copied = 0, tokened = 0, preserved = 0;
   for (const rel of files) {
     const src = join(KIT_SRC, rel);
@@ -120,6 +145,10 @@ async function main() {
   }
   log(`\n  ✓ copied ${copied} files (${tokened} with substitutions)` +
       (preserved ? `; preserved ${preserved} filled context file(s)` : ''));
+
+  // Record the manifest of kit-managed files so the NEXT --force re-init can prune what this
+  // version shipped but a future one drops. Sorted for stable diffs.
+  writeFileSync(manifestPath, JSON.stringify([...files].sort(), null, 0) + '\n');
 
   // Copy the context-map engine into the project so the onboarder agent / context-mapper
   // skill can re-run it in-place (node .kiro/tools/context-map.mjs).
