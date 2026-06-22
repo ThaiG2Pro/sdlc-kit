@@ -27,8 +27,7 @@
         "test",
         "python3",
         "node",
-        "openspec",
-        "rtk"
+        "openspec"
       ]
     }
   },
@@ -36,7 +35,49 @@
     "skill://.kiro/skills/sdlc-orchestration-core/SKILL.md",
     "skill://.kiro/skills/spec-auditor/SKILL.md",
     "skill://.kiro/skills/cross-artifact-audit/SKILL.md",
-    "skill://.kiro/skills/sprint-retro/SKILL.md"
+    "skill://.kiro/skills/sprint-retro/SKILL.md",
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/steering",
+      "name": "Steering",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/sdlc.config.json",
+      "name": "Sdlc.config",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/context/project.md",
+      "name": "Project",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/context/glossary.md",
+      "name": "Glossary",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/context/conventions.md",
+      "name": "Conventions",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/pipelines.json",
+      "name": "Pipelines",
+      "indexType": "best",
+      "autoUpdate": false
+    }
   ],
   "hooks": {
     "agentSpawn": [

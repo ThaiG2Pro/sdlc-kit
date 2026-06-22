@@ -53,7 +53,7 @@ export function applyContextMap({ kiroDir, mapPath, log = () => {} }) {
     }
 
     // 2. knowledgeBase (kiro-relative) → file://./.kiro/<entry>
-    //    agents with inheritAlways:false (e.g. hook-only rtk) skip the shared `always` set
+    //    agents with inheritAlways:false (e.g. a hook-only utility agent) skip the shared `always` set
     const inheritAlways = cfg.inheritAlways !== false;
     const kb = [...(inheritAlways ? (always.knowledgeBase || []) : []), ...(cfg.knowledgeBase || [])];
     let nKb = 0;

@@ -12,11 +12,10 @@ project domain is baked into the agents.
 
 ```
 FRAMEWORK (generic, never edited per project)        CONTEXT (filled per project)
-  .kiro/agents/    6 agents + scripts + examples        .kiro/context/
+  .kiro/agents/    7 agents + scripts + examples        .kiro/context/
   .kiro/skills/    24 skills                               project.md       stack.md
-  .kiro/steering/  5 generic rules (sdlc-workflow,         conventions.md   architecture.md
-                   commit-policy, security, registry,      glossary.md      legacy-ref.md
-                   rtk)
+  .kiro/steering/  4 generic rules (sdlc-workflow,         conventions.md   architecture.md
+                   commit-policy, security, registry)      glossary.md      legacy-ref.md
   .kiro/ai/        generic quality rules (sonar)        .kiro/context-map.json  ← wiring
 ```
 
@@ -118,7 +117,6 @@ it runs. Edit `pipelines.json` to tune a type per project — no prompt edits.
 | `ctrl+3` | `developer` | S4 Build + S6 Release |
 | `ctrl+4` | `qa` | S5 QA |
 | `ctrl+9` | `onboarder` | context setup (not an SDLC phase) |
-| — | `rtk` | hook-only (shell token saver) |
 
 Both orchestrators are **thin wrappers** over the shared `sdlc-orchestration-core` skill (one
 copy of the lifecycle/gate/CPP/dispute machinery); each declares only its own work types. An

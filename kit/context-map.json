@@ -33,11 +33,6 @@
     "onboarder": {
       "skills": ["context-mapper"],
       "knowledgeBase": []
-    },
-    "rtk": {
-      "inheritAlways": false,
-      "skills": [],
-      "knowledgeBase": []
     }
   },
 

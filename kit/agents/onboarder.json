@@ -16,6 +16,8 @@
     "write": {
       "allowedPaths": [
         ".kiro/context/**",
+        "openspec/**",
+        ".kiro/openspec/**",
         ".kiro/context-map.json"
       ]
     },
@@ -28,8 +30,7 @@
         "test",
         "head",
         "wc",
-        "node",
-        "rtk"
+        "node"
       ]
     }
   },
@@ -37,10 +38,31 @@
     "skill://.kiro/skills/context-mapper/SKILL.md",
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context",
-      "name": "ContextContract",
+      "source": "file://./.kiro/steering",
+      "name": "Steering",
       "indexType": "best",
-      "autoUpdate": true
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/sdlc.config.json",
+      "name": "Sdlc.config",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/context/project.md",
+      "name": "Project",
+      "indexType": "best",
+      "autoUpdate": false
+    },
+    {
+      "type": "knowledgeBase",
+      "source": "file://./.kiro/context/glossary.md",
+      "name": "Glossary",
+      "indexType": "best",
+      "autoUpdate": false
     }
   ],
   "hooks": {
