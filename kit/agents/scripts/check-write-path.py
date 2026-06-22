@@ -1,97 +1,63 @@
 #!/usr/bin/env python3
 """
-Shared preToolUse hook: validate fs_write paths against allowed prefixes.
+Shared preToolUse hook: validate fs_write paths against the agent's allowed globs.
+
+SINGLE SOURCE OF TRUTH: the allowed write paths live in each agent's
+`.kiro/agents/<agent>.json` under `toolsSettings.write.allowedPaths` (glob form).
+This hook READS that list — it does NOT keep its own copy. Edit the agent JSON to
+change write permissions; the hook follows automatically.
+
+Glob semantics (matched here, mirroring how allowedPaths reads):
+  "dir/**"         → anything under dir/         (prefix match)
+  "*.config.ts"    → any path ending .config.ts  (fnmatch; * also spans '/')
+  "package.json"   → exact path / basename match
 
 Usage: echo '{"tool_input":{"path":"..."}}' | python3 check-write-path.py <agent_name>
-
-Agent allowed paths (OpenSpec-backed workspace — artifacts live in openspec/changes/<name>/):
-  analyst:     openspec/, docs/knowledge/
-  architect:   openspec/, docs/
-  developer:   src/, apps/, prisma/, test/, tests/, openspec/
-  qa:          openspec/, test/, tests/, e2e/
-  sdlc-full:   openspec/, .kiro/memory/   (orchestrator: feature/cr/rebuild)
-  sdlc-fast:   openspec/, .kiro/memory/   (orchestrator: bugfix/hotfix)
-
-Exit 0 = allowed, Exit 2 = blocked
+Exit 0 = allowed, Exit 2 = blocked (or misconfigured → deny by default).
 """
-import json, sys, os
+import json, sys, os, fnmatch
 
-AGENT_RULES = {
-    "analyst": {
-        "prefixes": ["openspec/", "docs/knowledge/"],
-        "exact": [],
-    },
-    "architect": {
-        "prefixes": ["openspec/", "docs/"],
-        "exact": [],
-    },
-    "developer": {
-        # Stack-agnostic source / test / migration / tooling dirs.
-        "prefixes": [
-            "src/", "app/", "apps/", "lib/", "pkg/", "internal/", "cmd/",
-            "prisma/", "migrations/", "database/", "db/",
-            "test/", "tests/", "spec/", "__tests__/",
-            "docker/", "scripts/", "config/", "openspec/", ".kiro/memory/", ".github/",
-        ],
-        # Common project-root manifests across stacks (Node, PHP, Go, Python, Rust, generic).
-        "exact": [
-            # Node / TS
-            "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "nest-cli.json",
-            # PHP
-            "composer.json", "composer.lock", "artisan", "phpunit.xml", "phpunit.xml.dist",
-            # Go
-            "go.mod", "go.sum",
-            # Python
-            "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "requirements-dev.txt",
-            "pytest.ini", "tox.ini", "Pipfile", "Pipfile.lock",
-            # Rust
-            "Cargo.toml", "Cargo.lock",
-            # generic
-            "Makefile", "Dockerfile", "README.md", "ROADMAP.md", "mise.toml", ".gitlab-ci.yml",
-            ".env.example", ".env.sample", ".env.local.example",
-            "docker-compose.yml", "docker-compose.yaml", "docker-compose.dev.yml",
-            "docker-compose.local.yml", "docker-compose.override.yml", "compose.yml", "compose.yaml",
-        ],
-        # Config-file patterns (endswith) — covers *.config.ts, tsconfig.json, lint/format configs, etc.
-        "suffixes": [
-            ".config.ts", ".config.js", ".config.mjs", ".config.cjs",
-            "tsconfig.json", "tsconfig.build.json", "jsconfig.json",
-            ".prettierrc", ".prettierignore", ".eslintrc", ".eslintrc.js", ".eslintrc.json",
-            "biome.json", "Dockerfile",
-        ],
-    },
-    "qa": {
-        "prefixes": ["openspec/", ".kiro/memory/", "test/", "tests/", "e2e/", "spec/", "__tests__/", "apps/cms/e2e/"],
-        "exact": [],
-    },
-    "sdlc-full": {
-        "prefixes": ["openspec/", ".kiro/memory/"],
-        "exact": [],
-    },
-    "sdlc-fast": {
-        "prefixes": ["openspec/", ".kiro/memory/"],
-        "exact": [],
-    },
-    "onboarder": {
-        "prefixes": [".kiro/context/", "openspec/", ".kiro/openspec/"],
-        "exact": [".kiro/context-map.json"],
-    },
-}
+
+def find_agent_json(agent: str):
+    """Locate <agent>.json. Anchor on this script's dir (reliable regardless of cwd),
+    then fall back to cwd-relative locations (and the kit/ source tree for local tests)."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # .../.kiro/agents/scripts
+    candidates = [
+        os.path.join(script_dir, "..", f"{agent}.json"),               # .kiro/agents/<agent>.json
+        os.path.join(os.getcwd(), ".kiro", "agents", f"{agent}.json"),
+        os.path.join(os.getcwd(), "kit", "agents", f"{agent}.json"),   # kit repo (dev/testing)
+        os.path.join(os.getcwd(), "agents", f"{agent}.json"),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return None
+
+
+def load_allowed_paths(agent: str):
+    path = find_agent_json(agent)
+    if not path:
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            cfg = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return (cfg.get("toolsSettings", {}).get("write", {}) or {}).get("allowedPaths")
 
 
 def normalize_path(path: str) -> str:
-    """Convert absolute path to relative by stripping workspace root."""
+    """Convert absolute path to project-relative by stripping the workspace root."""
     if not os.path.isabs(path):
         return path
 
-    # Strategy 1: use cwd
     cwd = os.getcwd()
     if path.startswith(cwd + "/"):
         return path[len(cwd) + 1 :]
 
-    # Strategy 2: find known segment markers in path (resolve to project-relative)
     markers = [
-        "specs/", "openspec/", ".kiro/memory/", ".kiro/context/", ".kiro/context-map.json", "docs/",
+        "specs/", "openspec/", ".kiro/memory/", ".kiro/openspec/", ".kiro/context/",
+        ".kiro/context-map.json", "docs/",
         "src/", "app/", "apps/", "lib/", "pkg/", "internal/", "cmd/",
         "prisma/", "migrations/", "database/", "db/",
         "test/", "tests/", "spec/", "__tests__/", "docker/", "scripts/", "config/", ".github/",
@@ -101,9 +67,22 @@ def normalize_path(path: str) -> str:
         if idx != -1:
             return path[idx + 1 :]
 
-    # Strategy 3 (fallback): treat as a project-root file → match by basename.
-    # exact/suffix rules then decide. This is stack-agnostic (no hardcoded filenames).
+    # Fallback: project-root file → match by basename against exact/suffix globs.
     return os.path.basename(path)
+
+
+def path_allowed(path: str, patterns) -> bool:
+    for pat in patterns:
+        if pat.endswith("/**"):
+            base = pat[:-3]  # "src/**" -> "src"
+            if path == base or path.startswith(base + "/"):
+                return True
+        elif any(ch in pat for ch in "*?["):
+            if fnmatch.fnmatch(path, pat):
+                return True
+        elif path == pat:
+            return True
+    return False
 
 
 def main():
@@ -112,25 +91,20 @@ def main():
         sys.exit(2)
 
     agent = sys.argv[1]
-    if agent not in AGENT_RULES:
-        sys.stderr.write(f"Unknown agent: {agent}\n")
+    allowed = load_allowed_paths(agent)
+    if not allowed:
+        # Deny by default: a misconfigured/missing allowlist must not silently permit writes.
+        sys.stderr.write(
+            f"BLOCKED: no toolsSettings.write.allowedPaths found for '{agent}' "
+            f"(.kiro/agents/{agent}.json)\n"
+        )
         sys.exit(2)
 
-    rules = AGENT_RULES[agent]
     data = json.load(sys.stdin)
     raw_path = data.get("tool_input", {}).get("path", "")
     path = normalize_path(raw_path)
 
-    # Check exact matches
-    if path in rules["exact"]:
-        sys.exit(0)
-
-    # Check prefix matches
-    if any(path.startswith(p) for p in rules["prefixes"]):
-        sys.exit(0)
-
-    # Check suffix (config-file pattern) matches
-    if any(path.endswith(s) for s in rules.get("suffixes", [])):
+    if path_allowed(path, allowed):
         sys.exit(0)
 
     sys.stderr.write(f"BLOCKED: {agent} cannot write to {path}")
