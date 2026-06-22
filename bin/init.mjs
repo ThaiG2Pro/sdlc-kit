@@ -123,6 +123,24 @@ async function main() {
       execSync('openspec init --tools kiro --force', { cwd: TARGET, stdio: 'ignore' });
       log('  ✓ openspec init (openspec/ + opsx skills/prompts)');
     } catch (e) { log(`  ! openspec init failed: ${e.message}`); }
+
+    // Install the kit's per-artifact rules into openspec/config.yaml so `openspec instructions`
+    // emits them in its <rules> block. This is why the role agents carry NO inline format for
+    // proposal/spec/design/tasks — the conventions live here, deterministically installed.
+    try {
+      const cfgPath = join(TARGET, 'openspec', 'config.yaml');
+      const rulesSrc = join(KIT_SRC, 'ai', 'openspec-rules.yaml');
+      if (existsSync(cfgPath) && existsSync(rulesSrc)) {
+        const cfg = readFileSync(cfgPath, 'utf8');
+        if (/^rules:/m.test(cfg)) {
+          log('  ✓ openspec/config.yaml already has rules: — left untouched');
+        } else {
+          const rulesBlock = readFileSync(rulesSrc, 'utf8');
+          writeFileSync(cfgPath, cfg.replace(/\s*$/, '') + '\n\n' + rulesBlock);
+          log('  ✓ installed kit per-artifact rules into openspec/config.yaml');
+        }
+      }
+    } catch (e) { log(`  ! could not install openspec rules: ${e.message}`); }
   } else {
     log('  ! openspec CLI not found — this kit uses OpenSpec as its spec workspace. Install then re-run init:');
     log('      npm install -g @fission-ai/openspec@latest');
