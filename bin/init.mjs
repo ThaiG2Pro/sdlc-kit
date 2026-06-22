@@ -16,7 +16,16 @@ const KIT_ROOT = resolve(__dirname, '..');
 const KIT_SRC = join(KIT_ROOT, 'kit');
 
 // ---- args ----
-const args = argv.slice(2);
+// Extract --title (value-taking) first so its value is never mistaken for the TARGET positional.
+const rawArgs = argv.slice(2);
+let TITLE = null;
+const args = [];
+for (let i = 0; i < rawArgs.length; i++) {
+  const a = rawArgs[i];
+  if (a === '--title') TITLE = rawArgs[++i] ?? null;
+  else if (a.startsWith('--title=')) TITLE = a.slice('--title='.length);
+  else args.push(a);
+}
 const flags = new Set(args.filter((a) => a.startsWith('--')));
 const positional = args.filter((a) => !a.startsWith('--'));
 const TARGET = resolve(positional[0] || '.');
@@ -58,26 +67,45 @@ async function main() {
   // Guard: existing .kiro
   const existing = ['agents', 'skills', 'steering'].filter((d) => existsSync(join(kiroDir, d)));
   if (existing.length && !FORCE) {
-    die(`.kiro already has [${existing.join(', ')}]. Re-run with --force to overwrite kit files (your specs/ & memory/ are never touched).`);
+    die(`.kiro already has [${existing.join(', ')}]. Re-run with --force to overwrite kit files (your specs/, memory/, and already-filled context/*.md are preserved).`);
   }
 
-  // Collect placeholder values
-  const vals = {};
-  const rl = (!YES) ? createInterface({ input: stdin, output: stdout }) : null;
-  for (const p of PLACEHOLDERS) {
-    if (YES) { vals[p.key] = p.def; continue; }
-    const ans = (await rl.question(`  ${p.prompt}${p.def ? ` [${p.def}]` : ''}: `)).trim();
-    vals[p.key] = ans || p.def;
+  // Fail loudly on non-interactive (piped/non-TTY) stdin instead of the old silent no-op:
+  // readline.question never resolves without a TTY, so main() used to hang and Node exited 0
+  // having copied nothing. Require --yes and/or --title in that case.
+  if (!YES && !stdin.isTTY && TITLE === null) {
+    die('non-interactive (piped) stdin and neither --title nor --yes was given.\n' +
+        '    Re-run in a real terminal, or pass --title "Project Name" (optionally with --yes for other defaults).\n' +
+        '    Nothing was changed.');
   }
-  if (rl) rl.close();
-  if (!vals.PROJECT_TITLE) vals.PROJECT_TITLE = vals.PROJECT_SLUG || 'My Project';
+
+  // Collect placeholder values. --title sets PROJECT_TITLE up front; only prompt when we have a TTY.
+  const vals = { PROJECT_TITLE: TITLE ?? '', LEGACY_REF_PATH: 'N/A' };
+  const canPrompt = stdin.isTTY && !YES;
+  if (canPrompt) {
+    const rl = createInterface({ input: stdin, output: stdout });
+    for (const p of PLACEHOLDERS) {
+      if (p.key === 'PROJECT_TITLE' && TITLE !== null) continue; // already provided via --title
+      const ans = (await rl.question(`  ${p.prompt}${p.def ? ` [${p.def}]` : ''}: `)).trim();
+      vals[p.key] = ans || p.def;
+    }
+    rl.close();
+  }
+  if (!vals.PROJECT_TITLE) vals.PROJECT_TITLE = 'My Project';
 
   // Copy kit -> .kiro with token substitution
   const files = walk(KIT_SRC);
-  let copied = 0, tokened = 0;
+  const isContextMd = (rel) => /^context[\/\\][^\/\\]+\.md$/.test(rel);
+  let copied = 0, tokened = 0, preserved = 0;
   for (const rel of files) {
     const src = join(KIT_SRC, rel);
     const dst = join(kiroDir, rel);
+    // Preserve human-filled context on re-init/upgrade: never clobber a context/*.md that no
+    // longer has any `<!-- TODO` marker (i.e. the onboarder/user already filled it).
+    if (isContextMd(rel) && existsSync(dst) && !readFileSync(dst, 'utf8').includes('<!-- TODO')) {
+      preserved++;
+      continue;
+    }
     mkdirSync(dirname(dst), { recursive: true });
     if (TEXT_EXT.test(rel)) {
       let content = readFileSync(src, 'utf8');
@@ -90,7 +118,8 @@ async function main() {
     }
     copied++;
   }
-  log(`\n  ✓ copied ${copied} files (${tokened} with substitutions)`);
+  log(`\n  ✓ copied ${copied} files (${tokened} with substitutions)` +
+      (preserved ? `; preserved ${preserved} filled context file(s)` : ''));
 
   // Copy the context-map engine into the project so the onboarder agent / context-mapper
   // skill can re-run it in-place (node .kiro/tools/context-map.mjs).
