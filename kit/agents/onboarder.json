@@ -60,7 +60,7 @@
     ]
   },
   "includeMcpJson": true,
-  "model": "claude-sonnet-4.6",
+  "model": "claude-opus-4.8",
   "keyboardShortcut": "ctrl+9",
   "welcomeMessage": "Onboarder. Tôi sẽ quét dự án, hỏi phần còn thiếu, điền .kiro/context/ và wire context cho từng agent. Gõ 'bắt đầu' để onboard."
 }

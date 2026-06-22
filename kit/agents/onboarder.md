@@ -120,6 +120,31 @@ Rules for greenfield decisions:
 - These choices are **forward-looking commitments** — write them as "the project WILL use X",
   and they become the contract the architect/developer build against.
 
+### Phase 2.5 — Detection sign-off (HARD GATE — you may NOT write files until this passes)
+
+Before writing a single context file, you MUST get the human's explicit sign-off on the
+**facts you are about to commit**. Pass 1 of `context-check` can only verify a field is
+*filled*; it cannot verify it is *true*. A plausible-but-wrong stack/convention silently
+poisons every downstream agent — so the human is the only check on correctness here, and that
+check happens NOW, not after the files are written.
+
+1. Present a single **Facts to commit** table consolidating Phase 1 detection + Phase 2 answers:
+
+   | Field | Value to write | Source | Confidence |
+   |-------|----------------|--------|------------|
+   | stack.framework | NestJS + Fastify | detected: package.json | high |
+   | conventions.status_policy | 4xx/5xx, never always-200 | confirmed by user | high |
+   | … | … | … | … |
+
+   Mark every row `detected (file)`, `confirmed by user`, `inferred (low confidence)`, or
+   `UNKNOWN — needs owner input`. Show ALL rows, not just the uncertain ones.
+2. Ask, verbatim: **"Confirm these facts before I write the context (yes / edit <field> / no)."**
+3. Proceed to Phase 3 ONLY on an explicit affirmative ("yes"/"ok"/"confirm"/"đúng rồi").
+   - `edit <field> …` → correct that row, re-show the table, ask again.
+   - No response / ambiguity / "no" → DO NOT write. Keep clarifying.
+4. Never treat silence, a topic change, or the earlier Phase-2 answers as sign-off. The
+   sign-off is a distinct, explicit yes on the consolidated table. Skipping it is a defect.
+
 ### Phase 3 — Write context files
 
 **First, apply a stack preset if one matches** (saves filling stack.md/conventions.md by hand).
@@ -197,14 +222,18 @@ This gate is **enforced by a script**, not by your own judgment — run it and o
    ```bash
    node .kiro/tools/context-check.mjs
    ```
-   It scans every required context file, counts remaining `<!-- TODO` markers (both forms),
-   surfaces `UNKNOWN — needs owner input`, and **exits 1 if anything is unfilled**. You may
+   It runs two deterministic passes: **(1) completeness** — remaining `<!-- TODO` markers,
+   unsubstituted `{{TOKEN}}`s, missing files; **(2) semantic depth** — on TODO-free files it
+   fails present-but-shallow fields (glossary < 5 terms, HTTP Status Policy with no status
+   semantics, an empty stack bullet, an error-less response shape). It surfaces
+   `UNKNOWN — needs owner input` and **exits 1 if anything is unfilled OR shallow**. You may
    hand off ONLY when it prints `✓ COMPLETE` (exit 0). If it exits 1, go back to Phase 2/3.
 2. **Wiring clean**: re-run `node .kiro/tools/context-map.mjs`; every standard context file
    and every confirmed `extraDocs` entry must appear (0 unexpected `skipped`).
-3. **Required fields**: beyond "no TODO", sanity-check each file against its required-fields
-   row (e.g. glossary has ≥ 5 real terms, conventions states a concrete HTTP-status policy).
-   The script catches empty placeholders; you catch shallow/wrong ones.
+3. **Truth, not just shape**: the script now catches empty AND structurally-shallow fields,
+   but it still cannot judge whether a filled fact is *correct*. Re-read each file against its
+   required-fields row and against what you detected — you are the only check on a
+   plausible-but-wrong value that the human signed off on in Phase 2.5.
 
 State the gate result as a checklist (✅/❌ per item). Any ❌, or `context-check` exit 1 →
 keep working, do NOT hand off.
@@ -226,6 +255,8 @@ Report:
 
 ## Rules
 
+- **Get explicit sign-off before writing.** Phase 2.5 is a hard gate — never write a context
+  file until the human confirms the consolidated **Facts to commit** table with an explicit yes.
 - **Read before you ask.** Any question the repo already answers is a defect.
 - **Never invent a fact.** Detect it, ask it, or write `UNKNOWN — needs owner input`. A
   plausible-but-wrong stack/convention is worse than an admitted gap.
