@@ -25,7 +25,6 @@
         "grep",
         "ls",
         "test",
-        "python3",
         "node",
         "openspec"
       ]
@@ -92,11 +91,16 @@
         "matcher": "fs_write",
         "command": "python3 .kiro/agents/scripts/check-write-path.py sdlc-full",
         "timeout_ms": 3000
+      },
+      {
+        "matcher": "execute_bash",
+        "command": "python3 .kiro/agents/scripts/check-shell-command.py sdlc-full",
+        "timeout_ms": 3000
       }
     ],
     "stop": [
       {
-        "command": "echo '' && echo '=== Uncommitted ===' && git diff --stat openspec/ 2>/dev/null | tail -5 || true",
+        "command": "echo '' && echo '=== Uncommitted (openspec) ===' && git diff --stat openspec/ 2>/dev/null | tail -5; OUT=$(git diff --name-only -- . ':(exclude)openspec' ':(exclude)memory' ':(exclude).kiro' 2>/dev/null); [ -n \"$OUT\" ] && { echo '⚠ NON-SPEC FILE CHANGES detected — the orchestrator must NOT write code; only the developer agent (S4) may. Verify these came from S4:'; echo \"$OUT\" | head -20; }; true",
         "timeout_ms": 5000
       }
     ],
