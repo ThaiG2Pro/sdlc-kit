@@ -34,6 +34,11 @@ when reviewing the S4 gate.
 
 ## Rigor & convergence (how hard the quality gates run)
 
+> ⚠️ **Rigor ≠ flow.** The `full`/`lite` here is the **gate rigor** — how hard the quality gates
+> run. It is INDEPENDENT of which orchestrator agent you opened (`sdlc-full` vs `sdlc-fast`, which
+> only picks *which phases* run). A `sdlc-full` feature can run at `lite` rigor; the words just
+> collide. Do not assume "I'm in sdlc-full, so rigor is full" — resolve rigor explicitly below.
+
 Heavy gate machinery (the convergence loop + `.xlsx` test cases) is **opt-in and scaled to the
 work**, not mandatory — it suits important, business-logic-tight features and wastes time on small
 fixes. Two outcomes: **`full`** (convergence loop on the spec/design gates + `.xlsx` test cases) or
@@ -43,8 +48,11 @@ fixes. Two outcomes: **`full`** (convergence loop on the spec/design gates + `.x
 2. **Type floor** — read `types[<type>].rigor` from `pipelines.json`. If it is `lite` (bugfix, hotfix), rigor is **forced lite** — never ask, never loop, even if config says `always`.
 3. **Config `gates.convergence`** (only reached for rigor-eligible types: feature/cr/rebuild):
    - `always` → `full`; `never` → `lite`;
-   - `auto` (default) → **ASK the user one question at kickoff**:
-     > ⚖️ Mức độ gate cho change này? **full** = convergence loop (spec+design lặp tới khi ổn định) + xuất test case `.xlsx` — cho feature quan trọng / business logic chặt. **lite** = audit 1 lượt + markdown — cho thay đổi nhỏ. [full/lite]
+   - `auto` (default) → **ASK the user one question at kickoff** (make clear it is NOT about the agent they picked):
+     > ⚖️ **Độ chặt gate (rigor)** cho change này — _độc lập với agent: bạn đang ở flow `sdlc-full`, nhưng rigor vẫn chọn riêng._
+     > • **full** (chặt) = convergence loop: spec-lock + design-review lặp tới khi ổn định (`stable_rounds`) + xuất test case `.xlsx`. Cho feature quan trọng / business-logic chặt / nhiều edge case.
+     > • **lite** (nhẹ) = audit 1 lượt + markdown. Cho thay đổi nhỏ, ít edge case.
+     > Trả lời `full` hoặc `lite` (đây là rigor, không phải tên agent sdlc-full/sdlc-fast). [full/lite]
 
 Persist the result to `_state.json` as `"rigor":"full"|"lite"` so later sessions never re-ask.
 When `rigor=lite`, every gate is single-pass (legacy behavior); skip the convergence loop entirely.
