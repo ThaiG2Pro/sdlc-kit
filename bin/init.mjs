@@ -14,6 +14,10 @@ import { applyContextMap } from './lib/context-map.mjs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const KIT_ROOT = resolve(__dirname, '..');
 const KIT_SRC = join(KIT_ROOT, 'kit');
+const KIT_VERSION = (() => {
+  try { return JSON.parse(readFileSync(join(KIT_ROOT, 'package.json'), 'utf8')).version || '0.0.0'; }
+  catch { return '0.0.0'; }
+})();
 
 // ---- args ----
 // Extract --title (value-taking) first so its value is never mistaken for the TARGET positional.
@@ -31,6 +35,7 @@ const positional = args.filter((a) => !a.startsWith('--'));
 const TARGET = resolve(positional[0] || '.');
 const FORCE = flags.has('--force');
 const YES = flags.has('--yes') || flags.has('-y');
+const CHECK = flags.has('--check') || flags.has('--dry-run');
 
 // Text extensions that get placeholder substitution
 const TEXT_EXT = /\.(md|json|txt|ts|js|mjs|py|yaml|yml)$/i;
@@ -66,14 +71,14 @@ async function main() {
 
   // Guard: existing .kiro
   const existing = ['agents', 'skills', 'steering'].filter((d) => existsSync(join(kiroDir, d)));
-  if (existing.length && !FORCE) {
+  if (existing.length && !FORCE && !CHECK) {
     die(`.kiro already has [${existing.join(', ')}]. Re-run with --force to overwrite kit files (your specs/, memory/, and already-filled context/*.md are preserved).`);
   }
 
   // Fail loudly on non-interactive (piped/non-TTY) stdin instead of the old silent no-op:
   // readline.question never resolves without a TTY, so main() used to hang and Node exited 0
   // having copied nothing. Require --yes and/or --title in that case.
-  if (!YES && !stdin.isTTY && TITLE === null) {
+  if (!CHECK && !YES && !stdin.isTTY && TITLE === null) {
     die('non-interactive (piped) stdin and neither --title nor --yes was given.\n' +
         '    Re-run in a real terminal, or pass --title "Project Name" (optionally with --yes for other defaults).\n' +
         '    Nothing was changed.');
@@ -81,7 +86,7 @@ async function main() {
 
   // Collect placeholder values. --title sets PROJECT_TITLE up front; only prompt when we have a TTY.
   const vals = { PROJECT_TITLE: TITLE ?? '', LEGACY_REF_PATH: 'N/A' };
-  const canPrompt = stdin.isTTY && !YES;
+  const canPrompt = stdin.isTTY && !YES && !CHECK;
   if (canPrompt) {
     const rl = createInterface({ input: stdin, output: stdout });
     for (const p of PLACEHOLDERS) {
@@ -96,21 +101,65 @@ async function main() {
   // Copy kit -> .kiro with token substitution
   const files = walk(KIT_SRC);
   const isContextMd = (rel) => /^context[\/\\][^\/\\]+\.md$/.test(rel);
+  const manifestPath = join(kiroDir, '.kit-manifest.json');
+
+  // Read the previous install's manifest. Supports the legacy shape (a bare array of file paths)
+  // and the current shape ({ kitVersion, files }) so older projects still upgrade cleanly.
+  let prevVersion = null, prevFiles = [];
+  if (existsSync(manifestPath)) {
+    try {
+      const m = JSON.parse(readFileSync(manifestPath, 'utf8'));
+      if (Array.isArray(m)) prevFiles = m;
+      else { prevFiles = m.files || []; prevVersion = m.kitVersion || null; }
+    } catch { /* unreadable manifest — treat as a fresh install */ }
+  }
+
+  // Announce the version transition (only meaningful on a re-init/upgrade against an existing install).
+  if ((FORCE || CHECK) && existsSync(manifestPath)) {
+    if (prevVersion && prevVersion !== KIT_VERSION) log(`  ⬆ Upgrading kit ${prevVersion} → ${KIT_VERSION}`);
+    else if (prevVersion === KIT_VERSION)           log(`  ↻ Reinstalling kit ${KIT_VERSION} (same version)`);
+    else                                            log(`  ⬆ Upgrading kit (unversioned) → ${KIT_VERSION}`);
+  }
 
   // Prune orphans on re-init: files the PREVIOUS kit version installed that this version no longer
   // ships (e.g. an agent/skill that was renamed or removed). Without this, `--force` only ever
-  // adds/overwrites — stale files linger and get mis-wired by the mapper. Driven by a manifest of
-  // the last install, so user-added files (never in the manifest) are never touched.
-  const manifestPath = join(kiroDir, '.kit-manifest.json');
+  // adds/overwrites — stale files linger and get mis-wired by the mapper. Driven by the manifest of
+  // the last install, so user-added files (never in the manifest) are never touched, and filled
+  // context is always preserved.
+  const nowSet = new Set(files);
+  const pruneList = prevFiles.filter((rel) => !nowSet.has(rel) && !isContextMd(rel) && existsSync(join(kiroDir, rel)));
+
+  // Classify each shipped file (add / overwrite / preserve) — drives both the dry-run plan and
+  // the human-readable summary.
+  const isFilled = (dst) => existsSync(dst) && !readFileSync(dst, 'utf8').includes('<!-- TODO');
+  const plan = { add: [], overwrite: [], preserve: [] };
+  for (const rel of files) {
+    const dst = join(kiroDir, rel);
+    if (isContextMd(rel) && isFilled(dst)) plan.preserve.push(rel);
+    else if (existsSync(dst)) plan.overwrite.push(rel);
+    else plan.add.push(rel);
+  }
+
+  // --check / --dry-run: print the plan for the kit payload and exit WITHOUT writing anything.
+  if (CHECK) {
+    const sample = (arr, n = 8) =>
+      (arr.length ? '\n' + arr.slice(0, n).map((r) => `      ${r}`).join('\n') : '') +
+      (arr.length > n ? `\n      …and ${arr.length - n} more` : '');
+    log('\n  Dry-run plan (no files written):');
+    log(`  + add       ${plan.add.length}${sample(plan.add)}`);
+    log(`  ~ overwrite ${plan.overwrite.length} (kit-owned; your edits to these are replaced)${sample(plan.overwrite)}`);
+    log(`  = preserve  ${plan.preserve.length} filled context file(s)${sample(plan.preserve)}`);
+    log(`  - prune     ${pruneList.length} stale file(s) from the previous version${sample(pruneList)}`);
+    log('\n  (openspec init, tools, and the context→agents mapper also run on apply.)');
+    log('  Re-run without --check (add --force on an existing install) to apply.\n');
+    exit(0);
+  }
+
+  // Apply the prune.
   let pruned = 0;
-  if (FORCE && existsSync(manifestPath)) {
-    let oldList = [];
-    try { oldList = JSON.parse(readFileSync(manifestPath, 'utf8')); } catch { oldList = []; }
-    const nowSet = new Set(files);
+  if (FORCE && pruneList.length) {
     const dirsTouched = new Set();
-    for (const rel of oldList) {
-      if (nowSet.has(rel)) continue;                 // still shipped — keep
-      if (isContextMd(rel)) continue;                // filled context is preserved, never pruned
+    for (const rel of pruneList) {
       const p = join(kiroDir, rel);
       if (existsSync(p)) { rmSync(p, { force: true }); pruned++; dirsTouched.add(dirname(p)); }
     }
@@ -148,7 +197,7 @@ async function main() {
 
   // Record the manifest of kit-managed files so the NEXT --force re-init can prune what this
   // version shipped but a future one drops. Sorted for stable diffs.
-  writeFileSync(manifestPath, JSON.stringify([...files].sort(), null, 0) + '\n');
+  writeFileSync(manifestPath, JSON.stringify({ kitVersion: KIT_VERSION, files: [...files].sort() }, null, 0) + '\n');
 
   // Copy the context-map engine into the project so the onboarder agent / context-mapper
   // skill can re-run it in-place (node .kiro/tools/context-map.mjs).

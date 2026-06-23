@@ -35,13 +35,17 @@ npm install -g @fission-ai/openspec@latest
 From the target project root:
 
 ```bash
+# run straight from GitHub (no clone, no npm publish — always latest):
+npx github:<owner>/kiro-sdlc-kit ../my-project --title "My App"
+
+# or from a local clone:
 node /path/to/kiro-sdlc-kit/bin/init.mjs            # into current dir
 node /path/to/kiro-sdlc-kit/bin/init.mjs ../other   # into another project
-# or, once pushed:  npx gitlab:<group>/kiro-sdlc-kit
 ```
 
 Flags: `--force` (overwrite kit files; never touches `openspec/`/`memory/`), `--yes`
-(defaults, no prompts).
+(defaults, no prompts), `--title "Name"` (set the project title non-interactively),
+`--check` / `--dry-run` (print the add/overwrite/preserve/prune plan and exit — writes nothing).
 
 `init` copies the framework, runs `openspec init --tools kiro` (scaffolds `openspec/` +
 the `/opsx:*` skills), scaffolds `memory/`, symlinks `.kiro/openspec` + `.kiro/memory`,
@@ -221,4 +225,35 @@ openspec archive "<change-name>"            # merge spec deltas → openspec/spe
   context contract into `openspec/config.yaml` so OpenSpec's own skills are project-aware.
 - `openspec/` and `memory/` are per-project workspace and are never shipped by the kit.
 - Each project owns its copy after `init` — no submodule coupling, no framework/project
-  file mixing. To pull kit updates, re-run `init --force`.
+  file mixing. To pull kit updates, re-run `init --force` (see **Updating** below).
+
+## Updating
+
+The kit evolves; each project pulls changes by re-running `init`. There's no live coupling,
+so updates are explicit and legible:
+
+```bash
+# 1. Refresh your local kit source first (it's where init copies from):
+git -C /path/to/kiro-sdlc-kit pull          # or just use `npx github:<owner>/kiro-sdlc-kit` (always latest)
+
+# 2. Preview what the update would change — writes nothing:
+node /path/to/kiro-sdlc-kit/bin/init.mjs ../my-project --check
+
+# 3. Apply it:
+node /path/to/kiro-sdlc-kit/bin/init.mjs ../my-project --force
+```
+
+`init` records the kit version it installed in `.kiro/.kit-manifest.json`, so `--force`/`--check`
+report the transition (e.g. `⬆ Upgrading kit 1.0.0 → 1.1.0`). On apply it:
+
+- **overwrites kit-owned files** (`agents/`, `skills/`, `steering/`, `ai/`, `hooks/`, `tools/`) —
+  these belong to the kit; **local edits to them are replaced**. Customize via your `context/` and
+  `pipelines.json`, not by editing agent/skill files.
+- **preserves filled `context/*.md`** (any file without a `<!-- TODO` marker) — your project
+  identity survives upgrades untouched.
+- **prunes stale files** the previous kit version shipped but this one dropped (renamed/removed
+  agents or skills), using the manifest — so nothing phantom lingers to mis-wire the mapper.
+- **never touches** `openspec/` or `memory/` (per-project workspace).
+
+Run `--check` first whenever you're unsure — especially on targets that aren't git repos, where
+there's no `git diff` to fall back on.
