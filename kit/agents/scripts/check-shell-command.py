@@ -44,9 +44,13 @@ _DENY = [
     (re.compile(r"\bnode\b[^|;&]*?\s(?:-e|--eval|-p|--print)\b"), "`node -e/--eval/-p` (inline code → arbitrary write)"),
     (re.compile(r"\bpython3?\b[^|;&]*?\s-c\b"), "`python -c` (inline code → arbitrary write)"),
     (re.compile(r"\b(?:node|python3?)\b[^|;&]*?(?:<<|\s-\s*$|\s-\s)"), "interpreter reading stdin/heredoc (→ arbitrary write)"),
-    (re.compile(r"\b(?:cp|mv|rm|rmdir|touch|mkdir|dd|truncate|ln|install|chmod|chown)\b"), "filesystem-mutating command"),
+    (re.compile(r"\b(?:cp|mv|rm|rmdir|touch|mkdir|dd|truncate|ln|chmod|chown)\b"), "filesystem-mutating command"),
     (re.compile(r"\bgit\s+(?:add|commit|apply|checkout|restore|reset|stash|rm|mv|push|merge|rebase|tag|clean)\b"), "git working-tree mutation"),
     (re.compile(r"\bpatch\b"), "`patch` (applies a diff)"),
+    # Package/dependency managers mutate project files (pyproject.toml, lockfiles, node_modules)
+    # — that is developer (S4) work, never the orchestrator's. Read-only subcommands (list/show/
+    # version/run-a-readonly-script) are NOT matched.
+    (re.compile(r"\b(?:uv|pip|pip3|npm|pnpm|yarn|poetry|cargo|composer|bundle|gem|go|mvn|gradle|dotnet|brew|apt|apt-get|pacman|dnf|yum|pipenv|conda|mamba)\b\s+(?:add|remove|rm|install|uninstall|sync|require|get|update|upgrade|init|build|publish|lock|i|ci)\b"), "package/dependency manager mutation"),
 ]
 
 
