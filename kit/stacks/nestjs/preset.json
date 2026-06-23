@@ -2,8 +2,8 @@
   "stack": "nestjs",
   "contextFiles": ["stack.md", "conventions.md"],
   "skills": {
-    "architect": ["gi-nestjs-api-design", "gi-nestjs-postgres-patterns"],
-    "developer": ["gi-nestjs-backend-patterns", "gi-nestjs-database-migrations", "gi-nestjs-tdd-workflow", "gi-nestjs-test-generator", "gi-nestjs-postgres-patterns"],
-    "qa": ["gi-nestjs-test-generator", "gi-nestjs-api-documentation-checker"]
+    "architect": ["nestjs-api-design", "nestjs-postgres-patterns"],
+    "developer": ["nestjs-backend-patterns", "nestjs-database-migrations", "nestjs-tdd-workflow", "nestjs-test-generator", "nestjs-postgres-patterns"],
+    "qa": ["nestjs-test-generator", "nestjs-api-documentation-checker"]
   }
 }

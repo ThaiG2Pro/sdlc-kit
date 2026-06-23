@@ -22,7 +22,7 @@ For full details, read the corresponding rule file.
 | R-API-001 | Response format: `{ data, meta }` success, `{ errors, meta }` error. | `api-standards.md` | **Greenfield only** — `/v6.0/*` follows PHP parity contract |
 | R-API-002 | URL: plural nouns, kebab-case, max 2 nested levels, versioned. | `api-standards.md` | All endpoints |
 | R-API-003 | OpenAPI documentation mandatory. openapi.yaml is S3 output. | `api-standards.md` | All endpoints |
-| R-DB-001 | All schema changes via migration. Must have rollback. Immutable after deploy. | stack conventions | **Greenfield tables only** — legacy `gotit` schema is frozen, use `prisma db pull` |
+| R-DB-001 | All schema changes via migration. Must have rollback. Immutable after deploy. | stack conventions | **Greenfield tables only** — legacy schema is frozen, use `prisma db pull` |
 | R-GIT-001 | Commit: `<type>(<scope>): <ticket-id> <subject>`. | `commit-policy.md` | All projects |
 | R-SDLC-001 | Source of truth: specs → design → code. Never update specs from code. | `sdlc-workflow.md` | All projects |
 | R-SDLC-002 | SPEC LOCK required before S3. BA + Dev + QC sign-off, no TBD. | `sdlc-workflow.md` | All projects |

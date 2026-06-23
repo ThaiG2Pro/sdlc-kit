@@ -2,8 +2,8 @@
   "stack": "nextjs",
   "contextFiles": ["stack.md", "conventions.md"],
   "skills": {
-    "architect": ["gi-nextjs-figma-code-connect", "gi-nextjs-frontend-patterns"],
-    "developer": ["gi-nextjs-frontend-patterns", "gi-nextjs-figma-to-vuexy"],
-    "qa": ["gi-nextjs-figma-visual-qa"]
+    "architect": ["nextjs-figma-code-connect", "nextjs-frontend-patterns"],
+    "developer": ["nextjs-frontend-patterns", "nextjs-figma-to-vuexy"],
+    "qa": ["nextjs-figma-visual-qa"]
   }
 }

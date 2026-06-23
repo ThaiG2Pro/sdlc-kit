@@ -1,16 +1,15 @@
 ---
-name: gi-laravel-api-design
+name: laravel-api-design
 description: >
   Laravel REST API design patterns. Covers URL structure, status codes,
   response format, pagination, filtering, auth, JsonResource, FormRequest,
   Scribe documentation, rate limiting.
 tags: [api, laravel]
-origin: GI
 ---
 
 # API Design — Laravel
 
-Merged patterns from ai-sdlc (universal) and gi-stack (Laravel-specific).
+Merged patterns from ai-sdlc (universal) and the Laravel stack pack.
 
 ## When to Activate
 
@@ -299,4 +298,3 @@ X-RateLimit-Reset: 1640000000
 - [ ] Scribe: `@group` on controller, `@unauthenticated` where needed
 - [ ] Run `php artisan scribe:generate` and verify
 
-> Author: tuan.dang@gotit.vn

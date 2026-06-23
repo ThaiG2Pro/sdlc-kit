@@ -1,5 +1,5 @@
 ---
-name: gi-nestjs-postgres-patterns
+name: nestjs-postgres-patterns
 description: >
   PostgreSQL database patterns for query optimization, schema design, indexing,
   and security. Quick reference for common patterns, index types, data types,

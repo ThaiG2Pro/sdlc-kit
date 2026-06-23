@@ -1,5 +1,5 @@
 ---
-name: gi-laravel-test-generator
+name: laravel-test-generator
 description: >
   Generate unit and feature tests cho Laravel services/controllers.
   Use when "generate tests", "create test cases", "add tests for", "test coverage".
@@ -8,7 +8,7 @@ tags: [testing, laravel]
 
 # Test Generator — Laravel
 
-Test generation patterns cho Laravel, align với `gi-laravel-tdd-workflow` skill.
+Test generation patterns cho Laravel, align với `laravel-tdd-workflow` skill.
 
 ## When to Activate
 

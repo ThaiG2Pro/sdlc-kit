@@ -1,5 +1,5 @@
 ---
-name: gi-nestjs-database-migrations
+name: nestjs-database-migrations
 description: >
   Database migration patterns cho TypeORM + Aurora PostgreSQL.
   Safe schema changes, zero-downtime, rollback, batch data migrations.

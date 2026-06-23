@@ -8,7 +8,7 @@ description: >
 
 # Sonar Local Scan — {{PROJECT_TITLE}}
 
-Chạy SonarQube scan ở local trỏ vào server `sonar-stg.gotit.vn`.
+Chạy SonarQube scan ở local trỏ vào server `<your-sonar-host>`.
 
 ## Yêu cầu
 
@@ -18,7 +18,7 @@ Chạy SonarQube scan ở local trỏ vào server `sonar-stg.gotit.vn`.
 
 ## Lấy API token
 
-1. Mở http://sonar-stg.gotit.vn
+1. Mở http://<your-sonar-host>
 2. Vào **My Account → Security → Generate Token**
 3. Copy token (chỉ hiển thị 1 lần)
 
@@ -46,13 +46,13 @@ SONAR_TOKEN=<token> SONAR_PROJECT_KEY=ten-repo ./scripts/sonar-local.sh
 npx sonarqube-scanner \
   -Dsonar.projectKey=<ten_repo> \
   -Dsonar.sources=. \
-  -Dsonar.host.url=http://sonar-stg.gotit.vn \
+  -Dsonar.host.url=http://<your-sonar-host> \
   -Dsonar.login=<api_token_sonar>
 ```
 
 ## Đọc kết quả
 
-Kết quả tại: `http://sonar-stg.gotit.vn/dashboard?id=<ten_repo>`
+Kết quả tại: `http://<your-sonar-host>/dashboard?id=<ten_repo>`
 
 | Metric | Ngưỡng pass | Ý nghĩa |
 |--------|------------|---------|

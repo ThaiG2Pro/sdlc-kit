@@ -1,5 +1,5 @@
 ---
-name: gi-nextjs-figma-to-vuexy
+name: nextjs-figma-to-vuexy
 description: >
   Lấy design từ Figma MCP hoặc Figma Power và parse thành code chuẩn Vuexy Next.js (MUI + TypeScript).
   Tự động call get_design_context + get_screenshot, phân tích layout, rồi map sang

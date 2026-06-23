@@ -1,5 +1,5 @@
 ---
-name: gi-nestjs-tdd-workflow
+name: nestjs-tdd-workflow
 description: >
   TDD workflow cho NestJS + Jest. Unit tests (mock deps) + Integration tests (real test DB).
   Use when "TDD", "test driven", "write tests first", "red green refactor".

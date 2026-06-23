@@ -1,15 +1,15 @@
 ---
-name: gi-nestjs-test-generator
+name: nestjs-test-generator
 description: >
   Generate unit và integration tests cho NestJS services/controllers.
   Use when "generate tests", "create test cases", "add tests for", "test coverage".
-  Align với gi-nestjs-tdd-workflow patterns.
+  Align với nestjs-tdd-workflow patterns.
 tags: [testing, nestjs]
 ---
 
 # Test Generator — NestJS
 
-Test generation patterns cho NestJS, align với `gi-nestjs-tdd-workflow` skill và company conventions.
+Test generation patterns cho NestJS, align với `nestjs-tdd-workflow` skill và company conventions.
 
 ## When to Activate
 
@@ -20,8 +20,8 @@ Test generation patterns cho NestJS, align với `gi-nestjs-tdd-workflow` skill 
 ## How to Use
 
 ```
-Dùng skill gi-nestjs-test-generator cho: src/modules/users/user.service.ts
-Dùng skill gi-nestjs-test-generator để generate integration tests cho: product.controller.ts
+Dùng skill nestjs-test-generator cho: src/modules/users/user.service.ts
+Dùng skill nestjs-test-generator để generate integration tests cho: product.controller.ts
 ```
 
 ## Coverage Requirements (P1)

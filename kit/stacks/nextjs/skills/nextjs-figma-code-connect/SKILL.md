@@ -1,9 +1,8 @@
 ---
-name: gi-nextjs-figma-code-connect
+name: nextjs-figma-code-connect
 description: >
   Connect Figma design components to code implementations via Figma MCP.
 tags: [frontend, nextjs, figma]
-origin: GI
 ---
 # Skill: Figma Code Connect Components
 

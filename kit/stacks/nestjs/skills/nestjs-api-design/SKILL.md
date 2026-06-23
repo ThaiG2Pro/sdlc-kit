@@ -1,11 +1,10 @@
 ---
-name: gi-nestjs-api-design
+name: nestjs-api-design
 description: NestJS REST API design patterns — URL conventions, response format, DTOs, pagination, auth, rate limiting
 tags: [api, nestjs]
-origin: GI
 ---
 
-# GI API Design — NestJS
+# API Design — NestJS
 
 ## URL Structure
 
@@ -155,4 +154,3 @@ Valkey-backed, 3 tiers with `X-RateLimit-*` headers:
 - [ ] OpenAPI decorators on every endpoint (@ApiTags, @ApiOperation, @ApiResponse)
 - [ ] No internal details leaked in error responses
 
-> Author: tuan.dang@gotit.vn

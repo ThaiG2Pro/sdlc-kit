@@ -1,5 +1,5 @@
 ---
-name: gi-nextjs-figma-visual-qa
+name: nextjs-figma-visual-qa
 description: >
   Verify UI đã implement trên CMS có khớp với Figma design không.
   Dùng Figma MCP để lấy lại screenshot gốc, so sánh với UI thực tế theo checklist,

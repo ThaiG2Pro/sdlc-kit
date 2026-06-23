@@ -1,5 +1,5 @@
 ---
-name: gi-laravel-tdd-workflow
+name: laravel-tdd-workflow
 description: >
   TDD workflow cho Laravel + PHPUnit. Unit tests (mock deps) + Feature tests
   (SQLite in-memory mặc định; RefreshDatabase + real DB chỉ khi chỉ định; multi-DB mock service).

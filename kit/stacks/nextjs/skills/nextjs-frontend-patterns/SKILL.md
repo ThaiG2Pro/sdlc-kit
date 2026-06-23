@@ -1,5 +1,5 @@
 ---
-name: gi-nextjs-frontend-patterns
+name: nextjs-frontend-patterns
 description: >
   Frontend development patterns cho CMS — React + MUI + Vuexy template.
   Component composition, state management, data fetching, forms, error handling.

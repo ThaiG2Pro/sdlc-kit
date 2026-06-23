@@ -1,5 +1,5 @@
 ---
-name: gi-laravel-database-migrations
+name: laravel-database-migrations
 description: >
   Database migration patterns cho Laravel + Eloquent.
   Safe schema changes, zero-downtime, rollback.

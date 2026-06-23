@@ -1,5 +1,5 @@
 ---
-name: gi-nestjs-backend-patterns
+name: nestjs-backend-patterns
 description: >
   Backend patterns cho NestJS + Fastify + TypeORM + Aurora PostgreSQL.
   Service/repository layers, error handling, caching (Valkey), async jobs (SQS).

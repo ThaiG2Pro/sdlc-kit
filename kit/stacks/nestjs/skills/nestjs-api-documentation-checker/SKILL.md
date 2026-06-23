@@ -1,5 +1,5 @@
 ---
-name: gi-nestjs-api-documentation-checker
+name: nestjs-api-documentation-checker
 description: >
   Kiểm tra OpenAPI/Swagger decorator completeness trên NestJS controllers.
   @ApiTags, @ApiOperation, @ApiResponse, @ApiProperty trên DTOs.

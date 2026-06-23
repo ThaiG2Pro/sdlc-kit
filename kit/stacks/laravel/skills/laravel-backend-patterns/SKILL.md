@@ -1,5 +1,5 @@
 ---
-name: gi-laravel-backend-patterns
+name: laravel-backend-patterns
 description: >
   Backend patterns cho Laravel. Service layer, repository pattern,
   Eloquent best practices, Form Requests, error handling, caching.
