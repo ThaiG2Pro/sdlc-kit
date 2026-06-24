@@ -30,9 +30,7 @@ specifics + the Claude execution model.
 1. **"Route to {agent}" ⇒ spawn that role via the Task tool** (`subagent_type`: `developer` | `qa`),
    injecting change-name + `<CHANGE_DIR>` + `priority_reading`/`watch_items` from `_state.json`.
 2. **Gates run HERE** in the main session; pause for the user's `approve`/`nogo`.
-3. **Paths**: `.kiro/tools/*` → `.claude/tools/*`, `.kiro/…` → `.claude/…` (e.g.
-   `node .claude/tools/pipeline-guard.mjs --gate <PHASE>`). `openspec/` + baton paths unchanged.
-4. Subagents surface blocking questions in their return; you relay to the user, then re-spawn.
+3. Subagents surface blocking questions in their return; you relay to the user, then re-spawn.
 
 ## Gate execution (at each `approve`)
 

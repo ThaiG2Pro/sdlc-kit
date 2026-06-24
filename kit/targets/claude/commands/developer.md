@@ -37,5 +37,4 @@ Runs ONE role/segment; does **not** run `pipeline-guard.mjs` or advance `_state.
 BUILD gate (read dev-test-report.md, CPP contract validation) and approval are run by `/sdlc-full …
 approve` / `/sdlc-fast … approve`. Say so when relaying.
 
-→ For state/baton mechanics, checkpoint/segment rules + Kiro→Claude translations: **follow
-`sdlc-orchestration-core`** (`.kiro/…` ⇒ `.claude/…`).
+→ For state/baton mechanics + checkpoint/segment rules: **follow `sdlc-orchestration-core`**.

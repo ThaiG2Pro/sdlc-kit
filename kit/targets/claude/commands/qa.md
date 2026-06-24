@@ -37,5 +37,4 @@ gate (read qa-report.md + test-case artifact check + CPP contract validation) an
 `/sdlc-full … approve` / `/sdlc-fast … approve`. Say so when relaying. Disputes go through
 `/sdlc-full dispute bug #N — <claim>`.
 
-→ For state/baton mechanics, gate audit map + Kiro→Claude translations: **follow
-`sdlc-orchestration-core`** (`.kiro/…` ⇒ `.claude/…`).
+→ For state/baton mechanics + gate audit map: **follow `sdlc-orchestration-core`**.

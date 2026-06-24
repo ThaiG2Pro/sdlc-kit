@@ -38,5 +38,4 @@ advance `_state.json.gates`. To gate S2 and proceed to S3, the user runs `/sdlc-
 (which re-audits). Mention this when you relay the result so the user knows the SPEC LOCK gate is
 still pending.
 
-→ For New Change Setup, state/baton mechanics, and Kiro→Claude translations: **follow
-`sdlc-orchestration-core`** (paths `.kiro/…` ⇒ `.claude/…`).
+→ For New Change Setup + state/baton mechanics: **follow `sdlc-orchestration-core`**.

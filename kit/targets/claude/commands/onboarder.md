@@ -39,5 +39,4 @@ Request: **$ARGUMENTS**
 - On Claude there is no per-agent JSON `resources[]` to wire — context is referenced statically by
   path and `@import`ed in `CLAUDE.md`. Doc→role routing is advisory (a table in the return).
 
-→ For project-setup conventions: **follow the onboarder agent + `sdlc-orchestration-core`**
-(`.kiro/…` ⇒ `.claude/…`).
+→ For project-setup conventions: **follow the onboarder agent + `sdlc-orchestration-core`**.

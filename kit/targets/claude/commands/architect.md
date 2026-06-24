@@ -35,5 +35,4 @@ Runs ONE role; does **not** run `pipeline-guard.mjs`, the `cross-artifact-audit`
 audit, or advance `_state.json.gates`. To gate S3 → S4 the user runs `/sdlc-full … approve`. Say so
 when relaying — the DESIGN REVIEW gate is still pending.
 
-→ For state/baton mechanics + Kiro→Claude translations: **follow `sdlc-orchestration-core`**
-(`.kiro/…` ⇒ `.claude/…`).
+→ For state/baton mechanics: **follow `sdlc-orchestration-core`**.

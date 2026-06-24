@@ -41,10 +41,7 @@ directly**. Apply these translations everywhere the skill applies:
    `watch_items`. The subagent is one-shot: it returns artifacts + a summary; it cannot ask the user.
 2. **Gates run HERE, in the main session** (a subagent cannot pause for the user). When a subagent
    returns, run the gate yourself (next section) and **pause for the user's `approve`/`nogo`**.
-3. **Paths**: the skill says `.kiro/tools/*` and `.kiro/…` — on Claude use **`.claude/tools/*`** and
-   **`.claude/…`** (e.g. `node .claude/tools/pipeline-guard.mjs --gate <PHASE>`, `.claude/sdlc.config.json`,
-   `.claude/pipelines.json`). The `openspec/` workspace and CPP baton paths are unchanged.
-4. **Clarifications**: a role subagent surfaces blocking questions/assumptions in its return instead
+3. **Clarifications**: a role subagent surfaces blocking questions/assumptions in its return instead
    of asking the user. YOU relay those to the user at the gate, get answers, then re-spawn the role
    with the answers in the prompt.
 
