@@ -21,10 +21,20 @@
       "Bash(git log:*)",
       "Bash(git branch:*)",
       "Bash(git rev-parse:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git switch -c:*)",
+      "Bash(git worktree add:*)",
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(grep:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Task",
+      "Write(openspec/**)",
+      "Edit(openspec/**)",
+      "Write(memory/**)",
+      "Edit(memory/**)",
+      "Write(.claude/memory/**)",
+      "Edit(.claude/memory/**)"
     ]
   },
   "hooks": {
