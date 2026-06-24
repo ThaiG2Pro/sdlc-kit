@@ -37,6 +37,11 @@ platform at install time; the framework (process, skills, gates, security model)
 - **Tooling per platform.** Kiro installs `doctor` + `context-map` + the shared guards. Claude
   installs `doctor-claude` + the shared guards (`context-check`, `apply-stack`, `pipeline-guard`,
   `cpp-guard`) — no `context-map` (skills auto-discover; nothing to wire).
+- **`settings.json` allow-list widened for the orchestrator's routine ops.** `Task` (spawn role
+  subagents), `Write`/`Edit(openspec/** + memory/**)`, and the branch-create git commands
+  (`checkout -b` / `switch -c` / `worktree add`) are now pre-approved, so `/sdlc-full` no longer
+  prompts on nearly every step. Code writes (`src/**`) are deliberately NOT allowlisted — they still
+  prompt and stay hook-enforced; `deny(openspec/specs/**)` still wins over the new `allow(openspec/**)`.
 - **README** rewritten for dual-target install & usage.
 
 ### Fixed
@@ -46,6 +51,21 @@ platform at install time; the framework (process, skills, gates, security model)
   and Claude Code resolves `@imports` relative to the **importing file's own directory**, so those
   resolved to the non-existent `.claude/.claude/…` and silently dropped **all** steering rules and
   the context contract at runtime. Fixed to `@steering/…` / `@context/…`.
+
+- **Shared skills hardcoded `.kiro/` paths that break on a claude-only install.** Two were
+  executable and would actually fail there — the mandatory gate guard
+  (`node .kiro/tools/pipeline-guard.mjs`) and the QA test-case xlsx generator
+  (`gen_testcases_xlsx.py`) — plus ~15 advisory refs (`.kiro/context`, `.kiro/sdlc.config.json`,
+  `.kiro/steering`). They only worked so far because every test install also had `.kiro/`. Added a
+  per-platform `{{PLATFORM_DIR}}` token (init substitutes `.kiro`/`.claude` for each target;
+  `.md`/`.json` already go through substitution) and switched all shared refs to it. The
+  now-redundant "translate `.kiro/` to `.claude/`" notes in the Claude commands were removed.
+  (Guard-script `.py` comments/self-test vectors keep their literal `.kiro/` — they describe the
+  dual-platform contract.)
+- **`doctor-claude` validated the wrong `CLAUDE.md` on a project with its own root file.** It
+  preferred `./CLAUDE.md` (the project's own doc, which has no `@import`s) and falsely warned about
+  missing `@import` lines while never checking the kit's wiring. Now validates the kit-managed
+  `.claude/CLAUDE.md` (falling back to root only if absent).
 
 ### Tooling
 

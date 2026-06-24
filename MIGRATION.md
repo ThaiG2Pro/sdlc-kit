@@ -1,7 +1,7 @@
 # MIGRATION — Kiro → Claude Code (dual-target)
 
-> Status: **IMPLEMENTED** (Phases 1–7 ✅ on `feat/claude-target`; Phase 7 = Claude validator +
-> `@import` bugfix). One kit source emits `.kiro/`
+> Status: **IMPLEMENTED** (Phases 1–8 ✅ on `feat/claude-target`; Phase 7 = Claude validator +
+> `@import` bugfix; Phase 8 = real-project rollout hardening). One kit source emits `.kiro/`
 > and/or `.claude/`; the user picks at `init` time (`--target kiro|claude|both`).
 > Goal: ship the SDLC kit for **both** Kiro IDE and Claude Code from one source,
 > letting the user pick the platform at `init` time (like `create-vite` / `create-next-app`).
@@ -402,6 +402,27 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
      pre-onboarder "context not filled" WARN). Negative test: re-introducing the `@.claude/` prefix and
      granting `analyst` the `Edit` tool both FAIL as designed (`@import does not resolve`; `SECURITY:
      analyst subagent carries Edit`).
+8. ✅ **Real-project rollout hardening — DONE.** Installing into 5 real repos (issues-sum, colemark-dh,
+   portal, zellij-claude-sync, image-to-report) surfaced three more fixes:
+   - **`{{PLATFORM_DIR}}` token.** Shared skills hardcoded `.kiro/…` paths that break on a claude-only
+     install — two **executable** (`node .kiro/tools/pipeline-guard.mjs`, the mandatory gate guard; and
+     `gen_testcases_xlsx.py`, the QA xlsx export) plus ~15 advisory refs. They only ever worked because
+     test installs also had `.kiro/`. Added a per-platform `{{PLATFORM_DIR}}` token that `init`
+     substitutes to `.kiro`/`.claude` per target; switched all shared `.md`/`.json` refs to it (guard
+     `.py` comments/self-test vectors keep literal `.kiro/`). The now-redundant "translate `.kiro/` ⇒
+     `.claude/`" notes in the Claude commands were removed.
+   - **`settings.json` allow-list widened.** The shipped list was read-only-tight, so `/sdlc-full`
+     prompted on nearly every step (Task spawn, baton write, branch create). Added `Task`,
+     `Write`/`Edit(openspec/** + memory/**)`, and branch-create git to `allow` — permission prompts
+     aren't the security boundary (the hooks are); code writes (`src/**`) stay un-allowlisted (prompt +
+     hook-enforced) and `deny(openspec/specs/**)` still wins.
+   - **`doctor-claude` CLAUDE.md preference.** On a repo with its own root `CLAUDE.md` (no `@import`s),
+     the doctor validated that instead of the kit's `.claude/CLAUDE.md` and falsely flagged missing
+     `@import`s. Now it validates the kit-managed `.claude/CLAUDE.md` first.
+   - **Per-project notes:** issues-sum context was **ported** from its existing filled `.kiro/context/`
+     (no re-onboard needed); colemark-dh's own `.claude/settings.json` was **merged** (kept its
+     `enabledPlugins`); installs are additive (`.kiro/` untouched where present, `openspec/`+`memory/`
+     never touched). All 5 → `doctor-claude` HEALTHY.
 
 ---
 
