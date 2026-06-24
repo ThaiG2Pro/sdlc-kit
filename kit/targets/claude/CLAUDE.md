@@ -23,18 +23,18 @@ at each gate.
 
 ## Always-on rules (steering)
 
-@.claude/steering/security.md
-@.claude/steering/sdlc-workflow.md
-@.claude/steering/rules-registry.md
+@steering/security.md
+@steering/sdlc-workflow.md
+@steering/rules-registry.md
 
 ## Project context contract
 
-@.claude/context/project.md
-@.claude/context/stack.md
-@.claude/context/conventions.md
-@.claude/context/architecture.md
-@.claude/context/glossary.md
-@.claude/context/legacy-ref.md
+@context/project.md
+@context/stack.md
+@context/conventions.md
+@context/architecture.md
+@context/glossary.md
+@context/legacy-ref.md
 
 ## Notes
 
