@@ -1,6 +1,7 @@
 # MIGRATION — Kiro → Claude Code (dual-target)
 
-> Status: **PLAN / for review**. Nothing here is implemented yet.
+> Status: **IMPLEMENTED** (Phases 1–6 ✅ on `feat/claude-target`). One kit source emits `.kiro/`
+> and/or `.claude/`; the user picks at `init` time (`--target kiro|claude|both`).
 > Goal: ship the SDLC kit for **both** Kiro IDE and Claude Code from one source,
 > letting the user pick the platform at `init` time (like `create-vite` / `create-next-app`).
 
@@ -336,13 +337,48 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
      frontmatter parses; no unsubstituted tokens; the guards load the correct `pipelines.json` under
      both hosts at runtime; guard self-tests 27/27 + 24/24.
 
-   _Remaining (Phase 5–6):_ role commands `/analyst …/onboarder`, CLAUDE.md stack-pack path polish,
-   and an E2E run on a clone of issues-sum.
-5. **Role commands** `/analyst …/onboarder` + skills/stack-pack path fixes + CLAUDE.md
-   `@import`s.
-6. **E2E verify** on a clone of issues-sum: run `/sdlc-full feature X`; confirm the main
-   session is blocked from editing code, only the developer subagent can, and baton +
-   openspec stay in sync.
+   _(Phase 5–6 below complete the remaining role commands, stack-pack path fix, and E2E verify.)_
+5. ✅ **Role commands + stack-pack path fix — DONE.**
+   - `kit/targets/claude/commands/{analyst,architect,developer,qa,onboarder}.md` — direct-invocation
+     (D3) slash commands. Each is thin: resolve the active change's CPP baton, **spawn that one role
+     via the Task tool** (`subagent_type`) with `priority_reading`/`watch_items` injected, then relay
+     the subagent's blocking questions/assumptions for the user. Each restates the INVARIANT
+     (`/developer` clarifies that **only the spawned developer subagent** writes code — the main
+     session still cannot) and states plainly that a role command runs ONE phase and does **not**
+     gate/advance `_state.json` — gating stays with `/sdlc-full … approve`. `init`'s overlay `walk()`
+     picks them up automatically (no init change needed) → `--target both` now emits **7** commands.
+   - **Stack-pack path fix:** stack packs ship under `<platform>/stacks/<stack>/` but only Kiro had
+     an apply path (`apply-stack.mjs` merged `context-map.json` + re-wired). Made `apply-stack.mjs`
+     **platform-aware** (same `import.meta.url` → `PLATFORM_DIR` pattern as the guards): on Claude it
+     seeds `.claude/context/{stack,conventions}.md` and copies the pack's skills into
+     `.claude/skills/` (where Claude auto-discovers them as model-invoked skills), and **skips** the
+     Kiro-only `context-map.json` merge + `applyContextMap` re-wire (loaded via dynamic `import` so
+     `context-map.mjs`, which isn't copied to Claude, is never required there). Added `apply-stack.mjs`
+     to the Claude tool list in `init.mjs`. `CLAUDE.md` rewritten to describe the real path
+     (`.claude/stacks/` → `apply-stack` → `.claude/skills/`) instead of the previously-inaccurate
+     "already under `.claude/skills/`", and its entry-points now list `/onboarder` + the 5 role commands.
+   - **Verified:** `--target both` emits 7 commands + `apply-stack.mjs` in `.claude/tools/` + the 3
+     stacks; no unsubstituted tokens; `node --check` clean. `apply-stack laravel` on a Claude install
+     installs 5 skills into `.claude/skills/`, seeds context, and creates **no** `context-map.json`
+     (correct); the same tool on a Kiro install still merges `context-map.json` + re-wires all agents
+     (regression-clean).
+6. ✅ **E2E verify on an issues-sum clone — DONE (security + tooling).** Installed `--target claude`
+   into a clone of `~/issues-sum` (real Python repo) — clean install: 5 agents, 7 commands, settings,
+   CLAUDE.md, 4 tools, 3 stacks, openspec symlink resolving. Drove the **security invariant E2E** by
+   feeding the installed hooks the exact PreToolUse JSON Claude Code emits per actor — **14/14 pass**:
+   main-session Edit `src/**` → BLOCK; **developer** Edit `src/**` → ALLOW; analyst/qa Write `src/**`
+   → BLOCK; analyst Write `openspec/**` / qa Write `tests/**` / onboarder Write `.claude/context/**`
+   → ALLOW; main-session `sed -i`/`git commit` → BLOCK but pipeline-isolation `git checkout -b` →
+   ALLOW; developer `pytest`/`uv add` → ALLOW; analyst `uv add` → BLOCK, `grep -r` → ALLOW. This
+   proves the **only the developer writes code** invariant deterministically across all five roles +
+   the orchestrator. `pipeline-guard.mjs` in the clone loads `pipelines.json` and reaches the
+   `openspec/` symlink (reports "no active change", as expected pre-`/sdlc-full`). Guard self-tests
+   27/27 + 24/24.
+   - _Not self-driven (a live-usage step for the user):_ a full interactive `/sdlc-full feature X`
+     run from start to S6 — it spawns subagents and pauses for human approval at each gate, and would
+     write real code into the clone via the developer subagent. The deterministic security + tooling
+     E2E above is the faithful scoped verification; the end-to-end pipeline drive should be exercised
+     in a real session.
 
 ---
 

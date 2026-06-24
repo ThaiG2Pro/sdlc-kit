@@ -10,7 +10,11 @@ at each gate.
 - **Fast track** (bugfix · hotfix): `/sdlc-fast bugfix <slug>` · `/sdlc-fast hotfix <slug>`
 - **Manage a running pipeline**: `approve` · `nogo <reason>` · `status` · `continue` ·
   `dispute bug #N — <claim>`
-- **Project setup / context**: spawn the `onboarder` subagent first on a new project.
+- **Project setup / context**: run `/onboarder` first on a new project (drafts `.claude/context/`,
+  returns a Facts-to-commit table for your sign-off).
+- **Run a single role directly** (D3): `/analyst` · `/architect` · `/developer` · `/qa` ·
+  `/onboarder` — each spawns that one-shot role subagent with the active change's CPP baton. These
+  run ONE phase and do **not** gate/advance the pipeline; use `/sdlc-full … approve` to gate.
 
 > 🚫 **Invariant:** only the **developer** subagent writes code. The main session (orchestrator) and
 > the analyst/architect/qa/onboarder subagents treat the shell as read-only and write only specs/
@@ -34,9 +38,13 @@ at each gate.
 
 ## Notes
 
-- **Stack-specific packs** (laravel / nestjs / nextjs, etc.) are installed as **model-invoked skills**
-  under `.claude/skills/` so they load only when relevant — they are intentionally NOT `@import`ed
-  here (keeps every session's base context small; see MIGRATION.md §7 Q2).
+- **Stack-specific packs** (laravel / nestjs / nextjs, etc.) ship under `.claude/stacks/<stack>/`
+  (a `preset.json` + `context/` + `skills/`). Activate one with
+  `node .claude/tools/apply-stack.mjs <stack>` (`--list` to see them): it seeds
+  `.claude/context/{stack,conventions}.md` and copies the pack's skills into `.claude/skills/`,
+  where they become **model-invoked skills** that load only when relevant. They are intentionally
+  NOT `@import`ed here — keeps every session's base context small (see MIGRATION.md §7 Q2). On
+  Claude there is no `context-map.json` wiring step (skills auto-discover); that is Kiro-only.
 - The OpenSpec workspace (`openspec/`) is the spec backend; `.claude/sdlc.config.json` +
   `.claude/pipelines.json` configure gates, rigor, and the phase pipeline.
 - After updating the kit, re-run `npx kiro-sdlc-init . --force` and start a **new session** — agents,

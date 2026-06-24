@@ -215,12 +215,13 @@ function applyTarget(ctx, vals) {
 
   // --- platform-specific post-steps ---
   // Copy the engine tools into <target>/tools/ so agents/commands/skills can re-run them in place.
-  // The guards (pipeline-guard, cpp-guard, context-check) resolve their platform dir from their own
-  // install path, so the same source works under .kiro/tools/ and .claude/tools/. context-map.mjs +
-  // apply-stack.mjs wire Kiro agent JSON resources[] — Kiro-only.
+  // The platform-aware tools (pipeline-guard, cpp-guard, context-check, apply-stack) resolve their
+  // platform dir from their own install path, so the same source works under .kiro/tools/ and
+  // .claude/tools/. context-map.mjs wires Kiro agent JSON resources[] — Kiro-only (apply-stack
+  // skips the context-map merge/re-wire on Claude, where skills auto-load from .claude/skills/).
   const TOOLS_BY_PLATFORM = {
     kiro: ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs'],
-    claude: ['context-check.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs'],
+    claude: ['context-check.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs'],
   };
   for (const tool of TOOLS_BY_PLATFORM[platform] || []) {
     const toolSrc = join(KIT_ROOT, 'bin', 'lib', tool);
