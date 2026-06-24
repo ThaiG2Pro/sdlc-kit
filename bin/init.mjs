@@ -219,9 +219,12 @@ function applyTarget(ctx, vals) {
   // platform dir from their own install path, so the same source works under .kiro/tools/ and
   // .claude/tools/. context-map.mjs wires Kiro agent JSON resources[] — Kiro-only (apply-stack
   // skips the context-map merge/re-wire on Claude, where skills auto-load from .claude/skills/).
+  // doctor.mjs validates Kiro agent JSON + resources[] + the context map; doctor-claude.mjs is its
+  // Claude counterpart (validates CLAUDE.md @imports, commands/subagents, the Edit-tool invariant,
+  // and settings.json hook/tool wiring) — each ships only to its own platform.
   const TOOLS_BY_PLATFORM = {
     kiro: ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs'],
-    claude: ['context-check.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs'],
+    claude: ['context-check.mjs', 'doctor-claude.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs'],
   };
   for (const tool of TOOLS_BY_PLATFORM[platform] || []) {
     const toolSrc = join(KIT_ROOT, 'bin', 'lib', tool);
