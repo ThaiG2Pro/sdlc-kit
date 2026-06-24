@@ -29,8 +29,15 @@ Self-test: `python3 check-write-path.py --self-test`.
 import json, sys, os, fnmatch
 
 
-# --- Claude built-in role policy (mirror of the Kiro agent JSON allowedPaths). When a
-#     .kiro/agents/<role>.json is present it takes precedence via load_allowed_paths(). ---
+# Which host fired this hook? The script is installed at BOTH .kiro/agents/scripts/ and
+# .claude/agents/scripts/; its own path tells us which one ran. The policy SOURCE is chosen by
+# host (see decide()): on Claude the built-in policy below is authoritative — a stray
+# .kiro/agents/<role>.json from a dual-target install must NOT win, since its allowedPaths only
+# list `.kiro/…` and would wrongly block the Claude session's `.claude/context/**` writes.
+IS_CLAUDE_HOST = "/.claude/" in os.path.abspath(__file__).replace("\\", "/")
+
+# --- Claude built-in role policy (mirror of the Kiro agent JSON allowedPaths). Authoritative on
+#     the Claude host; on Kiro the agent's own JSON wins via load_allowed_paths(). ---
 _BATON = ["openspec/**", "memory/**", ".kiro/memory/**", ".claude/memory/**"]
 _CLAUDE_POLICY = {
     "developer": [
@@ -141,11 +148,18 @@ def path_allowed(path: str, patterns) -> bool:
     return False
 
 
-def decide(actor, raw_path):
-    """Return (allowed: bool, allowed_list, normalized_path). Shared by main() and the self-test."""
-    allowed = load_allowed_paths(actor) if actor else None  # Kiro JSON = source of truth
-    if allowed is None:
-        allowed = claude_policy(actor)                      # Claude built-in fallback
+def decide(actor, raw_path, claude_host=None):
+    """Return (allowed: bool, allowed_list, normalized_path). Shared by main() and the self-test.
+    Policy SOURCE is host-based: Claude host → the built-in role policy (it knows `.claude/…`
+    paths); Kiro host → the agent's .kiro JSON (falling back to the built-in policy if absent)."""
+    if claude_host is None:
+        claude_host = IS_CLAUDE_HOST
+    if claude_host:
+        allowed = claude_policy(actor)                      # Claude host: built-in policy wins
+    else:
+        allowed = load_allowed_paths(actor) if actor else None  # Kiro JSON = source of truth
+        if allowed is None:
+            allowed = claude_policy(actor)                  # Claude built-in fallback
     if not allowed:
         return (False, allowed, "")
     norm = normalize_path(raw_path)
@@ -212,7 +226,9 @@ def _self_test():
         (None, "analyst",   "src/app.ts",                       BLOCK),
         (None, "qa",        "tests/unit.spec.ts",               ALLOW),
         (None, "qa",        "src/app.ts",                       BLOCK),
-        (None, "onboarder", ".claude/context/project.md",       ALLOW),
+        (None, "onboarder", ".claude/context/project.md",       ALLOW),  # dual-target: kiro json must NOT block this
+        (None, "onboarder", ".kiro/context/project.md",          ALLOW),  # may also seed .kiro (e.g. porting)
+        (None, "onboarder", "context/project.md",                ALLOW),
         (None, "onboarder", "src/app.ts",                       BLOCK),
     ]
     fails = 0
@@ -220,11 +236,9 @@ def _self_test():
         data = {} if agent_type is None else {"agent_type": agent_type}
         argv = ["check-write-path.py"] + ([argv_agent] if argv_agent else [])
         actor = resolve_actor(data, argv=argv)
-        # Pin the allow-list SOURCE per host so the test is deterministic regardless of cwd:
-        #   kiro vectors  → the agent JSON (source of truth)
-        #   claude vectors→ the built-in role policy (Claude agents have no JSON)
-        allowed = load_allowed_paths(actor) if argv_agent else claude_policy(actor)
-        allowed_ok = bool(allowed) and path_allowed(normalize_path(raw_path), allowed)
+        # Exercise the REAL decide() with the host that fired (kiro vector ⇒ Kiro host via argv;
+        # claude vector ⇒ Claude host via agent_type), so host-based source selection is under test.
+        allowed_ok, allowed, _ = decide(actor, raw_path, claude_host=(argv_agent is None))
         ok = allowed_ok == expect
         fails += not ok
         tag = "PASS" if ok else "FAIL"
