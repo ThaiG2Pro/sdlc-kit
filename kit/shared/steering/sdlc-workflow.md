@@ -52,6 +52,19 @@ Naming mặc định (`git.branch_naming`): `{type}/{ticket}-{slug}` — vd `fea
 > `worktree add`). Mọi git mutation khác (add/commit/checkout-file/reset/merge) vẫn bị chặn — code
 > chỉ do developer (S4) viết.
 
+> ### 🔒 Bất biến: role là PLAYBOOK, không phải DANH TÍNH
+> Nạp prompt của một role (vd orchestrator đọc `architect.md` để chạy S3 inline, hoặc tự xưng "tôi
+> là architect") = mượn **checklist** của phase đó — KHÔNG phải trở thành actor có quyền của role đó.
+> Quyền GHI do **host cấp danh tính**, không theo lời tự khai: Kiro lấy tên agent từ `argv[1]` (hardwire
+> theo agent đang active); Claude lấy `agent_type` từ subagent do Task spawn (main session = không có).
+> Mỗi danh tính có write-fence cố định — **chỉ `developer` mới có `src/**`**; orchestrator + analyst/
+> architect/qa/onboarder chỉ ghi spec/doc/test. Vì vậy:
+> - Mạo danh role chỉ-đọc-spec (analyst/architect/qa) → vô hại; phase đó vốn không sinh code.
+> - Mạo danh `developer` để ghi code → guard tra danh tính thật (vd `sdlc-full`), không thấy đường
+>   `src/**` trong fence → **chặn (exit 2)**. Mạo danh KHÔNG leo thang được tới code.
+> - S4 (Build) là chỗ inline-driving cố tình "gãy": muốn ghi code phải là `developer` thật — trên
+>   Kiro `/agent swap → developer`, trên Claude orchestrator **spawn** developer subagent.
+
 ---
 
 ## Lifecycle Phases

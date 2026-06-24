@@ -3,6 +3,59 @@
 All notable changes to **kiro-sdlc-kit** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/); this project uses [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+**Dual-target: Claude Code support.** The kit now emits both `.kiro/` (Kiro IDE) and `.claude/`
+(Claude Code) from one source — `kit/shared/**` overlaid by `kit/targets/<platform>/**`. Pick the
+platform at install time; the framework (process, skills, gates, security model) is identical on both.
+
+### Added
+
+- **`--target kiro|claude|both` flag on `init`.** Default is an interactive platform menu (or `both`
+  non-interactively). Each target gets its own `<platform>/.kit-manifest.json`; `--check`/`--force`
+  report per-target plans.
+- **Claude Code target (`.claude/`).** The orchestrator is the **main session**, driven by slash
+  commands: `/sdlc-full` and `/sdlc-fast` run the whole pipeline and spawn each role as a one-shot
+  subagent; `/onboarder`, `/analyst`, `/architect`, `/developer`, `/qa` run a single role directly.
+  Context is `@import`ed in `CLAUDE.md`; stack skills under `.claude/skills/` are auto-discovered
+  (no `context-map.json`).
+- **Role-aware security via PreToolUse hooks.** "Only the developer writes code" is enforced on
+  Claude by an `agent_type`-keyed hook (a subagent's `agent_type` is present; the main session's is
+  absent ⇒ orchestrator), mirroring the Kiro guard that reads the agent name from `argv[1]`. Fail-closed.
+- **"Role is a playbook, not an identity" invariant** documented in the always-on `sdlc-workflow.md`
+  steering and a new README **Security model** section: loading a role's prompt borrows its checklist,
+  not its write-permissions; the write-fence is keyed to the host-provided identity (`argv[1]` /
+  `agent_type`), so impersonating a read-only role is harmless and impersonating `developer` cannot
+  escalate to code (the guard blocks any non-developer `src/**` write).
+
+### Changed
+
+- **`apply-stack.mjs` is platform-aware.** On Claude it seeds context + copies skills into
+  `.claude/skills/` and skips the Kiro-only `context-map.json` merge/re-wire.
+- **`openspec init --tools <platform>`** scaffolds the namespaced `opsx`/`openspec-*` skills for the
+  chosen target(s).
+- **Tooling per platform.** Kiro installs `doctor` + `context-map` + the shared guards. Claude
+  installs `doctor-claude` + the shared guards (`context-check`, `apply-stack`, `pipeline-guard`,
+  `cpp-guard`) — no `context-map` (skills auto-discover; nothing to wire).
+- **README** rewritten for dual-target install & usage.
+
+### Fixed
+
+- **`CLAUDE.md` `@import` paths were wrong for the install location.** The file installs to
+  `.claude/CLAUDE.md`, but its imports used the `@.claude/steering/…` / `@.claude/context/…` prefix —
+  and Claude Code resolves `@imports` relative to the **importing file's own directory**, so those
+  resolved to the non-existent `.claude/.claude/…` and silently dropped **all** steering rules and
+  the context contract at runtime. Fixed to `@steering/…` / `@context/…`.
+
+### Tooling
+
+- **`doctor-claude.mjs` — structural health check for the Claude target** (the Kiro `doctor.mjs`
+  validates agent JSON + `resources[]` + the context map, none of which exist on Claude). It verifies
+  `CLAUDE.md` `@import`s resolve (relative to the file's dir — would have caught the bug above), all
+  7 commands + 5 subagents exist, the **"only `developer` has the `Edit` tool"** security invariant
+  holds, `settings.json` hooks point at installed scripts/tools, workspace symlinks, and context
+  completeness. `node .claude/tools/doctor-claude.mjs`.
+
 ## [1.1.0] — 2026-06-24
 
 Three themes: a full skill audit, automatic git isolation per pipeline, and a working

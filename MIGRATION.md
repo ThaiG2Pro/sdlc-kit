@@ -1,6 +1,7 @@
 # MIGRATION — Kiro → Claude Code (dual-target)
 
-> Status: **IMPLEMENTED** (Phases 1–6 ✅ on `feat/claude-target`). One kit source emits `.kiro/`
+> Status: **IMPLEMENTED** (Phases 1–7 ✅ on `feat/claude-target`; Phase 7 = Claude validator +
+> `@import` bugfix). One kit source emits `.kiro/`
 > and/or `.claude/`; the user picks at `init` time (`--target kiro|claude|both`).
 > Goal: ship the SDLC kit for **both** Kiro IDE and Claude Code from one source,
 > letting the user pick the platform at `init` time (like `create-vite` / `create-next-app`).
@@ -379,6 +380,28 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
      write real code into the clone via the developer subagent. The deterministic security + tooling
      E2E above is the faithful scoped verification; the end-to-end pipeline drive should be exercised
      in a real session.
+7. ✅ **Post-migration hardening — DONE (Claude validator + `@import` bugfix).** Review of the
+   Kiro↔Claude differences surfaced that the migration had **no structural validator for the Claude
+   target** — `doctor.mjs` only validates Kiro agent JSON + `resources[]` + the context map, none of
+   which exist on Claude, and `context-check.mjs` covers only context *completeness*. Closing that gap
+   with `doctor-claude.mjs` immediately exposed a real shipping bug:
+   - **🐞 `CLAUDE.md` `@import` paths were broken.** The file installs to `.claude/CLAUDE.md` (Claude
+     Code auto-loads either `./CLAUDE.md` or `./.claude/CLAUDE.md` — confirmed against
+     code.claude.com/docs/en/memory), but its imports used the `@.claude/steering/…` / `@.claude/context/…`
+     prefix. Claude resolves `@imports` **relative to the importing file's own directory**, so from
+     `.claude/CLAUDE.md` those resolved to the non-existent `.claude/.claude/…` — silently dropping
+     **all** steering rules + the entire context contract at runtime. Phase 6's E2E never exercised
+     `@import` resolution, so it slipped through. Fixed the source to `@steering/…` / `@context/…`.
+   - **`doctor-claude.mjs`** (added to the Claude tool list in `init.mjs`) validates: required dirs +
+     `CLAUDE.md`/`settings.json`; **every `@import` resolves relative to the file's own dir** (the
+     check that would have caught the bug); all 7 commands + 5 subagents present; subagent frontmatter
+     valid and the **"only `developer` carries the `Edit` tool" security invariant** (regression guard
+     for defense-layer 1); `settings.json` valid JSON with hook scripts + the 4 tools installed; the
+     `sdlc-orchestration-core` skill present; openspec CLI + workspace + symlinks; context completeness.
+   - **Verified:** fresh `--target claude` install → `doctor-claude` reports HEALTHY (only the expected
+     pre-onboarder "context not filled" WARN). Negative test: re-introducing the `@.claude/` prefix and
+     granting `analyst` the `Edit` tool both FAIL as designed (`@import does not resolve`; `SECURITY:
+     analyst subagent carries Edit`).
 
 ---
 
