@@ -42,9 +42,12 @@ for (const d of ['agents', 'agents/scripts', 'commands', 'skills', 'steering', '
 }
 existsSync(join(cc, 'settings.json')) ? ok('file .claude/settings.json') : fail('missing .claude/settings.json');
 
-// CLAUDE.md is auto-loaded by Claude Code from EITHER ./CLAUDE.md or ./.claude/CLAUDE.md (equivalent).
-const claudeMd = existsSync(join(projectDir, 'CLAUDE.md')) ? join(projectDir, 'CLAUDE.md')
-  : existsSync(join(cc, 'CLAUDE.md')) ? join(cc, 'CLAUDE.md') : null;
+// Claude Code auto-loads BOTH ./CLAUDE.md and ./.claude/CLAUDE.md. The kit installs its entry file
+// (the one carrying the @import wiring) to .claude/CLAUDE.md — a project may ALSO keep its own
+// ./CLAUDE.md, and they coexist. Validate the KIT's file, so a user's import-less project doc at the
+// root doesn't mask (or get mistaken for) the kit's wiring. Fall back to root only if absent.
+const claudeMd = existsSync(join(cc, 'CLAUDE.md')) ? join(cc, 'CLAUDE.md')
+  : existsSync(join(projectDir, 'CLAUDE.md')) ? join(projectDir, 'CLAUDE.md') : null;
 if (claudeMd) ok(`file ${claudeMd === join(cc, 'CLAUDE.md') ? '.claude/CLAUDE.md' : 'CLAUDE.md'}`);
 else fail('no CLAUDE.md at project root or .claude/ — Claude has no entry point');
 
