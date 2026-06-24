@@ -214,22 +214,26 @@ function applyTarget(ctx, vals) {
   writeFileSync(manifestPath, JSON.stringify({ kitVersion: KIT_VERSION, files: [...files].sort() }, null, 0) + '\n');
 
   // --- platform-specific post-steps ---
-  if (platform === 'kiro') {
-    // Copy the context-map engine into the project so the onboarder agent / context-mapper
-    // skill can re-run it in-place (node .kiro/tools/context-map.mjs).
-    for (const tool of ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs']) {
-      const toolSrc = join(KIT_ROOT, 'bin', 'lib', tool);
-      if (existsSync(toolSrc)) {
-        const toolDst = join(outDir, 'tools', tool);
-        mkdirSync(dirname(toolDst), { recursive: true });
-        copyFileSync(toolSrc, toolDst);
-        log(`  ✓ installed ${label}/tools/${tool}`);
-      }
+  // Copy the engine tools into <target>/tools/ so agents/commands/skills can re-run them in place.
+  // The guards (pipeline-guard, cpp-guard, context-check) resolve their platform dir from their own
+  // install path, so the same source works under .kiro/tools/ and .claude/tools/. context-map.mjs +
+  // apply-stack.mjs wire Kiro agent JSON resources[] — Kiro-only.
+  const TOOLS_BY_PLATFORM = {
+    kiro: ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs'],
+    claude: ['context-check.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs'],
+  };
+  for (const tool of TOOLS_BY_PLATFORM[platform] || []) {
+    const toolSrc = join(KIT_ROOT, 'bin', 'lib', tool);
+    if (existsSync(toolSrc)) {
+      const toolDst = join(outDir, 'tools', tool);
+      mkdirSync(dirname(toolDst), { recursive: true });
+      copyFileSync(toolSrc, toolDst);
+      log(`  ✓ installed ${label}/tools/${tool}`);
     }
-    // NOTE: context→agents wiring (applyContextMap) runs AFTER openspec init/symlink in main(),
-    // because context-map.json lists `openspec` as a knowledgeBase that is only wired when
-    // .kiro/openspec exists. Wiring here (before openspec) would drop that resource.
   }
+  // NOTE (kiro): context→agents wiring (applyContextMap) runs AFTER openspec init/symlink in main(),
+  // because context-map.json lists `openspec` as a knowledgeBase that is only wired when
+  // .kiro/openspec exists. Wiring here (before openspec) would drop that resource.
 
   // memory/ baton symlink (both platforms point at the single ../memory workspace)
   {
@@ -264,9 +268,11 @@ function printNextSteps(targets, hasOpenspec) {
   }
   if (targets.includes('claude')) {
     log('   [claude] Open the project in Claude Code:');
-    log('     • Orchestrator: /sdlc-full <feature ...> · /sdlc-fast <bug ...>; roles: /analyst /architect /developer /qa /onboarder');
+    log('     • Orchestrator (main session): /sdlc-full <slug> ticket <id> · /sdlc-fast bugfix <slug>');
+    log('     • Role subagents (.claude/agents/): analyst · architect · developer · qa · onboarder');
+    log('     • Run the onboarder first on a new project: it fills .claude/context/*.md + mirrors openspec/config.yaml.');
+    log('     • Security: only the developer subagent writes code — enforced by the agent_type-keyed PreToolUse hooks in .claude/settings.json.');
     log('     • New/changed agents, commands, settings & hooks take effect on the NEXT session (or /agents reload) — not mid-session.');
-    log('     • NOTE: the Claude target is in preview — guards + shared skills/context install now; role subagents & orchestrator commands land in a later kit phase.');
   }
   log('   • Start work: drive the OpenSpec lifecycle (propose → apply → archive) in openspec/changes/.');
   if (!hasOpenspec) log('   ⚠ Install the openspec CLI first (see warning above) — the workspace needs it.\n');

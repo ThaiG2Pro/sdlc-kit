@@ -16,6 +16,12 @@
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// This tool is copied into BOTH .kiro/tools/ and .claude/tools/. Resolve which platform
+// directory holds the config (pipelines.json) from this script's own install path, so one
+// source works under either host. Defaults to .kiro (Kiro behavior unchanged).
+const PLATFORM_DIR = fileURLToPath(import.meta.url).includes('/.claude/') ? '.claude' : '.kiro';
 
 // Artifacts that must exist in <CHANGE_DIR> before a phase's gate can pass.
 // (Deterministic filenames — independent of phaseCatalog's prose `produces`.)
@@ -43,8 +49,8 @@ for (let i = 0; i < argv.length; i++) {
 projectDir = resolve(projectDir);
 
 // ---- load pipelines.json ----
-const pipelines = readJson(join(projectDir, '.kiro', 'pipelines.json'));
-if (!pipelines) die(`no .kiro/pipelines.json at ${projectDir}`);
+const pipelines = readJson(join(projectDir, PLATFORM_DIR, 'pipelines.json'));
+if (!pipelines) die(`no ${PLATFORM_DIR}/pipelines.json at ${projectDir}`);
 const { phaseCatalog = {}, types = {} } = pipelines;
 
 // ---- resolve the active change dir ----

@@ -17,6 +17,11 @@
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Copied into BOTH .kiro/tools/ and .claude/tools/; resolve the platform config dir
+// (sdlc.config.json) from this script's own install path. Defaults to .kiro.
+const PLATFORM_DIR = fileURLToPath(import.meta.url).includes('/.claude/') ? '.claude' : '.kiro';
 
 // ── CPP contract per OUTGOING gate phase (mirrors sdlc-orchestration-core "CPP Contract Checks") ──
 // Each rule describes what the phase's agent must have written into the CPP baton before its gate.
@@ -180,7 +185,7 @@ export function checkTrailing({ projectRoot, changeDir, state }) {
   //    teeth for the orchestrator's prose "Convergence loop": you cannot mark SPEC_LOCK/DESIGN_REVIEW
   //    passed at full rigor without the audit having actually stabilized. Verified at the NEXT gate.
   if (state && state.rigor === 'full') {
-    const cfg = readJson(join(projectRoot, '.kiro', 'sdlc.config.json')) || {};
+    const cfg = readJson(join(projectRoot, PLATFORM_DIR, 'sdlc.config.json')) || {};
     const gcfg = cfg.gates || {};
     if (gcfg.convergence !== 'never') { // 'never' = loop intentionally disabled project-wide
       const need = Number.isInteger(gcfg.stable_rounds) ? gcfg.stable_rounds : 3;

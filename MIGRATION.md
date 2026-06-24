@@ -104,7 +104,14 @@ agent_type == onboarder → Write only .claude/context/** (or docs/**)
 ### 3.2 Three defense layers (Kiro had one)
 
 1. **`tools` frontmatter** per subagent — analyst/architect/qa have **no `Edit`** → physically cannot edit code.
-2. **`permissions.deny`** in `.claude/settings.json` — e.g. `deny: ["Edit(src/**)","Write(src/**)"]` applies to the **main session too** → closes the exact orchestrator-writes-code hole.
+2. **`permissions.deny`** in `.claude/settings.json` — a coarse backstop. **Implementation deviation
+   (see §9.3):** we do **NOT** blanket-deny `Edit(src/**)`/`Write(src/**)` here, because
+   `permissions.deny` is **not role-aware** — a global src-deny would also block the *developer
+   subagent*, which legitimately must write code. The role-based "main session can't write code"
+   rule is enforced by the `agent_type`-keyed hook (layer 3), the only layer that can distinguish the
+   developer from the orchestrator. `deny` instead protects universally-unsafe targets (the kit's own
+   `.claude/settings.json`, `agents/scripts/**`, `agents/**`, `commands/**`, and the living spec
+   `openspec/specs/**` — written only by `openspec archive`).
 3. **PreToolUse hook** keyed by `agent_type` — the deterministic, fail-closed last line, and the place that grants the `developer` exception.
 
 ### 3.3 Guard scripts: ONE source, dual-input
@@ -292,12 +299,45 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
    *Deviation from §4:* the guards stay at `agents/scripts/*.py` in **both** targets (not
    `.claude/hooks/`) so one shared copy keeps the existing Kiro paths byte-identical; Claude's
    `settings.json` (Phase 3) will reference `.claude/agents/scripts/…`.
-3. **Claude role subagents** `.claude/agents/*.md` + `settings.json` deny/allow
-   (the native permission layer). **+ version-drift detector** (Q4): `SessionStart`
-   hook (Claude) / `agentSpawn` (Kiro) warning when manifest `kitVersion` ≠ available.
-4. **Orchestrator commands** `/sdlc-full` + `/sdlc-fast`: spawn role subagents,
-   gate-in-main-session, baton read/write. Core mechanics shared via
-   `skills/sdlc-orchestration-core/` (keep the INVARIANT block).
+3. ✅ **Claude role subagents + settings + drift detector — DONE.**
+   - `kit/targets/claude/agents/{analyst,architect,developer,qa,onboarder}.md` — Claude-native
+     subagents (frontmatter `name`/`description`/`tools`/`model`; opus for analyst/architect/onboarder,
+     sonnet for developer/qa). Ported faithfully from the Kiro prompts (hard rules, ID formats,
+     thresholds, gate criteria preserved) but adapted to the **one-shot** model: a subagent cannot
+     interview the user mid-run, so it records `[UNCLEAR]`/`[ASSUMED]` + returns a structured
+     question/assumption list for the orchestrator to resolve at the gate. Tool matrix per §4 (only
+     **developer** has `Edit`); none carry `Task`/`Agent`. Detailed methodology stays in the shared
+     `.claude/skills/`.
+   - `kit/targets/claude/settings.json` — `permissions.deny`/`allow` + hooks: PreToolUse `Bash` →
+     `check-shell-command.py`, PreToolUse `Write|Edit|MultiEdit` → `check-write-path.py`, SessionStart
+     → `check-kit-version.py` + `agent-spawn-context.py`, UserPromptSubmit (ticket auto-context), Stop
+     (non-spec-change desync flag). Hooks reference `.claude/agents/scripts/…`.
+   - `kit/targets/claude/CLAUDE.md` — `@import`s steering (security/sdlc-workflow/rules-registry) +
+     the 6 context files; stack packs stay model-invoked skills (Q2).
+   - **Version-drift detector** (Q4): `kit/shared/agents/scripts/check-kit-version.py` (shared) —
+     compares the installed manifest `kitVersion` to the available version (env
+     `KIRO_SDLC_KIT_VERSION` / `KIRO_SDLC_KIT_HOME/package.json`); warns on drift, **silent when the
+     available version can't be resolved**, always exit 0. Wired as a Claude SessionStart hook.
+   - *Settings deviation (see §3.2):* code-write role enforcement is the hook, not a src-`deny`
+     (deny is not role-aware and would block the developer subagent).
+4. ✅ **Orchestrator commands — DONE.** `kit/targets/claude/commands/{sdlc-full,sdlc-fast}.md` —
+   slash commands that run the orchestrator **in the main session** (`$ARGUMENTS`, `argument-hint`).
+   They defer all machinery to the shared `sdlc-orchestration-core` skill (kept byte-identical for the
+   Kiro golden) and add a **Claude translation layer**: "route to {agent}" ⇒ spawn that role via the
+   Task tool with the baton injected; gates run in-session and pause for the user; `.kiro/tools/*` ⇒
+   `.claude/tools/*`. The INVARIANT block (orchestrator never writes code) is restated in each.
+   - **Tooling:** the deterministic guards (`pipeline-guard.mjs`, `cpp-guard.mjs`, `context-check.mjs`)
+     are now **platform-aware** — they resolve `.kiro` vs `.claude` from their own install path
+     (`import.meta.url`), so one source works under both `<target>/tools/`. `init.mjs` copies the
+     neutral subset into `.claude/tools/` (context-map/apply-stack stay Kiro-only — they wire Kiro
+     agent JSON). Kiro runtime behavior unchanged (defaults to `.kiro`).
+   - **Verified:** `--target both` produces a complete `.claude/` (5 agents, 2 commands, settings,
+     CLAUDE.md, 3 tools, guard scripts, 30 skills incl. namespaced openspec-* coexisting); all
+     frontmatter parses; no unsubstituted tokens; the guards load the correct `pipelines.json` under
+     both hosts at runtime; guard self-tests 27/27 + 24/24.
+
+   _Remaining (Phase 5–6):_ role commands `/analyst …/onboarder`, CLAUDE.md stack-pack path polish,
+   and an E2E run on a clone of issues-sum.
 5. **Role commands** `/analyst …/onboarder` + skills/stack-pack path fixes + CLAUDE.md
    `@import`s.
 6. **E2E verify** on a clone of issues-sum: run `/sdlc-full feature X`; confirm the main
