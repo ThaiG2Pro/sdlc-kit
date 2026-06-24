@@ -8,7 +8,7 @@ description: >
 
 # Sprint Retro — {{PROJECT_TITLE}} AI-Augmented SDLC
 
-Retrospective tool cho AI-Augmented SDLC, aligned với `.kiro/steering/sdlc-workflow.md`.
+Retrospective tool cho AI-Augmented SDLC, aligned với `{{PLATFORM_DIR}}/steering/sdlc-workflow.md`.
 
 ## When to Activate
 
@@ -88,7 +88,7 @@ Liệt kê:
 - New patterns found
 
 **What we LACKED (Lacked)**
-- Missing skills/patterns in `.kiro/skills/`
+- Missing skills/patterns in `{{PLATFORM_DIR}}/skills/`
 - Gaps in agents prompts
 - Hooks not triggered as expected
 

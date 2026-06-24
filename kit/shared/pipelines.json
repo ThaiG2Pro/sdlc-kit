@@ -20,7 +20,7 @@
   "gateCatalog": {
     "SPEC_LOCK":     "spec-auditor PASS  AND  openspec change validate passes",
     "DESIGN_REVIEW": "cross-artifact-audit 0 CRITICAL  AND  openspec change validate passes",
-    "BUILD":         "tests green + coverage/sonar per .kiro/sdlc.config.json",
+    "BUILD":         "tests green + coverage/sonar per {{PLATFORM_DIR}}/sdlc.config.json",
     "QA":            "0 Critical/High bugs open; all ACs verified",
     "RELEASE":       "migration reviewed + rollback plan + 30-min post-deploy stable"
   },

@@ -8,7 +8,7 @@ description: >
 
 # Security Review — {{PROJECT_TITLE}}
 
-Security patterns cho NestJS, align với `.kiro/steering/security.md` và `.kiro/context/conventions.md`.
+Security patterns cho NestJS, align với `{{PLATFORM_DIR}}/steering/security.md` và `{{PLATFORM_DIR}}/context/conventions.md`.
 Full audit: `docs/60-operations/05-security-audit.md` (38 vulnerabilities).
 
 ## When to Activate

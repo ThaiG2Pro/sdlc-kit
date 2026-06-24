@@ -8,7 +8,7 @@ description: >
 
 # API Documentation Checker — {{PROJECT_TITLE}}
 
-OpenAPI compliance checker cho NestJS, align với `.kiro/context/conventions.md`.
+OpenAPI compliance checker cho NestJS, align với `{{PLATFORM_DIR}}/context/conventions.md`.
 
 ## When to Activate
 

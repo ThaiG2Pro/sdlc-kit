@@ -162,6 +162,9 @@ function computeTarget(platform) {
 function applyTarget(ctx, vals) {
   const { platform, outDir, srcMap, files, manifestPath, prevVersion, pruneList } = ctx;
   const label = TARGET_DIRS[platform];
+  // Per-platform token: shared sources reference platform paths via {{PLATFORM_DIR}} so one source
+  // emits `.kiro/…` or `.claude/…` correctly for each target (e.g. executable paths in skill docs).
+  const platformVals = { ...vals, PLATFORM_DIR: label };
 
   log(`\n  [${platform}] → ${label}/`);
   if (existsSync(manifestPath)) {
@@ -198,7 +201,7 @@ function applyTarget(ctx, vals) {
     if (TEXT_EXT.test(rel)) {
       let content = readFileSync(src, 'utf8');
       const before = content;
-      content = applyTokens(content, vals);
+      content = applyTokens(content, platformVals);
       if (content !== before) tokened++;
       writeFileSync(dst, content);
     } else {

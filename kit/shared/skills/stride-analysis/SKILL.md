@@ -5,7 +5,7 @@ description: >
   implementation (Spoofing/Tampering/Repudiation/Info-disclosure/DoS/Elevation). Produces a
   threat list + mitigations + a security gate (PASS/WARNING/BLOCK). Run during S1/S2 (analyst —
   Step 4e, feeds Early Risk Flags) and/or S3 (architect, design security). Gated by
-  `.kiro/sdlc.config.json → security.stride_analysis` (auto | always | never).
+  `{{PLATFORM_DIR}}/sdlc.config.json → security.stride_analysis` (auto | always | never).
 ---
 
 # stride-analysis — STRIDE Threat Modeling
@@ -16,7 +16,7 @@ description: >
 
 ## When to run (honor the config)
 
-Read `.kiro/sdlc.config.json → security.stride_analysis`:
+Read `{{PLATFORM_DIR}}/sdlc.config.json → security.stride_analysis`:
 - **`always`** → run for every feature.
 - **`auto`** (default) → run only when the feature touches a sensitive area — auth/login,
   payment/billing, PII/personal data, tokens/secrets, file upload, admin/privilege, or any

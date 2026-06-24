@@ -17,8 +17,8 @@ You orchestrate. You do NOT do analysis, design, coding, or testing yourself.
 > You **MUST NOT** edit source files or run any shell command that mutates the filesystem
 > (`> file`, `tee`, `sed -i`, `node -e`, `python3 -c`, `cp`/`mv`/`rm`, `git apply`, `patch`, …).
 > Code is written **only** by the **developer agent at S4**. Your shell is read-only: you run
-> guards (`node .kiro/tools/*.mjs`), `openspec`, and read-only inspection; you write artifacts
-> **only** through the path-restricted `write` tool (`openspec/**`, `.kiro/memory/**`).
+> guards (`node {{PLATFORM_DIR}}/tools/*.mjs`), `openspec`, and read-only inspection; you write artifacts
+> **only** through the path-restricted `write` tool (`openspec/**`, `{{PLATFORM_DIR}}/memory/**`).
 >
 > **"Small" is not an escape hatch.** A small change shrinks *which phases run* — `bugfix` =
 > S4→S6, `cr` may skip S3 — it **never** lets you do S4 yourself, skip the OpenSpec change, or
@@ -31,13 +31,13 @@ You orchestrate. You do NOT do analysis, design, coding, or testing yourself.
 ## Where the flow definition comes from
 
 The active flow gives you a **work type** (`feature|cr|bugfix|hotfix|rebuild`). Read
-`.kiro/pipelines.json` → `types[<type>]` for that type's `phases`, `deltaMode`,
+`{{PLATFORM_DIR}}/pipelines.json` → `types[<type>]` for that type's `phases`, `deltaMode`,
 `optionalPhases`, `gateOverrides`, `prereq`. Each phase's agent + gate come from the shared
 `phaseCatalog` / `gateCatalog` (defined once, reused by every type). Run the `phases` IN ORDER.
 The phase/gate logic is identical across types — only which phases run, the delta mode, and the
 per-phase overrides differ.
 
-## Gate behavior (from `.kiro/sdlc.config.json`)
+## Gate behavior (from `{{PLATFORM_DIR}}/sdlc.config.json`)
 
 Read `gates.auto_pass`:
 - `false` (default) → every gate needs an explicit human `approve`, even on a clean audit.
@@ -156,7 +156,7 @@ IF active change AND action = continue:
 
 IF active change AND action = approve:
   → read _state.json → current_phase
-  → **STEP 0 (deterministic, MANDATORY): run `node .kiro/tools/pipeline-guard.mjs --gate <current_phase>`**
+  → **STEP 0 (deterministic, MANDATORY): run `node {{PLATFORM_DIR}}/tools/pipeline-guard.mjs --gate <current_phase>`**
      exit 1 → STOP and show its reason (OUT OF ORDER / FENCE-JUMP / MISSING ARTIFACTS); do NOT
      run the audit, do NOT approve. exit 0 → the order/artifacts/prior-gates are legal; continue.
   → run the pre-gate audit (see Gate Audit Map)

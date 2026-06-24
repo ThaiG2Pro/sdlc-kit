@@ -83,7 +83,7 @@ Format được **orchestrator chọn PER PIPELINE ở kickoff** và lưu sẵn 
 priority, objective, steps, expected, requirement, automation, status`) rồi chạy generator đã ship
 cùng skill (python3, có sẵn trong shell của qa — KHÔNG cần Node):
 ```bash
-python3 .kiro/skills/qa-test-design/gen_testcases_xlsx.py \
+python3 {{PLATFORM_DIR}}/skills/qa-test-design/gen_testcases_xlsx.py \
   openspec/changes/<change>/qa/testcases.json \
   openspec/changes/<change>/qa/testcases.xlsx
 ```

@@ -1,13 +1,13 @@
 ---
 name: context-mapper
-description: "Wire project context to each agent. Reads .kiro/context-map.json and (re)writes the resources[] of every .kiro/agents/*.json — skipping any file that doesn't exist, so references never break. Run after editing context-map.json, adding a context/ file, or adding a project doc folder."
+description: "Wire project context to each agent. Reads {{PLATFORM_DIR}}/context-map.json and (re)writes the resources[] of every {{PLATFORM_DIR}}/agents/*.json — skipping any file that doesn't exist, so references never break. Run after editing context-map.json, adding a context/ file, or adding a project doc folder."
 disable-model-invocation: false
 ---
 
 # context-mapper
 
 Maps **project context → each agent** by regenerating the `resources` array of every
-Kiro agent config from a single declarative source: `.kiro/context-map.json`.
+Kiro agent config from a single declarative source: `{{PLATFORM_DIR}}/context-map.json`.
 
 This is the mechanism that lets each role (analyst / architect / developer / qa / sdlc)
 consume a **different slice** of the project context, without hand-editing JSON.
@@ -15,10 +15,10 @@ consume a **different slice** of the project context, without hand-editing JSON.
 ## Model
 
 ```
-.kiro/context-map.json   ← declares, per agent: skills[] + knowledgeBase[] (+ extraDocs[])
-        │  node .kiro/tools/context-map.mjs
+{{PLATFORM_DIR}}/context-map.json   ← declares, per agent: skills[] + knowledgeBase[] (+ extraDocs[])
+        │  node {{PLATFORM_DIR}}/tools/context-map.mjs
         ▼
-.kiro/agents/*.json      ← resources[] regenerated (skills + knowledgeBase sources)
+{{PLATFORM_DIR}}/agents/*.json      ← resources[] regenerated (skills + knowledgeBase sources)
 ```
 
 Any path that does not exist on disk is **skipped** (logged), so the kit never produces
@@ -26,8 +26,8 @@ a broken `skill://` or `file://` reference.
 
 ## When to run
 
-- After editing `.kiro/context-map.json`
-- After adding/removing a file under `.kiro/context/`
+- After editing `{{PLATFORM_DIR}}/context-map.json`
+- After adding/removing a file under `{{PLATFORM_DIR}}/context/`
 - After adding a project doc folder you want an agent to read (add it to
   `extraDocs.<agent>` in `context-map.json` first)
 - After `init` (the installer runs it once automatically)
@@ -35,9 +35,9 @@ a broken `skill://` or `file://` reference.
 ## How to run
 
 ```bash
-node .kiro/tools/context-map.mjs            # operate on the current project
-node .kiro/tools/context-map.mjs <dir>      # operate on another project dir
-node .kiro/tools/context-map.mjs --map <path-to-context-map.json>
+node {{PLATFORM_DIR}}/tools/context-map.mjs            # operate on the current project
+node {{PLATFORM_DIR}}/tools/context-map.mjs <dir>      # operate on another project dir
+node {{PLATFORM_DIR}}/tools/context-map.mjs --map <path-to-context-map.json>
 ```
 
 It prints, per agent, how many skills + knowledge-base sources were wired and how many
@@ -59,8 +59,8 @@ entries were skipped (missing). Re-running is safe and idempotent.
 }
 ```
 
-- `skills` entries resolve to `skill://.kiro/skills/<name>/SKILL.md`
-- `knowledgeBase` entries are `.kiro/`-relative → `file://./.kiro/<entry>`
+- `skills` entries resolve to `skill://{{PLATFORM_DIR}}/skills/<name>/SKILL.md`
+- `knowledgeBase` entries are `{{PLATFORM_DIR}}/`-relative → `file://./{{PLATFORM_DIR}}/<entry>`
 - `extraDocs` entries are project-root-relative → `file://./<entry>`
 
 ## Rules

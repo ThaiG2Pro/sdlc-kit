@@ -17,7 +17,7 @@
 
 ## Testing
 - **Test framework**: PHPUnit or Pest
-- **Coverage gate**: ≥ 80% (pcov/xdebug) — see `.kiro/sdlc.config.json`
+- **Coverage gate**: ≥ 80% (pcov/xdebug) — see `{{PLATFORM_DIR}}/sdlc.config.json`
 - **Integration test policy**: `RefreshDatabase` against a test DB; mock external HTTP
 
 ## Build / Tooling

@@ -7,7 +7,7 @@ description: >
 
 # Coding Standards — {{PROJECT_TITLE}}
 
-TypeScript standards, align với `.kiro/context/conventions.md`.
+TypeScript standards, align với `{{PLATFORM_DIR}}/context/conventions.md`.
 
 ## When to Activate
 

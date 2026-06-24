@@ -8,7 +8,7 @@ description: >
 
 # Commit Message Helper — {{PROJECT_TITLE}}
 
-Conventional commits aligned với `.kiro/context/conventions.md`.
+Conventional commits aligned với `{{PLATFORM_DIR}}/context/conventions.md`.
 
 ## When to Activate
 

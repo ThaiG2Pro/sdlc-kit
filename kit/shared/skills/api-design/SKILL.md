@@ -7,7 +7,7 @@ description: >
 
 # API Design — {{PROJECT_TITLE}}
 
-REST API patterns, align với `.kiro/context/conventions.md`.
+REST API patterns, align với `{{PLATFORM_DIR}}/context/conventions.md`.
 
 > **Source of truth = `context/conventions.md`.** Nếu project đó định nghĩa response shape /
 > status policy / URL scheme khác → conventions.md THẮNG. Phần dưới là reference defaults +

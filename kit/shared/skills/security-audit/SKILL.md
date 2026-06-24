@@ -8,7 +8,7 @@ description: >
 
 # Security Audit — {{PROJECT_TITLE}}
 
-Deep security review theo OWASP Top 10, align với `.kiro/steering/security.md`.
+Deep security review theo OWASP Top 10, align với `{{PLATFORM_DIR}}/steering/security.md`.
 
 > **Stack-agnostic**: Code blocks below are **NestJS/Prisma examples** — the OWASP categories and checklist items are universal. For Laravel / Next.js / other stacks, apply the equivalent mechanism (see `context/stack.md`): e.g. validation = class-validator DTO **or** Laravel FormRequest **or** zod schema; parameterized query = Prisma **or** Eloquent/query bindings; guards = NestJS `@UseGuards` **or** Laravel middleware/policies **or** Next.js middleware.
 
