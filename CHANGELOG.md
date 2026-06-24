@@ -66,6 +66,14 @@ platform at install time; the framework (process, skills, gates, security model)
   preferred `./CLAUDE.md` (the project's own doc, which has no `@import`s) and falsely warned about
   missing `@import` lines while never checking the kit's wiring. Now validates the kit-managed
   `.claude/CLAUDE.md` (falling back to root only if absent).
+- **Write-guard blocked Claude subagents from `.claude/context/**` on dual-target projects.** With
+  both `.kiro/` and `.claude/` installed, `check-write-path.py` always preferred the
+  `.kiro/agents/<role>.json` allow-list ("Kiro JSON wins"), whose paths are all `.kiro/…` — so a
+  Claude-session `onboarder` could fill the contract only into `.kiro/context/` and was blocked from
+  `.claude/context/` (where the Claude session reads). Now the policy **source follows the host**
+  (detected from the hook script's own install path): Claude host → the built-in role policy; Kiro
+  host → the agent JSON. `src/**` stays blocked for every non-developer role. The self-test was
+  rewritten to exercise the real `decide()` (it had pinned the source per vector, hiding the bug).
 
 ### Tooling
 
