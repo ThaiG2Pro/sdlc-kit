@@ -273,13 +273,25 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
 
 ## 9. Phased execution plan
 
-1. **Scaffold + layout refactor.** Split `kit/` into `shared/` + `targets/{kiro,claude}/`;
-   generalise `init.mjs` to a per-target copy loop; add `--target` + interactive menu;
-   per-target manifest + "Next steps". (Kiro output must stay byte-for-byte equivalent.)
-2. **Dual-input guards (highest risk).** Port `check-write-path.py` +
-   `check-shell-command.py` to read `agent_type` (stdin) ∥ `argv` (Kiro). New self-tests
-   incl. main-session-blocked / developer-allowed / analyst-openspec-only; **Kiro
-   regression must still pass.**
+1. ✅ **Scaffold + layout refactor — DONE.** `kit/` split into `shared/` + `targets/{kiro,claude}/`
+   (121 history-preserving `git mv`s); `init.mjs` generalised to a per-target copy loop;
+   `--target kiro|claude|both` flag + interactive menu (default Both on TTY, `kiro` non-TTY);
+   per-target manifest + "Next steps"; `openspec init --tools <joined>` once after the loop.
+   **Verified byte-for-byte:** a golden-master snapshot of the old `.kiro/` output (136 files,
+   sha256) matches the new `--target kiro` output exactly; `--target both` produces an identical
+   `.kiro/`. Regression harness lives in scratch (`golden-kiro.sha256`).
+2. ✅ **Dual-input guards — DONE.** `check-shell-command.py` + `check-write-path.py` now resolve
+   the actor from `argv[1]` (Kiro) ∥ stdin `agent_type` (Claude subagent) ∥ `None` (Claude main
+   session = orchestrator), and the write path from `tool_input.path` ∥ `file_path`. Shell guard
+   maps actor→class (developer=allow / orchestrator=branch-create-only / restricted=read-only).
+   Write guard reads the Kiro agent JSON when present (source of truth) else a built-in Claude
+   role policy. Embedded `--self-test` suites pass **24/24 each**, covering Kiro vectors
+   (unchanged orchestrator/restricted behavior) + Claude vectors (main-session-blocked /
+   developer-allowed / analyst-openspec-only). Combined regression: full `--target kiro` init
+   differs from golden in **exactly these 2 files** — nothing else moved.
+   *Deviation from §4:* the guards stay at `agents/scripts/*.py` in **both** targets (not
+   `.claude/hooks/`) so one shared copy keeps the existing Kiro paths byte-identical; Claude's
+   `settings.json` (Phase 3) will reference `.claude/agents/scripts/…`.
 3. **Claude role subagents** `.claude/agents/*.md` + `settings.json` deny/allow
    (the native permission layer). **+ version-drift detector** (Q4): `SessionStart`
    hook (Claude) / `agentSpawn` (Kiro) warning when manifest `kitVersion` ≠ available.
