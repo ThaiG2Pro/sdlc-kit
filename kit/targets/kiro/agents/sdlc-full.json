@@ -5,12 +5,14 @@
   "tools": [
     "read",
     "write",
-    "shell"
+    "shell",
+    "subagent"
   ],
   "allowedTools": [
     "read",
     "write",
-    "shell"
+    "shell",
+    "subagent"
   ],
   "toolsSettings": {
     "write": {

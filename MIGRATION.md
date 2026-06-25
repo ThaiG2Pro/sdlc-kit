@@ -4,7 +4,9 @@
 > `@import` bugfix; Phase 8 = real-project rollout hardening; Phase 9 = orchestrator-as-agent so the
 > default session is unrestricted; Phase 10 = orchestrator write-fence so it delegates phases instead
 > of doing them inline; Phase 11 = Kiro-CLI reconciliation — kit is Kiro-CLI-native, orchestrator
-> delegates via CLI subagents; Phase 12 = config files joined the shared-root single-source set).
+> prose says it delegates via CLI subagents; Phase 12 = config files joined the shared-root
+> single-source set; Phase 13 = the Kiro orchestrator was actually *granted* the `subagent` tool so
+> that delegation executes instead of being refused).
 > One kit source emits `.kiro/`
 > and/or `.claude/`; the user picks at `init` time (`--target kiro|claude|both`).
 > Goal: ship the SDLC kit for **both** Kiro IDE and Claude Code from one source,
@@ -516,6 +518,34 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
       only ever spells `.claude/`/root paths — which resolve to the shared root via the symlinks. The
       guard's `.kiro/` allow-list entries are inert backstops (Claude never writes there).
     - Deployed to all 5 repos: root config files + per-platform symlinks; `doctor-claude` HEALTHY.
+
+13. ✅ **Kiro orchestrator delegation made real — DONE.** Phase 11 wrote "the orchestrator delegates
+    via CLI subagents" into the prompts, but the agent config never granted the `subagent` tool. Per
+    the Kiro docs, *"if you're building a custom agent that will spawn subagents, include `subagent`
+    in its `tools` array … without it, the agent can't delegate."* So at runtime the orchestrator
+    refused ("I can't spawn or delegate to subagents — I'm the SDLC orchestrator, not a multi-agent
+    runtime") and fell back to telling the user to `/agent swap` manually. Fix:
+    - **Granted `subagent`** to `sdlc-full`/`sdlc-fast` (`tools` + `allowedTools`). The prompts now
+      affirmatively instruct: spawn **exactly one** role subagent per phase ("use the {role} agent to
+      do {phase}"), **sequentially** (gates are sequential — never fan out the 4-parallel way Kiro
+      allows), each returns via the `summary` tool; `/agent swap` is only the fallback if a spawn fails.
+    - **Security re-derivation (the load-bearing part).** A spawned subagent runs under the referenced
+      role's config and, per the docs, inherits its `toolsSettings` (`write.allowedPaths`) +
+      `allowedTools`/`shell.allowedCommands`. Whether `preToolUse` *hooks* also fire inside a subagent
+      is **undocumented**. So the kit must NOT depend on the hook surviving into a subagent — and it
+      doesn't need to: the native `write.allowedPaths` already boxes each read-only role out of
+      `src/**` (analyst → `openspec`+`docs/knowledge`; architect → `openspec`+`docs`; qa →
+      `openspec`+`test*`+`memory`), and `shell.allowedCommands` is read-only for analyst/architect.
+      The hook is **defense-in-depth**, not the only fence. **One residual risk to verify on a live
+      Kiro run:** `qa`'s native `shell.allowedCommands` includes `python3`/`node` (it needs them to run
+      tests), so a qa *subagent* could in principle write code via `python3 -c "open('src/x','w')…"`
+      **iff** the shell-guard hook does not fire in subagents. Test: from an `sdlc-full` session, "use
+      the qa agent" and have it attempt `python3 -c "open('src/_probe','w').write('x')"` — if it's
+      blocked, hooks inherit (airtight); if it writes, hooks don't inherit and qa-as-subagent relies on
+      prompt discipline only (still no *accidental* code-writes, but the hard guard is gone for that
+      one path).
+    - Kiro `doctor.mjs` now fails if either orchestrator lacks `subagent`. Verified: fresh
+      `--target both` install → both orchestrators carry `subagent`; doctor HEALTHY.
 
 ---
 

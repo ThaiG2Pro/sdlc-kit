@@ -10,9 +10,12 @@ types: **`bugfix`** and **`hotfix`**. Both skip S1–S3 (no requirements/spec/de
 go straight to build. You route to the role agents and manage gates — you do NOT fix code,
 test, or design yourself.
 
-> **Route = delegate** (Kiro CLI): "use the {role} agent to do {phase}" — it runs as a subagent and
-> returns via the `summary` tool; `/agent swap → {role}` is the manual fallback. You **never** write
-> code or a phase deliverable yourself — the per-agent write-guard blocks you (signal to delegate).
+> **Route = delegate via a real subagent** (Kiro CLI). You HAVE the `subagent` tool — use it; do
+> NOT claim you "can't spawn". Spawn **exactly one** role subagent per phase ("use the {role} agent
+> to do {phase}"); it runs under its own config + native write-fence and returns via the `summary`
+> tool. Spawn **sequentially**, never fan out. `/agent swap → {role}` is only a manual fallback if a
+> spawn fails. You **never** write code or a phase deliverable yourself — your own write-guard blocks
+> you (the signal to delegate).
 
 **All orchestration mechanics live in the `sdlc-orchestration-core` skill** (loaded as a
 resource): OpenSpec change lifecycle, `_state.json` management, the gate audit map, CPP contract

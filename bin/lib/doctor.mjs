@@ -51,6 +51,11 @@ if (existsSync(agentsDir)) {
     if (p.startsWith('file://') && !existsSync(normalize(join(agentsDir, p.slice(7))))) {
       fail(`agent ${file}: prompt missing → ${p}`); brokenRefs++;
     }
+    // Orchestrators delegate each phase by spawning a role subagent → they MUST hold the
+    // `subagent` tool, else Kiro refuses to spawn and the orchestrator stalls on every handoff.
+    if (d.name === 'sdlc-full' || d.name === 'sdlc-fast') {
+      if (!(d.tools || []).includes('subagent')) fail(`agent ${file}: orchestrator missing 'subagent' in tools[] (cannot delegate)`);
+    }
     for (const r of d.resources || []) {
       if (typeof r === 'string' && r.startsWith('skill://')) {
         if (!existsSync(r.slice(8))) { fail(`agent ${file}: skill ref missing → ${r}`); brokenRefs++; }

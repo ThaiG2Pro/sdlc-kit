@@ -30,6 +30,17 @@ platform at install time; the framework (process, skills, gates, security model)
 
 ### Changed
 
+- **Kiro orchestrators now delegate via real subagents** (Phase 13). `sdlc-full`/`sdlc-fast` gained
+  the `subagent` tool, so "use the {role} agent to do {phase}" spawns the role as a Kiro CLI
+  subagent (one per phase, sequential — gates stay sequential) that runs under its OWN agent config
+  and returns via the `summary` tool. Previously the prompt told the orchestrator to delegate but the
+  config withheld the `subagent` tool, so it refused ("I'm not a multi-agent runtime") and fell back
+  to manual `/agent swap`. Security note: a spawned subagent inherits the role's native
+  `toolsSettings.write.allowedPaths` + `shell.allowedCommands` (so the write-fence holds on its own —
+  analyst/architect/qa cannot write `src/**`); whether the `preToolUse` hooks also fire inside a
+  subagent is undocumented, so the kit no longer *depends* on the hook surviving — the native
+  allow-lists are the self-sufficient fence, with the hook as defense-in-depth. `/agent swap` remains
+  the manual fallback. Kiro doctor now asserts both orchestrators hold the `subagent` tool.
 - **`apply-stack.mjs` is platform-aware.** On Claude it seeds context + copies skills into
   `.claude/skills/` and skips the Kiro-only `context-map.json` merge/re-wire.
 - **`openspec init --tools <platform>`** scaffolds the namespaced `opsx`/`openspec-*` skills for the
