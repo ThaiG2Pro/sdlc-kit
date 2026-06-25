@@ -17,7 +17,7 @@
 
 ## Testing
 - **Test framework**: Vitest (unit) + Playwright (e2e)
-- **Coverage gate**: ≥ 80% — see `{{PLATFORM_DIR}}/sdlc.config.json`
+- **Coverage gate**: ≥ 80% — see `sdlc.config.json`
 - **Integration test policy**: Playwright against a built app; mock external services
 
 ## Build / Tooling

@@ -17,7 +17,7 @@
 
 ## Testing
 - **Test framework**: Vitest (or Jest) + Supertest for HTTP
-- **Coverage gate**: ≥ 80% lines/branches (see `{{PLATFORM_DIR}}/sdlc.config.json`)
+- **Coverage gate**: ≥ 80% lines/branches (see `sdlc.config.json`)
 - **Integration test policy**: real test DB for repositories; mock external HTTP
 
 ## Build / Tooling

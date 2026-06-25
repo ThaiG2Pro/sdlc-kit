@@ -6,7 +6,7 @@
 // One source (kit/shared + kit/targets/<platform>) emits each target.
 // Zero runtime dependencies (Node >= 18 built-ins only).
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, symlinkSync, copyFileSync, rmSync, rmdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, lstatSync, symlinkSync, copyFileSync, rmSync, rmdirSync } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
@@ -113,10 +113,13 @@ async function promptTarget(rl) {
 // Build the source map for one platform: shared/** overlaid by targets/<platform>/**.
 // Returns { rel -> absoluteSourcePath }; the platform overlay wins on path collisions.
 function buildSrcMap(platform) {
+  // context/*.md is NOT copied per-platform: it's a single project-root ./context/ workspace
+  // (like openspec/ and memory/), scaffolded once and symlinked into each <platform>/context.
+  // Excluding it here keeps it out of every platform's copy loop, manifest, and prune list.
   const srcMap = new Map();
-  for (const rel of walk(SHARED_SRC)) srcMap.set(rel, join(SHARED_SRC, rel));
+  for (const rel of walk(SHARED_SRC)) if (!isContextMd(rel)) srcMap.set(rel, join(SHARED_SRC, rel));
   const overlay = join(TARGETS_SRC, platform);
-  for (const rel of walk(overlay)) srcMap.set(rel, join(overlay, rel));
+  for (const rel of walk(overlay)) if (!isContextMd(rel)) srcMap.set(rel, join(overlay, rel));
   return srcMap;
 }
 
@@ -262,7 +265,59 @@ function applyTarget(ctx, vals) {
     }
   }
 
+  // context/ workspace symlink (both platforms read the single project-root ../context). A
+  // pre-symlink real dir from an older install has already had its content copied to ../context by
+  // scaffoldRootContext(), so it's safe to replace it with the link.
+  {
+    const link = join(outDir, 'context');
+    let st = null;
+    try { st = lstatSync(link); } catch { /* not present */ }
+    if (!(st && st.isSymbolicLink())) {
+      try {
+        if (st) rmSync(link, { recursive: true, force: true }); // old real dir/file (migrated to ../context)
+        symlinkSync(join('..', 'context'), link);
+        log(`  ✓ symlink ${label}/context -> ../context`);
+      } catch (e) { log(`  ! could not symlink ${label}/context (${e.code})`); }
+    }
+  }
+
   return { copied, tokened, preserved, pruned };
+}
+
+// Establish the single project-root ./context/ workspace (canonical; each <platform>/context is a
+// symlink to it). Migrates a prior install's filled per-platform context into root first, then
+// scaffolds templates (preserving any already-filled file). Runs once for all targets.
+function scaffoldRootContext(targets, vals) {
+  const rootCtx = join(TARGET, 'context');
+  // Migration: no root ./context yet, but an older install has a REAL <platform>/context dir →
+  // copy its (possibly filled) files to root before that dir gets replaced with a symlink.
+  if (!existsSync(rootCtx)) {
+    for (const t of targets) {
+      const pCtx = join(TARGET, TARGET_DIRS[t], 'context');
+      let real = false;
+      try { real = !lstatSync(pCtx).isSymbolicLink(); } catch { /* absent */ }
+      if (real) {
+        mkdirSync(rootCtx, { recursive: true });
+        for (const f of readdirSync(pCtx)) {
+          const s = join(pCtx, f);
+          try { if (statSync(s).isFile()) copyFileSync(s, join(rootCtx, f)); } catch { /* skip */ }
+        }
+        log(`  ✓ migrated existing ${TARGET_DIRS[t]}/context → ./context`);
+        break;
+      }
+    }
+  }
+  const srcDir = join(SHARED_SRC, 'context');
+  if (!existsSync(srcDir)) return;
+  mkdirSync(rootCtx, { recursive: true });
+  let scaffolded = 0, preserved = 0;
+  for (const f of readdirSync(srcDir)) {
+    const dst = join(rootCtx, f);
+    if (existsSync(dst) && !readFileSync(dst, 'utf8').includes('<!-- TODO')) { preserved++; continue; }
+    writeFileSync(dst, applyTokens(readFileSync(join(srcDir, f), 'utf8'), vals));
+    scaffolded++;
+  }
+  log(`  ✓ context → ./context (${scaffolded} scaffolded, ${preserved} preserved filled)`);
 }
 
 function printNextSteps(targets, hasOpenspec) {
@@ -271,13 +326,13 @@ function printNextSteps(targets, hasOpenspec) {
     log('   [kiro] Open the project in Kiro:');
     log('     • agents: ctrl+0 sdlc-full · ctrl+5 sdlc-fast · ctrl+1..4 (analyst/architect/developer/qa) · ctrl+9 onboarder');
     log('     • After any kit update, run "Developer: Reload Window" (Ctrl+R) so Kiro reloads agent defs + hooks.');
-    log('     • Run the ONBOARDER (ctrl+9) first: fills .kiro/context/*.md, mirrors into openspec/config.yaml, re-wires context.');
+    log('     • Run the ONBOARDER (ctrl+9) first: fills ./context/*.md (shared, symlinked into .kiro/context), mirrors into openspec/config.yaml, re-wires context.');
   }
   if (targets.includes('claude')) {
     log('   [claude] Open the project in Claude Code:');
     log('     • Orchestrator (main session): /sdlc-full <slug> ticket <id> · /sdlc-fast bugfix <slug>');
     log('     • Role subagents (.claude/agents/): analyst · architect · developer · qa · onboarder');
-    log('     • Run the onboarder first on a new project: it fills .claude/context/*.md + mirrors openspec/config.yaml.');
+    log('     • Run the onboarder first on a new project: it fills ./context/*.md (shared, symlinked into .claude/context) + mirrors openspec/config.yaml.');
     log('     • Security: only the developer subagent writes code — enforced by the agent_type-keyed PreToolUse hooks in .claude/settings.json.');
     log('     • New/changed agents, commands, settings & hooks take effect on the NEXT session (or /agents reload) — not mid-session.');
   }
@@ -347,13 +402,17 @@ async function main() {
       log(`\n  [${c.platform}] → ${TARGET_DIRS[c.platform]}/`);
       log(`    + add       ${c.plan.add.length}${sample(c.plan.add)}`);
       log(`    ~ overwrite ${c.plan.overwrite.length} (kit-owned; your edits to these are replaced)${sample(c.plan.overwrite)}`);
-      log(`    = preserve  ${c.plan.preserve.length} filled context file(s)${sample(c.plan.preserve)}`);
       log(`    - prune     ${c.pruneList.length} stale file(s) from the previous version${sample(c.pruneList)}`);
+      log(`    ⇉ context   symlink ${TARGET_DIRS[c.platform]}/context -> ../context (shared, filled files preserved)`);
     }
-    log('\n  (openspec init, tools, and the context→agents mapper also run on apply.)');
+    log('\n  (openspec init, tools, the shared ./context scaffold, and the context→agents mapper also run on apply.)');
     log('  Re-run without --check (add --force on an existing install) to apply.\n');
     exit(0);
   }
+
+  // Establish the shared project-root ./context/ FIRST, so applyTarget can symlink each
+  // <platform>/context → ../context (and migrate any older real per-platform context dir).
+  scaffoldRootContext(targets, vals);
 
   // Apply each target.
   for (const c of ctxs) applyTarget(c, vals);
