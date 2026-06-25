@@ -1,38 +1,47 @@
 # kiro-sdlc-kit
 
-A **project-agnostic, dual-target** SDLC kit for **Kiro IDE** *and* **Claude Code**. Drop a
+A **project-agnostic, dual-target** SDLC kit for **Kiro** (IDE + CLI) *and* **Claude Code**. Drop a
 full S1→S6 pipeline (orchestrator + 4 role agents + 24 skills + steering rules + hooks) into
 any project with one command, then fill a small **context contract** so the agents understand
 *your* project.
 
-One source emits both targets — `kit/shared/**` overlaid by `kit/targets/<platform>/**`. You
-pick the platform at install time (`--target kiro|claude|both`); the framework (process,
-skills, gates, security model) is identical on both. Everything project-specific lives in one
-place — `<platform>/context/` — and no project domain is baked into the agents.
+One source emits both targets — `kit/shared/**` overlaid by `kit/targets/<platform>/**`. You pick
+the platform at install time (`--target kiro|claude|both`); the framework (process, skills, gates,
+security model) is identical on both. The project's **workspace + config** — `./openspec/`,
+`./memory/`, `./context/`, `./sdlc.config.json`, `./pipelines.json` — lives **once at the project
+root** and is symlinked into each `<platform>/`, so the two targets never drift and a kiro↔claude
+switch never loses state. No project domain is baked into the agents.
 
-| | **Kiro IDE** | **Claude Code** |
+| | **Kiro** (IDE + CLI) | **Claude Code** |
 |---|---|---|
 | Emits | `.kiro/` | `.claude/` |
-| Model | N peer agents, swap via `ctrl+0..9` | 1 main session spawns one-shot subagents (Task tool) |
-| Orchestrator | advises; you drive | **is** the main session; it drives + owns gates |
-| Start a flow | open the `sdlc-full` agent | type `/sdlc-full <slug>` |
+| Launch the orchestrator | the `sdlc-full` agent (`ctrl+0` / select it) | `claude --agent sdlc-full <slug>` |
+| Delegate a phase to a role | "use the {role} agent" (CLI) · `/agent swap` (IDE) | spawn the role subagent (Task tool) |
+| Code-write guard identity | agent name via `argv[1]` | `agent_type` in the PreToolUse hook |
 | Context wiring | `context-map.json` + mapper | `@import` in `CLAUDE.md`; skills auto-discovered |
-| "Only developer writes code" | guard reads agent name (`argv[1]`) | PreToolUse hook reads `agent_type` |
+
+On **both**, the orchestrator is a **dedicated agent** (`sdlc-full`/`sdlc-fast`) that drives the
+pipeline, delegates each phase to its role agent, and owns the gates — it **never writes code** (only
+the `developer` agent does) and is write-fenced to baton/state files. A **plain session** (no role
+agent) is your **unrestricted default workspace** — the kit's `preToolUse` guards bind only the
+role agents, so normal interactive work is never blocked.
 
 ## Two layers
 
 ```
-FRAMEWORK (generic, never edited per project)        CONTEXT (filled per project)
-  <platform>/agents|commands/  7 roles + orchestr.      <platform>/context/
-  <platform>/skills/   24 skills                           project.md       stack.md
-  <platform>/steering/ 4 generic rules (sdlc-workflow,     conventions.md   architecture.md
-                   commit-policy, security, registry)      glossary.md      legacy-ref.md
-  <platform>/ai/       generic quality rules (sonar)    .kiro/context-map.json  ← Kiro wiring only
+FRAMEWORK — per-platform, re-emitted by init        SHARED — one root copy, symlinked into each platform
+  <platform>/agents/   role + orchestrator agents       ./context/    project·stack·conventions·
+  <platform>/commands/ slash commands (Claude)                        architecture·glossary·legacy-ref.md
+  <platform>/skills/   24 skills                         ./openspec/   spec-driven workspace
+  <platform>/steering/ always-on rules                  ./memory/     per-role memory
+  <platform>/ai/  <platform>/tools/  rules + guards      ./sdlc.config.json · ./pipelines.json
+  .kiro/context-map.json   (Kiro wiring only)            (.kiro/ and .claude/ each symlink to these)
 ```
 
-`<platform>` is `.kiro/` or `.claude/`. On Kiro, agents bind to `ctrl+0..4` + `ctrl+9`; on
-Claude, roles are slash commands (`/sdlc-full`, `/analyst` …) — see
-[Agents & shortcuts](#agents--shortcuts).
+`<platform>` is `.kiro/` or `.claude/`. The orchestrator is the **`sdlc-full`/`sdlc-fast` agent**
+(Kiro: `ctrl+0`/`ctrl+5`; Claude: `claude --agent sdlc-full`). The `/sdlc-full` · `/sdlc-fast`
+slash commands are thin **launchers**; the per-role commands (`/analyst` … `/onboarder`) spawn one
+guarded role agent — see [Agents & shortcuts](#agents--shortcuts).
 
 ## Prerequisite — OpenSpec CLI
 
@@ -108,17 +117,18 @@ sdlc rebuild legacy-billing      # re-implement existing behavior (parity-first)
 sdlc bugfix fix-login-401        # bug, clear root cause (S4–S6, QA regression-only)
 sdlc hotfix patch-payment-crash  # emergency (S4 + S6)
 
-# Claude: type the slash command directly:
-/sdlc-full feature user-profile        # full S1→S6
-/sdlc-full cr update-checkout-flow
-/sdlc-fast bugfix fix-login-401        # fast-track
-/sdlc-fast hotfix patch-payment-crash
+# Claude: launch the orchestrator AGENT (carries the pipeline guards; your plain session stays free):
+claude --agent sdlc-full feature user-profile      # full S1→S6 · or "cr <slug>" · "rebuild <slug>"
+claude --agent sdlc-fast bugfix fix-login-401      # fast-track · or "hotfix <slug>"
+# (the /sdlc-full and /sdlc-fast slash commands inside a session just PRINT this launch line —
+#  they deliberately don't orchestrate in the default session, which has no guards)
 ```
 On Kiro, natural language works too ("fix bug …", "CR …", "tạo tính năng …"). Either way the
 orchestrator scaffolds an OpenSpec change (`openspec/changes/<slug>/`), persists the work `type`
-into `_state.json`, and routes each phase to the right role. Use the wrong flow for a change and
-it redirects you to the right one. On Claude you can also drive one phase directly with
-`/analyst`, `/architect`, `/developer`, `/qa` (these run a single phase and do **not** gate/advance).
+into `_state.json`, and **delegates** each phase to the right role agent (Claude: Task spawn · Kiro
+CLI: "use the {role} agent"). Use the wrong flow for a change and it redirects you. To drive one
+phase by hand, use `/analyst`, `/architect`, `/developer`, `/qa` (spawn one guarded role; do **not**
+gate/advance).
 
 **3. Pass the gates** — reply to the orchestrator (same words on both platforms):
 - `approve` / `ok` / `LGTM` — pass the current gate.
@@ -146,68 +156,71 @@ it runs. Edit `pipelines.json` to tune a type per project — no prompt edits.
 
 ### Agents & shortcuts
 
-| Kiro key | Claude command | Role | SDLC phase |
-|----------|----------------|------|------------|
-| `ctrl+0` | `/sdlc-full` | `sdlc-full` | orchestrator for **feature/cr/rebuild** (S1→S6) — routes + gates |
-| `ctrl+5` | `/sdlc-fast` | `sdlc-fast` | orchestrator for **bugfix/hotfix** (fast-track S4+) — routes + gates |
-| `ctrl+1` | `/analyst` | `analyst` | S1 Req Intake + S2 Func Spec |
-| `ctrl+2` | `/architect` | `architect` | S3 Design |
-| `ctrl+3` | `/developer` | `developer` | S4 Build + S6 Release |
-| `ctrl+4` | `/qa` | `qa` | S5 QA |
-| `ctrl+9` | `/onboarder` | `onboarder` | context setup (not an SDLC phase) |
+| Role | Kiro (IDE key / CLI) | Claude | SDLC phase |
+|------|----------------------|--------|------------|
+| `sdlc-full` | `ctrl+0` agent | `claude --agent sdlc-full` | orchestrator **feature/cr/rebuild** (S1→S6) — delegates + gates |
+| `sdlc-fast` | `ctrl+5` agent | `claude --agent sdlc-fast` | orchestrator **bugfix/hotfix** (fast-track S4+) |
+| `analyst` | `ctrl+1` / `/analyst` | `/analyst` | S1 Req Intake + S2 Func Spec |
+| `architect` | `ctrl+2` / `/architect` | `/architect` | S3 Design |
+| `developer` | `ctrl+3` / `/developer` | `/developer` | S4 Build + S6 Release |
+| `qa` | `ctrl+4` / `/qa` | `/qa` | S5 QA |
+| `onboarder` | `ctrl+9` / `/onboarder` | `/onboarder` | context setup (not an SDLC phase) |
 
-On **Kiro** the roles are peer agents you switch between; on **Claude** the orchestrator commands
-(`/sdlc-full`, `/sdlc-fast`) drive the whole pipeline from the main session and spawn each role as
-a one-shot subagent, while the per-role commands (`/analyst` …) let you run a single phase by hand.
+The **orchestrator** (`sdlc-full`/`sdlc-fast`) is a dedicated agent you launch (Kiro: switch to it;
+Claude: `claude --agent …`). It drives the whole pipeline and **delegates** each phase to its role
+agent (Claude: Task spawn · Kiro CLI: "use the {role} agent" · `/agent swap` is the manual fallback).
+The per-role commands (`/analyst` …) spawn one guarded role for a single phase. A plain session
+(no role agent) is your unrestricted default workspace.
 
 Both orchestrators are **thin wrappers** over the shared `sdlc-orchestration-core` skill (one
 copy of the lifecycle/gate/CPP/dispute machinery); each declares only its own work types. An
 orchestrator refuses to drive a change whose persisted `type` belongs to the other (it tells you
 which to open), so you can't run the wrong pipeline.
 
-## Security model — who can write what (only the developer writes code)
+## Security model — who can write what
 
-A **role is a playbook, not an identity.** When the orchestrator loads `architect.md` and says "I'm
-the architect now," it is loading the S3 *checklist* — it has not become a privileged actor. What a
-session may write is decided by its **host-provided identity**, never by what it claims to be:
+A **role is a playbook, not an identity.** Loading a role's prompt ("I'm the architect now") borrows
+its checklist; it does not grant its write-permissions. What a session may write is decided by its
+**host-provided identity**, never by what it claims:
 
-- **Kiro** — the active agent's name is hardwired into its own hook as `argv[1]`. Saying "I'm the
-  architect" does not change `argv[1]`.
-- **Claude** — a Task-spawned subagent carries `agent_type`; the main session has none. The role
-  arrives from the spawn, not from the prose.
+- **Kiro** — the active agent's name is its own hook's `argv[1]` (per-agent `preToolUse`). Claiming a
+  role doesn't change it.
+- **Claude** — a role agent (`claude --agent <role>` or Task-spawned) carries `agent_type`; a plain
+  session has none.
 
 Each identity gets a fixed write-fence (Kiro: `<agent>.json → toolsSettings.write.allowedPaths`;
-Claude: the built-in policy in `check-write-path.py`, or that same JSON if present):
+Claude: `check-write-path.py`'s built-in policy, host-selected):
 
 | Identity | May write | Code? |
 |----------|-----------|-------|
-| orchestrator (`sdlc-full`/`sdlc-fast`) · Claude main session | `openspec/**`, `memory/**` (baton) | ❌ |
+| **plain session** (no role agent — your default workspace) | anything | your own session |
+| orchestrator (`sdlc-full`/`sdlc-fast` agent) | **baton/state only** — `openspec/changes/**/_*`, `openspec/_*.md`, `memory/**` | ❌ |
 | `analyst` | `openspec/**`, `docs/knowledge/**` | ❌ |
 | `architect` | `openspec/**`, `docs/**` | ❌ |
-| `qa` | `openspec/**`, `test/** tests/** e2e/** spec/** __tests__/**` | ❌ tests only |
-| `onboarder` | `context/**`, `.claude/context/**`, `openspec/**` | ❌ |
+| `qa` | `openspec/**`, `test/** … __tests__/**` | ❌ tests only |
+| `onboarder` | `context/**`, `openspec/**` | ❌ |
 | **`developer`** | `src/** app/** lib/** … package.json …` + the above | ✅ **only this one** |
 
-So the orchestrator "impersonating" a read/spec-only role (analyst/architect/qa) is harmless — those
-phases produce only specs/docs/tests. The one role whose impersonation would matter is the
-**developer**, and that is exactly the one the identity check prevents anyone else from becoming: if
-the orchestrator tried to write `src/**`, the guard resolves its real identity (`sdlc-full`), finds
-no code path in its fence, and **blocks** (exit 2). Impersonation can never escalate to code.
+Two consequences:
+- The **orchestrator can't even produce a phase deliverable** — `proposal.md`/`design.md`/`tasks.md`/
+  `specs/**`/`*-report.md` are not baton `_`-files, so if it tries to write one the guard blocks it
+  (exit 2), forcing it to **delegate** to the role agent. So "the orchestrator does S3 itself" cannot
+  happen — the guard, not goodwill, prevents it.
+- Only the **developer** identity has code paths; impersonation can't escalate, because the guard
+  keys on the host-provided identity, not the prose.
 
-Three enforcement layers back this (defense in depth):
+Three enforcement layers (defense in depth):
+1. **Subagent `tools` frontmatter** — only `developer` is granted `Edit`.
+2. **`permissions.deny`** (Claude `settings.json`) — coarse blanket bans (e.g. editing the kit's own
+   agents/commands/settings). Not role-aware by design.
+3. **PreToolUse guards** (`check-write-path.py` / `check-shell-command.py`) — role-aware,
+   **fail-closed**, host-selected policy; the only layer that grants `developer` its code exception.
+   The backstop, because an LLM's self-description ("I am the developer now") isn't trustworthy.
 
-1. **Subagent `tools` frontmatter** (Claude) — only `developer` is granted `Edit`.
-2. **`permissions.deny`** (Claude `settings.json`) — coarse, blanket bans (e.g. editing the kit's
-   own agents/commands/settings). Not role-aware by design.
-3. **The PreToolUse write/shell guards** (`check-write-path.py` / `check-shell-command.py`) —
-   role-aware, **fail-closed** (a misconfig or unknown actor denies), and the only layer that grants
-   the developer its code-write exception. This is the backstop precisely because an LLM's
-   self-description ("I am the developer now") is not trustworthy.
-
-> On **Kiro**, S4 (build) is the phase where inline-driving deliberately "breaks": the orchestrator
-> cannot write code, so producing code requires the real `developer` identity (you `/agent swap` to
-> it). On **Claude**, the orchestrator spawns `developer` as a subagent (`agent_type: developer`)
-> rather than driving inline.
+> The orchestrator is a **dedicated agent**, not your main session — so a **plain session is
+> unrestricted** (the guards bind only the named role agents; normal work is never blocked). Code and
+> every deliverable are produced by the **role agent**: on Claude the orchestrator spawns it (Task);
+> on Kiro CLI it delegates ("use the {role} agent"); `/agent swap` is the manual fallback.
 
 ## Fill the context (the part that makes it yours)
 
