@@ -50,6 +50,17 @@ platform at install time; the framework (process, skills, gates, security model)
   copied to `./context` and preserved before the dir becomes a symlink). Stack-seeded context refs
   were de-tokenized (`{{PLATFORM_DIR}}/sdlc.config.json` → `sdlc.config.json`) since a shared file
   can't carry a per-platform token.
+- **The SDLC orchestrator is now a dedicated agent; the bare main session is unrestricted.**
+  Previously the orchestrator WAS the Claude main session (via `/sdlc-full`), so the guards held
+  every bare main session read-only — which blocked normal interactive work in a kit-installed
+  project (e.g. `curl … | python3 -c "…"`), since a session with no `agent_type` was assumed to be
+  the orchestrator. Now the orchestrator runs as a named top-level agent
+  (`claude --agent sdlc-full` / `sdlc-fast`, carrying `agent_type=sdlc-full|sdlc-fast`); the guards
+  hold *that* read-only, while a bare main session (no `agent_type`) on Claude is your **unrestricted
+  default workspace**. New `.claude/agents/{sdlc-full,sdlc-fast}.md`; the `/sdlc-full` `/sdlc-fast`
+  slash commands became thin launchers (orchestrating in the default session would have no guards).
+  Kiro is unchanged (its orchestrator is already the named `sdlc-full` agent; a missing actor still
+  fails closed). Trade-off: pipeline safety is "on inside the sdlc agent" rather than always-on.
 - **README** rewritten for dual-target install & usage.
 
 ### Fixed

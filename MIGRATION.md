@@ -1,7 +1,8 @@
 # MIGRATION — Kiro → Claude Code (dual-target)
 
-> Status: **IMPLEMENTED** (Phases 1–8 ✅ on `feat/claude-target`; Phase 7 = Claude validator +
-> `@import` bugfix; Phase 8 = real-project rollout hardening). One kit source emits `.kiro/`
+> Status: **IMPLEMENTED** (Phases 1–9 ✅ on `feat/claude-target`; Phase 7 = Claude validator +
+> `@import` bugfix; Phase 8 = real-project rollout hardening; Phase 9 = orchestrator-as-agent so the
+> default session is unrestricted). One kit source emits `.kiro/`
 > and/or `.claude/`; the user picks at `init` time (`--target kiro|claude|both`).
 > Goal: ship the SDLC kit for **both** Kiro IDE and Claude Code from one source,
 > letting the user pick the platform at `init` time (like `create-vite` / `create-next-app`).
@@ -437,6 +438,24 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
      (no re-onboard needed); colemark-dh's own `.claude/settings.json` was **merged** (kept its
      `enabledPlugins`); installs are additive (`.kiro/` untouched where present, `openspec/`+`memory/`
      never touched). All 5 → `doctor-claude` HEALTHY.
+9. ✅ **Orchestrator-as-agent — DONE (default session unrestricted).** A user reported that the plain
+   default Claude session in a kit-installed project was blocked from normal read-only work (e.g.
+   `curl … | python3 -c "…print…"`). Root cause: the orchestrator WAS the bare main session (driven by
+   the `/sdlc-full` slash command), so the guards had to hold **every** main session read-only — they
+   couldn't distinguish "orchestrating" from "the user doing ad-hoc work" (both have no `agent_type`).
+   - **Fix:** the orchestrator now runs as a **named top-level agent** — `claude --agent sdlc-full` /
+     `sdlc-fast` — which carries `agent_type=sdlc-full|sdlc-fast` (empirically confirmed: `--agent`
+     surfaces `agent_type` to PreToolUse hooks). Both guards pick policy by actor: orchestrator agents
+     → read-only (+ branch-create); role agents → role policy; `developer` → code; **bare main session
+     (no `agent_type`) on Claude → DEFAULT, unrestricted.** On Kiro a missing actor still fails closed.
+   - **Files:** new `.claude/agents/{sdlc-full,sdlc-fast}.md` (orchestration prompt; `tools` without
+     `Edit`); `/sdlc-full` `/sdlc-fast` slash commands → thin launchers; both guard scripts +
+     `CLAUDE.md` + `doctor-claude` (now 7 subagents) updated. Self-tests 31/31 + 27/27.
+   - **Verified + deployed to all 5 repos:** `doctor-claude` HEALTHY (7 agents); E2E on the installed
+     hooks — default session runs `python3 -c`/`rm`/writes; the `sdlc-full` agent is read-only
+     (blocks `src/**` writes, allows baton + branch-create); `developer` writes code.
+   - **Trade-off (accepted):** pipeline safety is now "on inside the sdlc agent," not always-on for
+     every session — the deliberate price of an unrestricted default workspace.
 
 ---
 
