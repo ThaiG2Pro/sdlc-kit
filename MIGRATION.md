@@ -419,6 +419,20 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
    - **`doctor-claude` CLAUDE.md preference.** On a repo with its own root `CLAUDE.md` (no `@import`s),
      the doctor validated that instead of the kit's `.claude/CLAUDE.md` and falsely flagged missing
      `@import`s. Now it validates the kit-managed `.claude/CLAUDE.md` first.
+   - **Write-guard host-precedence bug.** On a dual-target project the guard preferred
+     `.kiro/agents/<role>.json` (paths all `.kiro/…`), so a Claude-session `onboarder` could write
+     `.kiro/context/` but was BLOCKED from `.claude/context/`. Fixed: the policy source now follows
+     the **host** (detected from the hook script's own install path) — Claude host → built-in policy,
+     Kiro host → the agent JSON. The self-test (which had pinned the source per vector, hiding the
+     bug) now exercises the real `decide()`.
+   - **Context unified into a shared root `./context/`.** The dual-context duplication was the root of
+     the sync/port pain, so context joined `openspec/` + `memory/` as a project-root workspace:
+     `init` scaffolds `./context/` once and symlinks `.kiro/context` + `.claude/context` → `../context`
+     (single + both targets). `scaffoldRootContext()` migrates an existing install's filled
+     per-platform context into `./context` (preserved) before the dir becomes a symlink, so
+     `init --force` upgrades cleanly. All 5 repos migrated: filled context (issues-sum, portal)
+     survived as `context-check` COMPLETE; everything resolves through the symlink (`@import`,
+     `doctor`, `context-check`, `apply-stack`, `applyContextMap`).
    - **Per-project notes:** issues-sum context was **ported** from its existing filled `.kiro/context/`
      (no re-onboard needed); colemark-dh's own `.claude/settings.json` was **merged** (kept its
      `enabledPlugins`); installs are additive (`.kiro/` untouched where present, `openspec/`+`memory/`

@@ -42,6 +42,14 @@ platform at install time; the framework (process, skills, gates, security model)
   (`checkout -b` / `switch -c` / `worktree add`) are now pre-approved, so `/sdlc-full` no longer
   prompts on nearly every step. Code writes (`src/**`) are deliberately NOT allowlisted — they still
   prompt and stay hook-enforced; `deny(openspec/specs/**)` still wins over the new `allow(openspec/**)`.
+- **Context is now a single shared project-root `./context/`, symlinked into each platform.**
+  Previously each target had its own `<platform>/context/` (duplicated, drift-prone — the source of
+  the dual-target sync/port pain). Now `init` scaffolds `./context/` once (like `openspec/` and
+  `memory/`) and symlinks `.kiro/context` + `.claude/context` → `../context`. Fill once, both targets
+  read it. Re-running `init --force` migrates an existing install (its filled per-platform context is
+  copied to `./context` and preserved before the dir becomes a symlink). Stack-seeded context refs
+  were de-tokenized (`{{PLATFORM_DIR}}/sdlc.config.json` → `sdlc.config.json`) since a shared file
+  can't carry a per-platform token.
 - **README** rewritten for dual-target install & usage.
 
 ### Fixed
