@@ -4,7 +4,8 @@
 > `@import` bugfix; Phase 8 = real-project rollout hardening; Phase 9 = orchestrator-as-agent so the
 > default session is unrestricted; Phase 10 = orchestrator write-fence so it delegates phases instead
 > of doing them inline; Phase 11 = Kiro-CLI reconciliation — kit is Kiro-CLI-native, orchestrator
-> delegates via CLI subagents). One kit source emits `.kiro/`
+> delegates via CLI subagents; Phase 12 = config files joined the shared-root single-source set).
+> One kit source emits `.kiro/`
 > and/or `.claude/`; the user picks at `init` time (`--target kiro|claude|both`).
 > Goal: ship the SDLC kit for **both** Kiro IDE and Claude Code from one source,
 > letting the user pick the platform at `init` time (like `create-vite` / `create-next-app`).
@@ -498,6 +499,23 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
       "permissions set at spawn", "no nested teams") are correctly NOT used for the sequential gated
       pipeline. Files: `sdlc-orchestration-core` + Kiro `sdlc-full`/`sdlc-fast` prompts; guards
       unchanged (31/31 + 31/31). Deployed to all 5 repos.
+
+12. ✅ **Shared-root config + isolation boundary — DONE.** Per the user's "Claude operates only in
+    `.claude/`, but config + setup come from one mother (sync)": clarified the boundary and closed the
+    config-drift gap.
+    - **Shared (single-source, root + symlinked into each `<platform>/`):** `openspec/`, `memory/`,
+      `context/` (already) **+ now `sdlc.config.json` + `pipelines.json`** (were copied per-platform →
+      could drift). `init` scaffolds them once at the root; each platform symlinks to them. Verified:
+      editing `./sdlc.config.json` is seen by both `.kiro/` and `.claude/`. `pipelines.json`'s
+      `{{PLATFORM_DIR}}` gate-description was neutralized (a shared file can't carry a per-platform
+      token). `docs/` (extra docs) is already root-shared.
+    - **Per-platform (framework runtime, init re-emits):** `agents`, `commands`, `skills`, `steering`,
+      `ai`, `tools`, `settings`/hooks, `agents/scripts`.
+    - **Isolation:** Claude runtime artifacts are `.kiro/`-free (skills resolve `{{PLATFORM_DIR}}` →
+      `.claude/` on a Claude install; commands/CLAUDE.md cleaned in Phase-c84b90c), so a Claude session
+      only ever spells `.claude/`/root paths — which resolve to the shared root via the symlinks. The
+      guard's `.kiro/` allow-list entries are inert backstops (Claude never writes there).
+    - Deployed to all 5 repos: root config files + per-platform symlinks; `doctor-claude` HEALTHY.
 
 ---
 

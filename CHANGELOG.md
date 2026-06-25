@@ -50,6 +50,13 @@ platform at install time; the framework (process, skills, gates, security model)
   copied to `./context` and preserved before the dir becomes a symlink). Stack-seeded context refs
   were de-tokenized (`{{PLATFORM_DIR}}/sdlc.config.json` → `sdlc.config.json`) since a shared file
   can't carry a per-platform token.
+- **`sdlc.config.json` + `pipelines.json` are shared single-source root files too.** They joined
+  `openspec/`/`memory/`/`context/`: `init` scaffolds them once at the project root and symlinks them
+  into each `<platform>/`. Edit the root copy → both targets see it (no drift; a kiro↔claude switch
+  never loses config). **Separation of concerns:** shared *workspace + project config* live once at
+  the root (symlinked); *framework runtime* (`agents`, `commands`, `skills`, `steering`, `ai`,
+  `tools`, `settings`/hooks) stays per-platform. Claude runtime artifacts are `.kiro/`-free, so a
+  Claude session only touches `.claude/` paths (which resolve to the shared root via the symlinks).
 - **The SDLC orchestrator is now a dedicated agent; the bare main session is unrestricted.**
   Previously the orchestrator WAS the Claude main session (via `/sdlc-full`), so the guards held
   every bare main session read-only — which blocked normal interactive work in a kit-installed
