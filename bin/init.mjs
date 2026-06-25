@@ -76,6 +76,13 @@ function applyTokens(content, vals) {
 }
 
 const isContextMd = (rel) => /^context[\/\\][^\/\\]+\.md$/.test(rel);
+// Project config that must be a SINGLE source shared by every platform (like openspec/memory/context):
+// scaffolded once at the project root and symlinked into each <platform>/. Edit once, both targets see
+// it; switching kiro↔claude never drifts or loses it.
+const SHARED_ROOT_FILES = ['sdlc.config.json', 'pipelines.json'];
+const isSharedRootFile = (rel) => SHARED_ROOT_FILES.includes(rel);
+// Everything that lives once at the project root and is symlinked into each platform dir.
+const SHARED_ROOT_LINKS = ['context', ...SHARED_ROOT_FILES];
 
 // Normalize a --target value ('kiro' | 'claude' | 'both' | 'kiro,claude') into a deduped list.
 // Returns null when no value was given (caller decides: interactive menu vs. non-interactive default).
@@ -116,10 +123,11 @@ function buildSrcMap(platform) {
   // context/*.md is NOT copied per-platform: it's a single project-root ./context/ workspace
   // (like openspec/ and memory/), scaffolded once and symlinked into each <platform>/context.
   // Excluding it here keeps it out of every platform's copy loop, manifest, and prune list.
+  const shared = (rel) => isContextMd(rel) || isSharedRootFile(rel); // emitted once at root + symlinked
   const srcMap = new Map();
-  for (const rel of walk(SHARED_SRC)) if (!isContextMd(rel)) srcMap.set(rel, join(SHARED_SRC, rel));
+  for (const rel of walk(SHARED_SRC)) if (!shared(rel)) srcMap.set(rel, join(SHARED_SRC, rel));
   const overlay = join(TARGETS_SRC, platform);
-  for (const rel of walk(overlay)) if (!isContextMd(rel)) srcMap.set(rel, join(overlay, rel));
+  for (const rel of walk(overlay)) if (!shared(rel)) srcMap.set(rel, join(overlay, rel));
   return srcMap;
 }
 
@@ -265,19 +273,20 @@ function applyTarget(ctx, vals) {
     }
   }
 
-  // context/ workspace symlink (both platforms read the single project-root ../context). A
-  // pre-symlink real dir from an older install has already had its content copied to ../context by
-  // scaffoldRootContext(), so it's safe to replace it with the link.
-  {
-    const link = join(outDir, 'context');
+  // Shared-root symlinks: context/ (dir) + sdlc.config.json + pipelines.json (files) live ONCE at the
+  // project root and each <platform>/ links to them — so config/context are single-source and a
+  // kiro↔claude switch never drifts or loses them. A pre-symlink real file/dir from an older install
+  // was already migrated to root by the scaffold steps, so it's safe to replace with the link.
+  for (const name of SHARED_ROOT_LINKS) {
+    const link = join(outDir, name);
     let st = null;
     try { st = lstatSync(link); } catch { /* not present */ }
     if (!(st && st.isSymbolicLink())) {
       try {
-        if (st) rmSync(link, { recursive: true, force: true }); // old real dir/file (migrated to ../context)
-        symlinkSync(join('..', 'context'), link);
-        log(`  ✓ symlink ${label}/context -> ../context`);
-      } catch (e) { log(`  ! could not symlink ${label}/context (${e.code})`); }
+        if (st) rmSync(link, { recursive: true, force: true }); // old real dir/file (migrated to root)
+        symlinkSync(join('..', name), link);
+        log(`  ✓ symlink ${label}/${name} -> ../${name}`);
+      } catch (e) { log(`  ! could not symlink ${label}/${name} (${e.code})`); }
     }
   }
 
@@ -318,6 +327,20 @@ function scaffoldRootContext(targets, vals) {
     scaffolded++;
   }
   log(`  ✓ context → ./context (${scaffolded} scaffolded, ${preserved} preserved filled)`);
+}
+
+// Scaffold the shared project-config files (sdlc.config.json, pipelines.json) ONCE at the project
+// root; each <platform>/ symlinks to them (applyTarget). Kit-owned → regenerated from the single kit
+// source ("cùng 1 mẹ") on every init, so the two platforms can never drift.
+function scaffoldRootConfig(vals) {
+  let n = 0;
+  for (const f of SHARED_ROOT_FILES) {
+    const src = join(SHARED_SRC, f);
+    if (!existsSync(src)) continue;
+    writeFileSync(join(TARGET, f), applyTokens(readFileSync(src, 'utf8'), vals));
+    n++;
+  }
+  if (n) log(`  ✓ config → ./{${SHARED_ROOT_FILES.join(', ')}} (shared root, symlinked into each platform)`);
 }
 
 function printNextSteps(targets, hasOpenspec) {
@@ -403,9 +426,9 @@ async function main() {
       log(`    + add       ${c.plan.add.length}${sample(c.plan.add)}`);
       log(`    ~ overwrite ${c.plan.overwrite.length} (kit-owned; your edits to these are replaced)${sample(c.plan.overwrite)}`);
       log(`    - prune     ${c.pruneList.length} stale file(s) from the previous version${sample(c.pruneList)}`);
-      log(`    ⇉ context   symlink ${TARGET_DIRS[c.platform]}/context -> ../context (shared, filled files preserved)`);
+      log(`    ⇉ shared    symlink ${TARGET_DIRS[c.platform]}/{${SHARED_ROOT_LINKS.join(', ')}} -> ../ (single root copy; filled context preserved)`);
     }
-    log('\n  (openspec init, tools, the shared ./context scaffold, and the context→agents mapper also run on apply.)');
+    log('\n  (openspec init, tools, the shared ./context + ./{sdlc.config,pipelines}.json scaffold, and the context→agents mapper also run on apply.)');
     log('  Re-run without --check (add --force on an existing install) to apply.\n');
     exit(0);
   }
@@ -413,6 +436,7 @@ async function main() {
   // Establish the shared project-root ./context/ FIRST, so applyTarget can symlink each
   // <platform>/context → ../context (and migrate any older real per-platform context dir).
   scaffoldRootContext(targets, vals);
+  scaffoldRootConfig(vals);
 
   // Apply each target.
   for (const c of ctxs) applyTarget(c, vals);
