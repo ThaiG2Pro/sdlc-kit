@@ -61,6 +61,15 @@ platform at install time; the framework (process, skills, gates, security model)
   slash commands became thin launchers (orchestrating in the default session would have no guards).
   Kiro is unchanged (its orchestrator is already the named `sdlc-full` agent; a missing actor still
   fails closed). Trade-off: pipeline safety is "on inside the sdlc agent" rather than always-on.
+- **Orchestrator delegates via Kiro CLI subagents, not just manual `/agent swap`.** Confirmed against
+  the Kiro CLI docs that the kit's `.kiro/agents/*.json` is already Kiro-CLI-native (same schema:
+  `toolsSettings.write.allowedPaths`, `hooks.preToolUse {matcher, command}` with exit-2 block,
+  `fs_write`/`execute_bash` matchers, `keyboardShortcut`; per-agent hooks, agent identity baked as
+  `argv[1]`) — so every guard works on Kiro CLI as-is. Kiro CLI also supports programmatic delegation
+  ("use the {role} agent" → returns via the `summary` tool), which the orchestrator now uses as the
+  primary routing mechanism (`/agent swap` is the manual fallback), matching how Claude spawns role
+  subagents via Task. The delegated role runs under its own per-agent write-guard, composing with the
+  orchestrator write-fence.
 - **README** rewritten for dual-target install & usage.
 
 ### Fixed

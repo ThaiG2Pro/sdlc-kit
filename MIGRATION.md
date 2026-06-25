@@ -3,7 +3,8 @@
 > Status: **IMPLEMENTED** (Phases 1–10 ✅ on `feat/claude-target`; Phase 7 = Claude validator +
 > `@import` bugfix; Phase 8 = real-project rollout hardening; Phase 9 = orchestrator-as-agent so the
 > default session is unrestricted; Phase 10 = orchestrator write-fence so it delegates phases instead
-> of doing them inline). One kit source emits `.kiro/`
+> of doing them inline; Phase 11 = Kiro-CLI reconciliation — kit is Kiro-CLI-native, orchestrator
+> delegates via CLI subagents). One kit source emits `.kiro/`
 > and/or `.claude/`; the user picks at `init` time (`--target kiro|claude|both`).
 > Goal: ship the SDLC kit for **both** Kiro IDE and Claude Code from one source,
 > letting the user pick the platform at `init` time (like `create-vite` / `create-next-app`).
@@ -477,6 +478,26 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
     - **Verified + deployed to all 5 repos:** self-tests 31/31 + 31/31; E2E both hosts —
       `sdlc-full`→`design.md` BLOCK, →`_state.json`/`_cross-spec-context.md` ALLOW, `architect`→
       `design.md` ALLOW; portal confirmed; `doctor-claude` HEALTHY across all 5.
+
+11. ✅ **Kiro-CLI reconciliation + delegation — DONE.** Cross-checked the kit's Kiro target against the
+    official **Kiro CLI** docs (subagents, permissions, security, configuration, configuration-reference).
+    Finding: the kit's `.kiro/agents/*.json` is **already Kiro-CLI-native** — the CLI agent-config
+    schema lists exactly the fields the kit uses (`toolsSettings.write.allowedPaths`, `hooks` with
+    `preToolUse {matcher, command}` blocking via **exit 2**, `fs_write`/`execute_bash` matchers,
+    `keyboardShortcut`, `model`, `prompt`, `resources`, `mcpServers`). Hooks are **per-agent** and the
+    hook JSON carries **no** agent identity — which is fine because the kit bakes the agent name as
+    `argv[1]` in each agent's own hook command. So every guard (incl. Phase 9 default-session-free and
+    Phase 10 write-fence) works on Kiro CLI unchanged. (An earlier "IDE vs CLI mismatch" worry was a
+    false alarm from thin overview/security/configuration pages that didn't show the schema.)
+    - **One real gap closed:** Kiro CLI *also* supports programmatic subagent delegation ("use the
+      {role} agent" → returns via the `summary` tool), which the kit didn't use (only manual
+      `/agent swap`). The orchestration prompt now makes routing = **delegate** on both hosts (Claude:
+      Task spawn · Kiro CLI: "use the {role} agent"; `/agent swap` = manual fallback). The delegated
+      role runs under its own per-agent write-guard, composing with the orchestrator write-fence.
+    - **Claude confirmed:** sub-agents match the kit's model; **agent teams** (experimental, parallel,
+      "permissions set at spawn", "no nested teams") are correctly NOT used for the sequential gated
+      pipeline. Files: `sdlc-orchestration-core` + Kiro `sdlc-full`/`sdlc-fast` prompts; guards
+      unchanged (31/31 + 31/31). Deployed to all 5 repos.
 
 ---
 
