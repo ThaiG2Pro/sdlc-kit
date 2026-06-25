@@ -71,7 +71,9 @@ if (claudeMd) {
 
 // 3. Commands + subagents present (the slash commands and the roles they spawn)
 const EXPECT_COMMANDS = ['sdlc-full', 'sdlc-fast', 'analyst', 'architect', 'developer', 'qa', 'onboarder'];
-const EXPECT_AGENTS = ['analyst', 'architect', 'developer', 'qa', 'onboarder'];
+// Orchestrators (sdlc-full/sdlc-fast) are top-level agents launched via `claude --agent …` so they
+// carry an agent_type the guards key on; the matching commands are thin launchers.
+const EXPECT_AGENTS = ['sdlc-full', 'sdlc-fast', 'analyst', 'architect', 'developer', 'qa', 'onboarder'];
 for (const [dir, expect, kind] of [['commands', EXPECT_COMMANDS, 'command'], ['agents', EXPECT_AGENTS, 'subagent']]) {
   const d = join(cc, dir);
   if (!existsSync(d)) continue;

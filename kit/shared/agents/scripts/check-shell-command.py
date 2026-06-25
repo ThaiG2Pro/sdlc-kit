@@ -40,8 +40,16 @@ CONTRACT: reads the hook JSON on stdin; exit 0 = allow, exit 2 = block (fail-clo
 Self-test: `python3 check-shell-command.py --self-test` (covers Kiro + Claude vectors).
 """
 import json
+import os
 import re
 import sys
+
+# Which host fired this hook (script lives at .kiro/agents/scripts/ vs .claude/agents/scripts/).
+# Decides the bare-main-session policy: on Claude a session with NO agent_type is the USER'S default
+# session (unrestricted — the SDLC orchestrator now runs as the named `sdlc-full`/`sdlc-fast` agent,
+# not the bare main session). On Kiro the actor always arrives via argv[1], so a missing actor is a
+# misconfiguration → fail closed (restricted).
+IS_CLAUDE_HOST = "/.claude/" in os.path.abspath(__file__).replace("\\", "/")
 
 # Harmless redirections that do NOT touch project files — stripped before the write-redirect check.
 _DEVNULL = re.compile(r"""(?:\d*|&)>>?\s*/dev/null""")          # 2>/dev/null, >/dev/null, &>/dev/null
@@ -101,13 +109,18 @@ def resolve_actor(data, argv=None):
     return at or None
 
 
-def actor_class(actor):
+def actor_class(actor, claude_host=None):
     """Map a resolved actor to a policy class."""
+    if claude_host is None:
+        claude_host = IS_CLAUDE_HOST
     if actor in _DEVELOPER:
         return "developer"
-    if actor is None or actor in _ORCH_AGENTS:
-        # Claude main session (None) drives the pipeline === the orchestrator.
-        return "orchestrator"
+    if actor in _ORCH_AGENTS:
+        return "orchestrator"   # sdlc-full / sdlc-fast — the orchestrator runs as a named agent
+    if actor is None:
+        # Claude: bare main session = the user's DEFAULT session → unrestricted (the orchestrator is
+        # the named sdlc-* agent above, not this). Kiro: a missing actor is a misconfig → fail closed.
+        return "default" if claude_host else "restricted"
     return "restricted"   # analyst / architect / qa / onboarder + any unknown role
 
 
@@ -125,8 +138,8 @@ def classify(command: str, cls: str = "restricted"):
     policy class `cls`, else None (allowed)."""
     if not command or not command.strip():
         return None
-    if cls == "developer":
-        return None  # the only code-writing role — full shell access
+    if cls in ("developer", "default"):
+        return None  # developer = the code-writing role; default = the user's own session — full shell
     if cls == "orchestrator" and _is_branch_create(command):
         return None  # single deliberate exception: isolation branch/worktree create
     # Remove harmless /dev/null + fd-dup redirections so they don't trip the `>` rule.
@@ -183,15 +196,21 @@ def _self_test() -> int:
         ("sdlc-full", None, "grep -rn foo .",               ALLOW),
         ("sdlc-full", None, "node .kiro/tools/cpp-guard.mjs",ALLOW),
         # --- Claude: role via stdin agent_type (no argv) ---
-        (None, "developer", "rm -rf build",                 ALLOW),  # developer-allowed
+        (None, "developer", "rm -rf build",                 ALLOW),  # developer — full shell
         (None, "developer", "uv add requests",              ALLOW),
         (None, "developer", "echo x > src/app.ts",          ALLOW),
         (None, "developer", "git commit -m x",              ALLOW),
-        (None, None,        "rm -rf build",                 BLOCK),  # main-session-blocked
-        (None, None,        "echo x > src/app.ts",          BLOCK),
-        (None, None,        "git checkout -b feat/x",       ALLOW),  # main session == orchestrator
-        (None, None,        "grep -rn foo .",               ALLOW),
-        (None, "analyst",   "echo x > openspec/p.md",       BLOCK),  # analyst writes via Write tool
+        # Bare main session = the user's DEFAULT session → unrestricted (orchestrator is the named agent below).
+        (None, None,        "rm -rf build",                 ALLOW),
+        (None, None,        "echo x > src/app.ts",          ALLOW),
+        (None, None,        "python3 -c \"print(1)\"",      ALLOW),
+        # Orchestrator runs as the named sdlc-full / sdlc-fast agent → read-only + branch-create only.
+        (None, "sdlc-full", "rm -rf build",                 BLOCK),
+        (None, "sdlc-full", "echo x > src/app.ts",          BLOCK),
+        (None, "sdlc-full", "uv add requests",              BLOCK),
+        (None, "sdlc-full", "git checkout -b feat/x",       ALLOW),  # branch-create exception
+        (None, "sdlc-fast", "grep -rn foo .",               ALLOW),
+        (None, "analyst",   "echo x > openspec/p.md",       BLOCK),  # restricted roles: read-only shell
         (None, "architect", "rm x",                         BLOCK),
         (None, "qa",        "sed -i s/a/b/ f",              BLOCK),
         (None, "onboarder", "echo x > .claude/context/p.md",BLOCK),
@@ -201,7 +220,7 @@ def _self_test() -> int:
         data = {} if agent_type is None else {"agent_type": agent_type}
         argv = ["check-shell-command.py"] + ([argv_agent] if argv_agent else [])
         actor = resolve_actor(data, argv=argv)
-        blocked = classify(command, actor_class(actor)) is not None
+        blocked = classify(command, actor_class(actor, claude_host=(argv_agent is None))) is not None
         ok = blocked == expect
         fails += not ok
         tag = "PASS" if ok else "FAIL"

@@ -52,6 +52,11 @@ _CLAUDE_POLICY = {
     "architect": ["openspec/**", "docs/**"] + _BATON,
     "qa":        ["openspec/**", "test/**", "tests/**", "e2e/**", "spec/**", "__tests__/**"] + _BATON,
     "onboarder": [".claude/context/**", "context/**", "openspec/**", ".kiro/context/**"] + _BATON,
+    # The orchestrator runs as the named sdlc-full / sdlc-fast agent: baton/spec only, never code
+    # (it spawns the developer subagent for S4). A bare main session (no agent_type) is the user's
+    # own DEFAULT session and is handled separately in decide() — unrestricted.
+    "sdlc-full": list(_BATON),
+    "sdlc-fast": list(_BATON),
 }
 
 
@@ -154,6 +159,10 @@ def decide(actor, raw_path, claude_host=None):
     paths); Kiro host → the agent's .kiro JSON (falling back to the built-in policy if absent)."""
     if claude_host is None:
         claude_host = IS_CLAUDE_HOST
+    if claude_host and actor is None:
+        # Claude bare main session = the user's DEFAULT session → unrestricted (the orchestrator is
+        # the named sdlc-* agent, which IS path-restricted via _CLAUDE_POLICY above).
+        return (True, ["* (default session — unrestricted)"], normalize_path(raw_path))
     if claude_host:
         allowed = claude_policy(actor)                      # Claude host: built-in policy wins
     else:
@@ -219,9 +228,10 @@ def _self_test():
         (None, "developer", "src/app.ts",                       ALLOW),  # developer-allowed
         (None, "developer", "/abs/proj/src/models.py",          ALLOW),  # absolute, normalized
         (None, "developer", "secrets.txt",                      BLOCK),
-        (None, None,        "openspec/changes/x/proposal.md",   ALLOW),  # main session writes baton/spec
-        (None, None,        "src/app.ts",                       BLOCK),  # MAIN-SESSION-BLOCKED (the core fix)
-        (None, None,        "/abs/proj/src/app.ts",             BLOCK),
+        (None, None,        "openspec/changes/x/proposal.md",   ALLOW),  # default session — unrestricted
+        (None, None,        "src/app.ts",                       ALLOW),  # default session = the user's own
+        (None, "sdlc-full", "openspec/changes/x/_state.json",   ALLOW),  # orchestrator agent writes baton
+        (None, "sdlc-full", "src/app.ts",                       BLOCK),  # orchestrator never writes code
         (None, "analyst",   "openspec/specs/auth/spec.md",      ALLOW),  # analyst-openspec-only
         (None, "analyst",   "src/app.ts",                       BLOCK),
         (None, "qa",        "tests/unit.spec.ts",               ALLOW),
