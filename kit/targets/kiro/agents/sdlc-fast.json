@@ -1,6 +1,6 @@
 {
   "name": "sdlc-fast",
-  "description": "SDLC Orchestrator for FAST-TRACK flows (bugfix/hotfix) — skips S1–S3, drives minimal build + verify. Use: 'sdlc bugfix {slug}', 'fix bug …', 'hotfix {slug}', or natural language.",
+  "description": "SDLC Orchestrator for FAST-TRACK flows (bugfix/hotfix) \u2014 skips S1\u2013S3, drives minimal build + verify. Use: 'sdlc bugfix {slug}', 'fix bug \u2026', 'hotfix {slug}', or natural language.",
   "prompt": "file://./sdlc-fast.md",
   "tools": [
     "read",
@@ -15,7 +15,10 @@
   "toolsSettings": {
     "write": {
       "allowedPaths": [
-        "openspec/**",
+        "openspec/changes/**/_*.md",
+        "openspec/changes/**/_*.json",
+        "openspec/changes/**/_*.jsonl",
+        "openspec/_*.md",
         ".kiro/memory/**"
       ]
     },
@@ -99,7 +102,7 @@
     ],
     "stop": [
       {
-        "command": "echo '' && echo '=== Uncommitted (openspec) ===' && git diff --stat openspec/ 2>/dev/null | tail -5; OUT=$(git diff --name-only -- . ':(exclude)openspec' ':(exclude)memory' ':(exclude).kiro' 2>/dev/null); [ -n \"$OUT\" ] && { echo '⚠ NON-SPEC FILE CHANGES detected — the orchestrator must NOT write code; only the developer agent (S4) may. Verify these came from S4:'; echo \"$OUT\" | head -20; }; true",
+        "command": "echo '' && echo '=== Uncommitted (openspec) ===' && git diff --stat openspec/ 2>/dev/null | tail -5; OUT=$(git diff --name-only -- . ':(exclude)openspec' ':(exclude)memory' ':(exclude).kiro' 2>/dev/null); [ -n \"$OUT\" ] && { echo '\u26a0 NON-SPEC FILE CHANGES detected \u2014 the orchestrator must NOT write code; only the developer agent (S4) may. Verify these came from S4:'; echo \"$OUT\" | head -20; }; true",
         "timeout_ms": 5000
       }
     ],
@@ -113,5 +116,5 @@
   "includeMcpJson": true,
   "model": "claude-sonnet-4.6",
   "keyboardShortcut": "ctrl+5",
-  "welcomeMessage": "SDLC Fast-track (bugfix/hotfix). Nói \"fix bug {tên}\" hoặc \"hotfix {tên}\" để bắt đầu; \"approve\"/\"status\" để quản lý. Tính năng mới/CR → dùng sdlc-full (ctrl+0)."
+  "welcomeMessage": "SDLC Fast-track (bugfix/hotfix). N\u00f3i \"fix bug {t\u00ean}\" ho\u1eb7c \"hotfix {t\u00ean}\" \u0111\u1ec3 b\u1eaft \u0111\u1ea7u; \"approve\"/\"status\" \u0111\u1ec3 qu\u1ea3n l\u00fd. T\u00ednh n\u0103ng m\u1edbi/CR \u2192 d\u00f9ng sdlc-full (ctrl+0)."
 }

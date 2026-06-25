@@ -38,7 +38,14 @@ IS_CLAUDE_HOST = "/.claude/" in os.path.abspath(__file__).replace("\\", "/")
 
 # --- Claude built-in role policy (mirror of the Kiro agent JSON allowedPaths). Authoritative on
 #     the Claude host; on Kiro the agent's own JSON wins via load_allowed_paths(). ---
-_BATON = ["openspec/**", "memory/**", ".kiro/memory/**", ".claude/memory/**"]
+_MEM = ["memory/**", ".kiro/memory/**", ".claude/memory/**"]
+_BATON = ["openspec/**"] + _MEM
+# The ORCHESTRATOR may write ONLY the CPP baton/state files (all underscore-prefixed) + the
+# cross-spec bridge + memory — NEVER the phase DELIVERABLES (proposal.md, design.md, tasks.md,
+# specs/**, *-report.md; none underscore-prefixed). This is the deterministic guard that forces the
+# orchestrator to DELEGATE S1–S5 to the role agents instead of producing the artifacts itself.
+_ORCH = ["openspec/changes/**/_*.md", "openspec/changes/**/_*.json",
+         "openspec/changes/**/_*.jsonl", "openspec/_*.md"] + _MEM
 _CLAUDE_POLICY = {
     "developer": [
         "src/**", "app/**", "apps/**", "lib/**", "pkg/**", "internal/**", "cmd/**",
@@ -52,11 +59,11 @@ _CLAUDE_POLICY = {
     "architect": ["openspec/**", "docs/**"] + _BATON,
     "qa":        ["openspec/**", "test/**", "tests/**", "e2e/**", "spec/**", "__tests__/**"] + _BATON,
     "onboarder": [".claude/context/**", "context/**", "openspec/**", ".kiro/context/**"] + _BATON,
-    # The orchestrator runs as the named sdlc-full / sdlc-fast agent: baton/spec only, never code
-    # (it spawns the developer subagent for S4). A bare main session (no agent_type) is the user's
-    # own DEFAULT session and is handled separately in decide() — unrestricted.
-    "sdlc-full": list(_BATON),
-    "sdlc-fast": list(_BATON),
+    # The orchestrator (sdlc-full / sdlc-fast) writes ONLY baton/state (underscore-prefixed) — never
+    # phase deliverables (forces delegation; see _ORCH). A bare main session (no agent_type) is the
+    # user's own DEFAULT session, handled separately in decide() — unrestricted.
+    "sdlc-full": list(_ORCH),
+    "sdlc-fast": list(_ORCH),
 }
 
 
@@ -221,8 +228,11 @@ def _self_test():
         ("architect", None, "src/app.ts",                       BLOCK),
         ("qa",        None, "tests/e2e.spec.ts",                ALLOW),
         ("qa",        None, "src/app.ts",                       BLOCK),
-        ("sdlc-full", None, "openspec/changes/x/_state.json",   ALLOW),
-        ("sdlc-full", None, "src/app.ts",                       BLOCK),  # orchestrator never writes code
+        ("sdlc-full", None, "openspec/changes/x/_state.json",   ALLOW),  # baton (underscore-prefixed)
+        ("sdlc-full", None, "openspec/_cross-spec-context.md",  ALLOW),  # cross-spec bridge
+        ("sdlc-full", None, "openspec/changes/x/design.md",     BLOCK),  # DELIVERABLE → must delegate to architect
+        ("sdlc-full", None, "openspec/changes/x/proposal.md",   BLOCK),  # DELIVERABLE → must delegate to analyst
+        ("sdlc-full", None, "src/app.ts",                       BLOCK),  # never writes code
         ("onboarder", None, ".kiro/context/project.md",         ALLOW),
         # --- Claude: role via stdin agent_type (no argv), built-in policy ---
         (None, "developer", "src/app.ts",                       ALLOW),  # developer-allowed
@@ -230,8 +240,9 @@ def _self_test():
         (None, "developer", "secrets.txt",                      BLOCK),
         (None, None,        "openspec/changes/x/proposal.md",   ALLOW),  # default session — unrestricted
         (None, None,        "src/app.ts",                       ALLOW),  # default session = the user's own
-        (None, "sdlc-full", "openspec/changes/x/_state.json",   ALLOW),  # orchestrator agent writes baton
-        (None, "sdlc-full", "src/app.ts",                       BLOCK),  # orchestrator never writes code
+        (None, "sdlc-full", "openspec/changes/x/_state.json",   ALLOW),  # orchestrator agent — baton only
+        (None, "sdlc-full", "openspec/changes/x/design.md",     BLOCK),  # DELIVERABLE → must delegate to architect
+        (None, "sdlc-full", "src/app.ts",                       BLOCK),  # never writes code
         (None, "analyst",   "openspec/specs/auth/spec.md",      ALLOW),  # analyst-openspec-only
         (None, "analyst",   "src/app.ts",                       BLOCK),
         (None, "qa",        "tests/unit.spec.ts",               ALLOW),
