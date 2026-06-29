@@ -1,0 +1,59 @@
+{
+  "name": "context-refresh",
+  "description": "Context Refresh — re-scans the repo against the EXISTING context/ contract to detect drift (new stack, new docs/extra-docs, changed conventions/architecture accumulated over many features), reports a diff, updates only what changed, and re-wires via the context-mapper. Incremental counterpart to the onboarder (which sets context up the first time). Trigger: /context-refresh. Keywords: refresh, drift, resync, outdated context, cập nhật context.",
+  "prompt": "file://./context-refresh.md",
+  "tools": [
+    "read",
+    "write",
+    "shell"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "shell"
+  ],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": [
+        "context/**",
+        "openspec/**",
+        ".kiro/context-map.json",
+        "memory/**"
+      ]
+    },
+    "shell": {
+      "allowedCommands": [
+        "cat",
+        "grep",
+        "ls",
+        "find",
+        "test",
+        "head",
+        "wc",
+        "node",
+        "git"
+      ]
+    }
+  },
+  "resources": [],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "python3 .kiro/agents/scripts/agent-spawn-context.py context-refresh",
+        "timeout_ms": 5000,
+        "cache_ttl_seconds": 15
+      }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "fs_write",
+        "command": "python3 .kiro/agents/scripts/check-write-path.py context-refresh",
+        "timeout_ms": 3000
+      }
+    ]
+  },
+  "includeMcpJson": true,
+  "model": "claude-opus-4.8",
+  "keyboardShortcut": "ctrl+7",
+  "welcomeMessage": "Context Refresh. Tôi sẽ quét lại repo so với context/ hiện có, báo cáo drift, cập nhật phần đã đổi và re-wire. Gõ 'bắt đầu'."
+}

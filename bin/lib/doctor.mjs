@@ -1,10 +1,10 @@
 // doctor — health check for a kit install in a project.
-// Verifies structure, agent configs, reference resolution, symlinks, and context state.
+// Verifies structure, agent configs, reference resolution, root workspace, and context state.
 //
 // Usage:  node .kiro/tools/doctor.mjs [projectDir]
 // Exit:   0 = no FAIL (WARN allowed)   1 = at least one FAIL
 
-import { readFileSync, existsSync, readdirSync, lstatSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, resolve, normalize } from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -17,8 +17,8 @@ const fail = (m) => results.push({ level: 'fail', msg: m });
 
 if (!existsSync(kiro)) { console.error(`✗ no .kiro/ at ${projectDir} — run init first`); process.exit(1); }
 
-// 1. Required structure
-for (const d of ['agents', 'skills', 'steering', 'context', 'tools']) {
+// 1. Required structure (context/ lives at the project root, not under .kiro/ — checked in §3)
+for (const d of ['agents', 'skills', 'steering', 'tools']) {
   existsSync(join(kiro, d)) ? ok(`dir .kiro/${d}/`) : fail(`missing .kiro/${d}/`);
 }
 for (const f of ['context-map.json', 'tools/context-map.mjs', 'tools/context-check.mjs']) {
@@ -31,12 +31,12 @@ catch { fail('openspec CLI missing — `npm i -g @fission-ai/openspec` (workspac
 existsSync(join(projectDir, 'openspec', 'config.yaml')) ? ok('openspec/ workspace present')
   : fail('no openspec/config.yaml — run `openspec init --tools kiro`');
 
-// 3. Symlinks (workspace reachable from .kiro/)
-for (const link of ['openspec', 'memory']) {
-  const p = join(kiro, link);
-  if (!existsSync(p)) { warn(`no .kiro/${link} symlink — run init`); continue; }
-  try { lstatSync(p).isSymbolicLink() ? ok(`symlink .kiro/${link}`) : warn(`.kiro/${link} is not a symlink`); }
-  catch { warn(`.kiro/${link} unreadable`); }
+// 3. Shared workspace at the project root (no symlink — both platforms read these root-relative).
+//    A stale per-platform copy/symlink under .kiro/ would shadow the root and is flagged.
+for (const name of ['openspec', 'memory', 'context', 'docs']) {
+  existsSync(join(projectDir, name)) ? ok(`root ${name}/`)
+    : warn(`no ./${name} at project root — run init`);
+  if (existsSync(join(kiro, name))) warn(`.kiro/${name} exists — should be root-only; re-run init --force to strip it`);
 }
 
 // 3. Agent configs valid + prompt/skill/kb refs resolve
@@ -51,6 +51,11 @@ if (existsSync(agentsDir)) {
     if (p.startsWith('file://') && !existsSync(normalize(join(agentsDir, p.slice(7))))) {
       fail(`agent ${file}: prompt missing → ${p}`); brokenRefs++;
     }
+    // Orchestrators delegate each phase by spawning a role subagent → they MUST hold the
+    // `subagent` tool, else Kiro refuses to spawn and the orchestrator stalls on every handoff.
+    if (d.name === 'sdlc-full' || d.name === 'sdlc-fast') {
+      if (!(d.tools || []).includes('subagent')) fail(`agent ${file}: orchestrator missing 'subagent' in tools[] (cannot delegate)`);
+    }
     for (const r of d.resources || []) {
       if (typeof r === 'string' && r.startsWith('skill://')) {
         if (!existsSync(r.slice(8))) { fail(`agent ${file}: skill ref missing → ${r}`); brokenRefs++; }
@@ -63,8 +68,8 @@ if (existsSync(agentsDir)) {
   if (brokenRefs === 0) ok('all agent prompt/skill/kb references resolve');
 }
 
-// 4. Context completeness (delegate to context-check semantics)
-const ctx = join(kiro, 'context');
+// 4. Context completeness (delegate to context-check semantics) — context lives at the root.
+const ctx = join(projectDir, 'context');
 if (existsSync(ctx)) {
   let todo = 0, unknown = 0;
   for (const f of readdirSync(ctx).filter((f) => f.endsWith('.md'))) {

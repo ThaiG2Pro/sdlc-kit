@@ -17,6 +17,9 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+// pipelines.json is a SHARED-ROOT file: it lives ONCE at the project root (no per-platform copy,
+// no symlink) and both hosts read it root-relative. (Was <platform>/pipelines.json pre Phase 16.)
+
 // Artifacts that must exist in <CHANGE_DIR> before a phase's gate can pass.
 // (Deterministic filenames — independent of phaseCatalog's prose `produces`.)
 const PHASE_ARTIFACTS = {
@@ -43,8 +46,8 @@ for (let i = 0; i < argv.length; i++) {
 projectDir = resolve(projectDir);
 
 // ---- load pipelines.json ----
-const pipelines = readJson(join(projectDir, '.kiro', 'pipelines.json'));
-if (!pipelines) die(`no .kiro/pipelines.json at ${projectDir}`);
+const pipelines = readJson(join(projectDir, 'pipelines.json'));
+if (!pipelines) die(`no pipelines.json at ${projectDir}`);
 const { phaseCatalog = {}, types = {} } = pipelines;
 
 // ---- resolve the active change dir ----
@@ -70,6 +73,24 @@ if (!CHANGE_DIR) die(changeName ? `no _state.json in change "${changeName}"` : '
 // ---- load state ----
 const state = readJson(join(CHANGE_DIR, '_state.json'));
 if (!state) die(`unreadable _state.json in ${CHANGE_DIR}`);
+
+// ── STEP 0: canonical-shape validation. Catches drift introduced by a raw Write (the path state-set
+//    cannot police) at the very next status/gate check — deterministically, not via the LLM noticing. ──
+try {
+  const { validateState } = await import('./state-schema.mjs');
+  const { ok, problems } = validateState(state);
+  if (!ok) {
+    console.log(`  ✗ NON-CANONICAL _state.json (shape drift) in ${CHANGE_DIR.split('/').pop()}:`);
+    for (const p of problems) console.log(`       - ${p}`);
+    console.log('  → normalize via state-set BEFORE any gate (rich per-gate data goes in gate_audit), e.g.:');
+    console.log(`       node <platform>/tools/state-set.mjs --change ${changeName || CHANGE_DIR.split('/').pop()} --unset gates.SPEC_LOCK --set gates.S2=passed`);
+    process.exit(1);
+  }
+} catch (e) {
+  if (e && e.code === 'ERR_MODULE_NOT_FOUND')
+    console.log('  ⚠ state-schema.mjs not found — _state.json shape NOT enforced (re-run init to install it).');
+  else throw e;
+}
 
 const type = state.type;
 const current = (state.current_phase || 'NEW').toUpperCase();
@@ -122,6 +143,18 @@ function artifactsPresent(phase) {
     const specsDir = join(CHANGE_DIR, 'specs');
     const hasDelta = existsSync(specsDir) && readdirSync(specsDir).length > 0;
     if (!hasDelta) missing.push('specs/** (≥1 requirement spec delta)');
+  }
+  // S5: the test-case deliverable is required ONLY when the pipeline selected it
+  // (_state.json.testcase_export ∈ {xlsx,md}); `none` or a legacy state without the key skips it.
+  // The qa generator may fall back to .csv when openpyxl is absent, so xlsx accepts xlsx OR csv.
+  if (phase === 'S5') {
+    const te = String(state.testcase_export || '').toLowerCase();
+    if (te === 'xlsx' || te === 'md') {
+      const cands = te === 'md' ? ['qa/testcases.md'] : ['qa/testcases.xlsx', 'qa/testcases.csv'];
+      if (!cands.some((f) => existsSync(join(CHANGE_DIR, f)))) {
+        missing.push(`${cands.join(' or ')} (testcase_export=${te})`);
+      }
+    }
   }
   return missing;
 }

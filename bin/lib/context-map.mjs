@@ -52,16 +52,20 @@ export function applyContextMap({ kiroDir, mapPath, log = () => {} }) {
       } else skipped.push(`skill:${s}`);
     }
 
-    // 2. knowledgeBase (kiro-relative) → file://./.kiro/<entry>
+    // 2. knowledgeBase. Shared-root entries (context/*, openspec, sdlc.config.json, pipelines.json)
+    //    live ONCE at the project root — referenced root-relative (file://./<entry>), no symlink.
+    //    Platform-local entries (steering, ai) are copied into .kiro/ → file://./.kiro/<entry>.
     //    agents with inheritAlways:false (e.g. a hook-only utility agent) skip the shared `always` set
     const inheritAlways = cfg.inheritAlways !== false;
     const kb = [...(inheritAlways ? (always.knowledgeBase || []) : []), ...(cfg.knowledgeBase || [])];
     let nKb = 0;
     for (const e of dedupe(kb)) {
-      if (existsSync(join(kiroDir, e))) {
-        resources.push(kbEntry(`file://./.kiro/${e}`, e));
+      const root = isSharedRootKb(e);
+      const base = root ? projectRoot : kiroDir;
+      if (existsSync(join(base, e))) {
+        resources.push(kbEntry(root ? `file://./${e}` : `file://./.kiro/${e}`, e));
         nKb++;
-      } else skipped.push(`kb:.kiro/${e}`);
+      } else skipped.push(`kb:${root ? '' : '.kiro/'}${e}`);
     }
 
     // 3. extraDocs (project-root-relative) → file://./<entry>
@@ -82,6 +86,13 @@ export function applyContextMap({ kiroDir, mapPath, log = () => {} }) {
 }
 
 function dedupe(arr) { return [...new Set(arr)]; }
+
+// Shared-root knowledge lives once at the project root (no symlink): context/*, plus the openspec
+// workspace and the shared config files. Everything else (steering, ai) is platform-local under .kiro/.
+const SHARED_ROOT_KB = new Set(['openspec', 'sdlc.config.json', 'pipelines.json']);
+function isSharedRootKb(e) {
+  return e === 'context' || e.startsWith('context/') || SHARED_ROOT_KB.has(e);
+}
 
 // Build a Kiro knowledgeBase resource entry with a derived name.
 function kbEntry(source, entry) {
