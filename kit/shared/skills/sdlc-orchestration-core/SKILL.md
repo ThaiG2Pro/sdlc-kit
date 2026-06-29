@@ -183,12 +183,16 @@ IF active change AND action = approve:
      run the audit, do NOT approve. exit 0 → the order/artifacts/prior-gates are legal; continue.
   → run the pre-gate audit (see Gate Audit Map)
   → audit FAIL (incl. openspec change validate failing at S2/S3) → block, show blockers, STOP
-  → audit PASS → update _state.json: clear blocker AND set `gates["<current_phase>"]="passed"`,
-     mark _progress.md, then DELEGATE the next phase to its role agent (Claude: Task spawn · Kiro
-     CLI: "use the {role} agent") — never produce its artifact yourself (guard printed the next phase)
+  → audit PASS → update _state.json **surgically via the tool** (you have no Edit and a read-only
+     shell, so NEVER hand-rewrite the whole file): clear the blocker, mark the gate passed, advance
+     the phase in ONE call —
+     `node {{PLATFORM_DIR}}/tools/state-set.mjs --set gates.<current_phase>=passed --set current_phase=<next> --unset blocker`
+     (it read-modify-writes, preserving every other field). Then mark _progress.md and DELEGATE the
+     next phase to its role agent (Claude: Task spawn · Kiro CLI: "use the {role} agent") — never
+     produce its artifact yourself (the guard printed the next phase).
 
 IF active change AND action = dispute:  → see Dispute Resolution Protocol
-IF active change AND action = reject:   → record reason in _state.json blocker; return to current agent
+IF active change AND action = reject:   → record reason via `node {{PLATFORM_DIR}}/tools/state-set.mjs --set 'blocker=<reason>'`; return to current agent
 IF action = status:  → openspec list + status + _progress.md → show full progress
 ```
 

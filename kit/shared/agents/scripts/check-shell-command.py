@@ -195,6 +195,7 @@ def _self_test() -> int:
         ("sdlc-fast", None, "openspec list",                ALLOW),
         ("sdlc-full", None, "grep -rn foo .",               ALLOW),
         ("sdlc-full", None, "node .kiro/tools/cpp-guard.mjs",ALLOW),
+        ("sdlc-full", None, "node .kiro/tools/state-set.mjs --set gates.S2=passed --set current_phase=S3", ALLOW),  # kit state tool (not -e/eval)
         # --- Claude: role via stdin agent_type (no argv) ---
         (None, "developer", "rm -rf build",                 ALLOW),  # developer — full shell
         (None, "developer", "uv add requests",              ALLOW),

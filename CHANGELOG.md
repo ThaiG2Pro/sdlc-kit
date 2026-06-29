@@ -50,6 +50,14 @@ Kept `@bookstack` (an active org knowledge source).
 
 ### Added
 
+- **`state-set.mjs` — deterministic `_state.json` updates.** New kit tool (shipped to both
+  `<platform>/tools/`) for surgical read-modify-write of a change's `_state.json`:
+  `node <platform>/tools/state-set.mjs --set gates.S2=passed --set current_phase=S3 --unset blocker`.
+  The orchestrator (read-only shell, no Edit tool) previously had to rewrite the WHOLE file via the
+  Write tool on every gate — clobber-prone. The tool preserves every other field, resolves the active
+  change automatically, and parses values as JSON-or-string. Runs via the already-allowed
+  `Bash(node <platform>/tools/…)` path (shell-guard permits kit node tools; self-test vector added).
+  The `sdlc-orchestration-core` skill now drives gate approve/reject through it.
 - **Optional kit `.gitignore` block (`init`).** `init` now offers to add a kit-owned block to the
   project's `.gitignore` — interactive prompt defaults to **yes**; `--gitignore` / `--no-gitignore`
   decide it non-interactively. It ignores only what the kit regenerates on every `--force`
