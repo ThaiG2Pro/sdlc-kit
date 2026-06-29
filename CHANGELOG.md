@@ -60,6 +60,24 @@ Kept `@bookstack` (an active org knowledge source).
 
 ### Added
 
+- **Per-project code/test roots — the developer/qa write-fence is now project-configurable.** The
+  developer allow-list (built-in `_DEVELOPER` on Claude + the Kiro `developer.json` `allowedPaths`)
+  is a curated set of standard code roots (`src/**`, `app/**`, `lib/**`, … incl. Laravel `artisan`/
+  `phpunit.xml`/`composer.lock`) — but both sources are kit-managed and regenerated on every `--force`,
+  so a project whose code lives elsewhere couldn't durably extend them. This bit an `nwidart/laravel-
+  modules` project (portal) where 100% of app code lives under `Modules/<Name>/` and tests under
+  `Modules/<Name>/Tests/` — the developer was hard-blocked from writing any code, and qa would have
+  been blocked from module tests at S5. New mechanism: `sdlc.config.json` gains a `paths` key with
+  `code_roots` (extra DEVELOPER write globs) and `test_roots` (granted to the developer AND to qa —
+  qa otherwise stays test-only and never receives `code_roots`). `check-write-path.py` reads it at
+  `decide()` time and merges **host-uniformly** (applies whether the base list came from the Kiro JSON
+  or the Claude built-in). `init` now **preserves `paths` across `--force`** (the rest of the file stays
+  kit-regenerated; only re-serializes when roots are present, so the common case keeps template
+  formatting). The glob matcher gained additive support for **interior `**`** (e.g. `Modules/**/Tests/**`
+  → `**` spans path segments, `*` stays within one) — trailing `dir/**` and `fnmatch` patterns are
+  byte-identical to before. Self-test 73/73 (10 new: both-host merge, qa test-only fence preserved,
+  interior-`**`, default repos with empty `paths` unaffected). Default template ships empty `paths` →
+  zero behavior change for existing projects; a project opts in by listing its roots.
 - **`state-set.mjs` — deterministic `_state.json` updates.** New kit tool (shipped to both
   `<platform>/tools/`) for surgical read-modify-write of a change's `_state.json`:
   `node <platform>/tools/state-set.mjs --set gates.S2=passed --set current_phase=S3 --unset blocker`.

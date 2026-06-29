@@ -33,7 +33,7 @@ Glob semantics:
 Exit 0 = allowed, Exit 2 = blocked (or misconfigured → deny by default).
 Self-test: `python3 check-write-path.py --self-test`.
 """
-import json, sys, os, fnmatch
+import json, sys, os, fnmatch, re
 
 # Capture this script's absolute path BEFORE any chdir (correct even if __file__ is relative).
 _SCRIPT = os.path.abspath(__file__)
@@ -47,6 +47,44 @@ try:
     os.chdir(os.path.join(os.path.dirname(_SCRIPT), "..", "..", ".."))
 except OSError:
     pass
+
+# Project root = three parents up from the installed script (<root>/<platform>/agents/scripts/).
+# Derived from _SCRIPT (not cwd) so it is correct even if a Bash `cd` moved the session.
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(_SCRIPT), "..", "..", ".."))
+
+# Per-project EXTRA write roots, declared once in sdlc.config.json `paths` and MERGED into the
+# developer/qa allow-list at decide() time on BOTH hosts. WHY: the built-in allow-lists (Claude
+# _DEVELOPER + the Kiro <agent>.json) are kit-managed and regenerated on every `--force`, so a project
+# whose code lives outside the standard roots (e.g. nwidart/laravel-modules → Modules/<Name>/) cannot
+# durably edit them in place. Instead it sets `paths.code_roots` / `paths.test_roots` in sdlc.config.json
+# (which init now PRESERVES across --force). developer gets code_roots + test_roots; qa gets test_roots
+# ONLY (its test-only fence must never widen to product code). _CONFIG_OVERRIDE lets the self-test inject
+# a config without disk I/O.
+_CONFIG_OVERRIDE = None
+
+
+def _load_project_config():
+    if _CONFIG_OVERRIDE is not None:
+        return _CONFIG_OVERRIDE
+    for cand in (os.path.join(_PROJECT_ROOT, "sdlc.config.json"),
+                 os.path.join(os.getcwd(), "sdlc.config.json")):
+        try:
+            with open(cand, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (OSError, ValueError):
+            continue
+    return {}
+
+
+def project_extra_paths(actor):
+    """Extra write globs from sdlc.config.json `paths`, scoped by role. developer → code+test roots
+    (it writes both); qa → test roots ONLY. Other roles never receive project roots. Returns []."""
+    if actor not in ("developer", "qa"):
+        return []
+    paths = (_load_project_config().get("paths") or {})
+    code = [p for p in (paths.get("code_roots") or []) if isinstance(p, str) and p.strip()]
+    test = [p for p in (paths.get("test_roots") or []) if isinstance(p, str) and p.strip()]
+    return (code + test) if actor == "developer" else test
 
 
 # Which host fired this hook? The script is installed at BOTH .kiro/agents/scripts/ and
@@ -189,9 +227,16 @@ def normalize_path(path: str) -> str:
 
 def path_allowed(path: str, patterns) -> bool:
     for pat in patterns:
-        if pat.endswith("/**"):
-            base = pat[:-3]  # "src/**" -> "src"
+        if pat.endswith("/**") and "**" not in pat[:-3]:
+            base = pat[:-3]  # "src/**" -> "src"  (simple trailing-** prefix match — fast path)
             if path == base or path.startswith(base + "/"):
+                return True
+        elif "**" in pat:
+            # Interior/multi ** (e.g. "Modules/**/Tests/**"): match across path segments.
+            # ** → any chars (incl. '/'); * → within a single segment. Additive: no existing pattern
+            # has an interior **, so this branch never changes legacy trailing-** / fnmatch behavior.
+            rx = re.escape(pat).replace(r"\*\*", "\x00").replace(r"\*", "[^/]*").replace("\x00", ".*")
+            if re.fullmatch(rx, path):
                 return True
         elif any(ch in pat for ch in "*?["):
             if fnmatch.fnmatch(path, pat):
@@ -296,6 +341,12 @@ def decide(actor, raw_path, claude_host=None):
         allowed = load_allowed_paths(actor) if actor else None  # Kiro JSON = source of truth
         if allowed is None:
             allowed = policy_for(actor, claude_host)        # built-in fallback (host-scoped)
+    # Merge per-project code/test roots (sdlc.config.json `paths`) for developer/qa — host-uniform, so
+    # it widens the fence identically whether `allowed` came from the Kiro JSON or the Claude built-in.
+    if allowed and actor in ("developer", "qa"):
+        extra = project_extra_paths(actor)
+        if extra:
+            allowed = list(allowed) + extra
     if not allowed:
         return (False, allowed, "")
     norm = normalize_path(raw_path)
@@ -434,6 +485,37 @@ def _self_test():
         fails += not ok
         total += 1
         sys.stdout.write(f"  [{'PASS' if ok else 'FAIL'}] mem-guard {label:18} lost={got}\n")
+
+    # --- per-project code/test roots (sdlc.config.json `paths`) merged into the developer/qa fence ---
+    global _CONFIG_OVERRIDE
+    _CONFIG_OVERRIDE = {"paths": {"code_roots": ["Modules/**"], "test_roots": ["Modules/**/Tests/**"]}}
+    pp = [
+        # (actor, claude_host, raw_path, expect)
+        ("developer", True,  "Modules/Billing/Service.php",          ALLOW),  # code_root → dev writes code (Claude)
+        ("developer", False, "Modules/Billing/Service.php",          ALLOW),  # same on Kiro host (JSON base + merge)
+        ("developer", True,  "Modules/Billing/Tests/UnitTest.php",   ALLOW),  # dev also writes module tests
+        ("qa",        True,  "Modules/Billing/Tests/UnitTest.php",   ALLOW),  # test_root (interior **) → qa writes tests
+        ("qa",        False, "Modules/Sales/Tests/Feature/XTest.php",ALLOW),  # nested under Tests/ on Kiro host
+        ("qa",        True,  "Modules/Billing/Service.php",          BLOCK),  # qa stays TEST-ONLY (not product code)
+        ("analyst",   True,  "Modules/Billing/Service.php",          BLOCK),  # non-dev/qa never receive project roots
+        ("developer", True,  "Modules/Billing/sub/deep/File.php",    ALLOW),  # code_root is recursive
+    ]
+    for actor, ch, raw, expect in pp:
+        allowed_ok, _, _ = decide(actor, raw, claude_host=ch)
+        ok = allowed_ok == expect
+        fails += not ok
+        total += 1
+        host = "kiro " if not ch else "claude"
+        sys.stdout.write(f"  [{'PASS' if ok else 'FAIL'}] proj-path {host} {actor:9} {'allow' if allowed_ok else 'BLOCK'} :: {raw}\n")
+    # default repos (no/empty paths) are UNAFFECTED — Modules/ stays blocked for both hosts
+    _CONFIG_OVERRIDE = {"paths": {"code_roots": [], "test_roots": []}}
+    for actor, ch, raw, expect in [("developer", True, "Modules/X/A.php", BLOCK), ("developer", False, "Modules/X/A.php", BLOCK)]:
+        allowed_ok, _, _ = decide(actor, raw, claude_host=ch)
+        ok = allowed_ok == expect
+        fails += not ok
+        total += 1
+        sys.stdout.write(f"  [{'PASS' if ok else 'FAIL'}] proj-path(empty) {'kiro ' if not ch else 'claude'} {actor:9} {'allow' if allowed_ok else 'BLOCK'} :: {raw}\n")
+    _CONFIG_OVERRIDE = None
 
     sys.stdout.write(f"\n  {total - fails}/{total} passed"
                      f"{'' if not fails else f' — {fails} FAILED'}\n")

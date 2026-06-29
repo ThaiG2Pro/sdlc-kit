@@ -385,7 +385,27 @@ function scaffoldRootConfig(vals) {
   for (const f of SHARED_ROOT_FILES) {
     const src = join(SHARED_SRC, f);
     if (!existsSync(src)) continue;
-    writeFileSync(join(TARGET, f), applyTokens(readFileSync(src, 'utf8'), vals));
+    const dst = join(TARGET, f);
+    let out = applyTokens(readFileSync(src, 'utf8'), vals);
+    // sdlc.config.json is kit-owned and regenerated here EXCEPT the user-owned `paths` key (per-project
+    // code/test roots the write-fence reads). Carry a project's declared roots over the fresh template
+    // so a --force redeploy never wipes them. Only re-serialize when roots are actually present, so the
+    // common case keeps the template's exact formatting.
+    if (f === 'sdlc.config.json' && existsSync(dst)) {
+      try {
+        const prev = JSON.parse(readFileSync(dst, 'utf8'));
+        const p = prev && prev.paths;
+        const hasRoots = p && ((Array.isArray(p.code_roots) && p.code_roots.length) ||
+                               (Array.isArray(p.test_roots) && p.test_roots.length));
+        if (hasRoots) {
+          const tmpl = JSON.parse(out);
+          tmpl.paths = p;
+          out = JSON.stringify(tmpl, null, 2) + '\n';
+          log(`  ✓ preserved sdlc.config.json paths.{code_roots,test_roots} across --force`);
+        }
+      } catch { /* non-JSON on either side → fall back to the freshly-templated output */ }
+    }
+    writeFileSync(dst, out);
     n++;
   }
   if (n) log(`  ✓ config → ./{${SHARED_ROOT_FILES.join(', ')}} (shared root, read root-relative by each platform)`);
