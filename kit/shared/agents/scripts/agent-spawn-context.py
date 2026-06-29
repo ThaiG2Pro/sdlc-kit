@@ -8,6 +8,16 @@ import json
 import sys
 import os
 
+# Hook robustness: a Bash `cd` in the session can leave this hook's cwd inside a project subdir
+# (the host may run hooks from the session cwd), breaking the relative reads below. This script lives
+# at <root>/<platform>/agents/scripts/, so the project root is three parents up — chdir there so every
+# relative path (openspec/, memory/, _state.json) resolves from the root. Affects only THIS
+# subprocess, never the caller's shell. No-op in the normal case (cwd already the root).
+try:
+    os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+except OSError:
+    pass
+
 agent_name = sys.argv[1] if len(sys.argv) > 1 else "unknown"
 
 def read_json(path):

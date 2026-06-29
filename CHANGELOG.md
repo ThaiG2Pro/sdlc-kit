@@ -39,6 +39,16 @@ Kept `@bookstack` (an active org knowledge source).
 
 ### Fixed
 
+- **Hooks survive a mid-session `cd` (cwd-poisoning).** Claude runs hook commands from the session's
+  current working directory, so once an agent ran `cd openspec/changes/archive`, every later
+  PreToolUse/Write/Bash hook died with `python3: can't open file '.../archive/.claude/agents/scripts/…'`
+  — the relative hook path resolved against the changed cwd, bricking the whole session (even a
+  recovering `cd …` was blocked, since the hook fires first). Two-layer fix: (1) every hook command in
+  `.claude/settings.json` is now prefixed `cd "${CLAUDE_PROJECT_DIR}" && …` so the script is found and
+  runs from the project root; (2) `check-write-path.py` + `agent-spawn-context.py` additionally
+  self-locate the project root from their own path and `chdir` there, so the cwd-relative logic
+  (target-glob match, `.snapshots/`, openspec/memory reads) is correct regardless of host cwd
+  behavior — defense-in-depth that also hardens Kiro. Self-tests still 63/63 + 32/32.
 - **Guards read config from project root (Phase 16 leftover).** `pipeline-guard.mjs` and
   `cpp-guard.mjs` still read `<platform>/pipelines.json` / `<platform>/sdlc.config.json` — paths that
   no longer exist after the root-only refactor moved those files to the project root. Any gate check

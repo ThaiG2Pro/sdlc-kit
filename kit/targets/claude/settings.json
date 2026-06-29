@@ -40,21 +40,21 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "python3 .claude/agents/scripts/check-shell-command.py", "timeout": 5 }
+          { "type": "command", "command": "cd \"${CLAUDE_PROJECT_DIR}\" && python3 .claude/agents/scripts/check-shell-command.py", "timeout": 5 }
         ]
       },
       {
         "matcher": "Write|Edit|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "python3 .claude/agents/scripts/check-write-path.py", "timeout": 5 }
+          { "type": "command", "command": "cd \"${CLAUDE_PROJECT_DIR}\" && python3 .claude/agents/scripts/check-write-path.py", "timeout": 5 }
         ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 .claude/agents/scripts/check-kit-version.py .claude", "timeout": 5 },
-          { "type": "command", "command": "python3 .claude/agents/scripts/agent-spawn-context.py", "timeout": 5 }
+          { "type": "command", "command": "cd \"${CLAUDE_PROJECT_DIR}\" && python3 .claude/agents/scripts/check-kit-version.py .claude", "timeout": 5 },
+          { "type": "command", "command": "cd \"${CLAUDE_PROJECT_DIR}\" && python3 .claude/agents/scripts/agent-spawn-context.py", "timeout": 5 }
         ]
       }
     ],
@@ -68,7 +68,7 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "OUT=$(git diff --name-only -- . ':(exclude)openspec' ':(exclude)memory' ':(exclude).claude' ':(exclude).snapshots' 2>/dev/null); [ -n \"$OUT\" ] && { echo '⚠ NON-SPEC FILE CHANGES detected — the orchestrator (main session) must NOT write code; only the developer subagent (S4) may. Verify these came from the developer:'; echo \"$OUT\" | head -20; }; true", "timeout": 5 }
+          { "type": "command", "command": "cd \"${CLAUDE_PROJECT_DIR}\" && OUT=$(git diff --name-only -- . ':(exclude)openspec' ':(exclude)memory' ':(exclude).claude' ':(exclude).snapshots' 2>/dev/null); [ -n \"$OUT\" ] && { echo '⚠ NON-SPEC FILE CHANGES detected — the orchestrator (main session) must NOT write code; only the developer subagent (S4) may. Verify these came from the developer:'; echo \"$OUT\" | head -20; }; true", "timeout": 5 }
         ]
       }
     ]

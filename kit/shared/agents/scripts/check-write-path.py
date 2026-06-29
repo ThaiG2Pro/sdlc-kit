@@ -35,6 +35,19 @@ Self-test: `python3 check-write-path.py --self-test`.
 """
 import json, sys, os, fnmatch
 
+# Capture this script's absolute path BEFORE any chdir (correct even if __file__ is relative).
+_SCRIPT = os.path.abspath(__file__)
+# Hook robustness: a Bash `cd` in the session can leave this hook's cwd inside a project subdir
+# (the host may run hooks from the session cwd), which would break the cwd-relative target-path
+# resolution and the .snapshots/ writes below. The installed script lives at
+# <root>/<platform>/agents/scripts/, so the project root is three parents up — chdir there so every
+# relative path resolves from the root. Affects only THIS subprocess, never the caller's shell, and
+# is a no-op when cwd is already the root.
+try:
+    os.chdir(os.path.join(os.path.dirname(_SCRIPT), "..", "..", ".."))
+except OSError:
+    pass
+
 
 # Which host fired this hook? The script is installed at BOTH .kiro/agents/scripts/ and
 # .claude/agents/scripts/; its own path tells us which one ran. The policy SOURCE is chosen by
@@ -42,7 +55,7 @@ import json, sys, os, fnmatch
 # .kiro/agents/<role>.json from a dual-target install must NOT win. (Both the JSON allow-lists and
 # the built-in policy now name ROOT paths only — context/**, memory/**, openspec/** — never a
 # platform-prefixed path, since the shared workspace lives once at the root with no symlink.)
-IS_CLAUDE_HOST = "/.claude/" in os.path.abspath(__file__).replace("\\", "/")
+IS_CLAUDE_HOST = "/.claude/" in _SCRIPT.replace("\\", "/")
 
 # --- Built-in role policy (mirror of the Kiro agent JSON allowedPaths). Authoritative on the
 #     Claude host; on Kiro the agent's own JSON wins via load_allowed_paths(). Every shared
