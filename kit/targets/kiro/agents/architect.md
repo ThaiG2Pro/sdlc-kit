@@ -117,6 +117,7 @@ This project drives the lifecycle through the **OpenSpec** CLI. Artifacts live i
   - Risky Areas: complex implementations, potential performance issues
   - Recommended Reading Order: guide developer on what to read in design.md
 - **`_state.json`**: Update with enriched fields (phase_history, active_concerns, terminology, priority_reading, watch_items)
+- 🧠 **`memory/architect.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S3 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (ADR trade-off hay tái diễn, ràng buộc kiến trúc xuyên feature, design anti-pattern cần tránh) → APPEND một section `## {ISO-date} — {change-name}: {lesson}` mới. KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/architect.md` tích luỹ XUYÊN spec, được đọc đầu MỖI run (xem block đầu file). **Append-only** — không xoá/đè section `## ` cũ (write-path hook chặn write làm mất section). Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler.
 - ❌ NEVER present DESIGN REVIEW gate without all CPP artifacts updated
 - ❌ Orchestrator gate will BLOCK if CPP artifacts missing
 

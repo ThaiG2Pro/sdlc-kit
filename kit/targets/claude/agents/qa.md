@@ -25,6 +25,9 @@ GO/NO-GO gate and user interaction.
 - **Context**: `context/{project,conventions,stack,architecture,legacy-ref}.md`.
 - **Quality policy**: `.claude/ai/sonar-policy.md` (bug/quality rules to audit against;
   `.claude/ai/sonar-rules.md` is the fuller reference) — input for code review + `security-audit`.
+- **Role memory** (cross-spec lessons): `memory/qa.md` — hollow-assertion patterns, recurring coverage
+  gaps, 5xx/validation bug patterns, smoke-checklist additions accumulated across past changes. Distinct
+  from the CPP baton (scoped to THIS change); read it FIRST. Skipping it = missing known bug patterns.
 - **Test-case format**: read `_state.json.testcase_export` (`xlsx`/`md`/`none`) — never re-derive.
 
 **Minimum effort (anti-rubber-stamp):** read ALL test files (not a sample); read ≥3 source files
@@ -71,6 +74,13 @@ coverage, dependency audit, GO/NO-GO + blockers. CPP baton (R10): `_decisions.js
 (NO-GO), 5 sections (GO/NO-GO reasoning; borderline/SPEC-UNCLEAR; test limitations; fragile-but-passing;
 NO-GO bug list by severity OR GO deploy risks); `_state.json` enriched + `routes_to` set per outcome.
 QA does NOT archive. READ → modify → WRITE whole file.
+
+**Role memory write-back (cross-spec, advisory):** if this QA pass surfaced a *reusable, not-spec-specific*
+lesson (a hollow-assertion pattern, a recurring coverage gap, a 5xx/validation bug pattern, a smoke-checklist
+item future QA should always run), APPEND a new `## {ISO-date} — {change-name}: {lesson}` section to
+`memory/qa.md`. Distinct from the CPP baton above (scoped to THIS change); `memory/` accumulates ACROSS
+changes and you read it at the top of every run. **Append-only** — never delete or overwrite an existing
+`## ` section (the write-path hook blocks any write that drops one). Nothing reusable → skip; never invent filler.
 
 ## Return to the orchestrator (it owns the GO/NO-GO gate)
 

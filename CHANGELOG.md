@@ -75,6 +75,19 @@ Kept `@bookstack` (an active org knowledge source).
   `openspec/`, `docs/`, `memory/` stay committable. Bounded by `# >>> kiro-sdlc-kit >>>` /
   `# <<< kiro-sdlc-kit <<<` markers → re-init refreshes in place (no duplication), delete the block
   to opt back in. Shown in the `--check` plan.
+- **Role memory write-back is now wired (was read-only dead config).** `memory/<role>.md` accumulates
+  cross-spec lessons and every role was told to READ it — but **nothing ever told an agent to WRITE one
+  back**, so the files only ever got read and the cross-spec learning loop never ran. The plumbing
+  (allow-list `memory/**` for all roles + the append-only section guard) existed with no trigger. Fixed
+  end-to-end: (1) each of `developer`/`qa`/`architect`/`analyst` (both Kiro and Claude targets) now has an
+  advisory **MEMORY WRITE-BACK** step at end of phase — append a dated `## ` section with a *reusable,
+  not-spec-specific* lesson, append-only, skip-if-nothing (no filler); (2) the Claude target also gained
+  the **read** pointers it was missing entirely (Claude dev/qa/architect/analyst never referenced
+  `memory/<role>.md`), and Kiro `analyst` gained the read block it lacked; (3) `architect`/`analyst` prose
+  + descriptions updated from "writes ONLY openspec/**" to include `memory/**` (already allowed by the
+  write-fence); (4) **`sprint-retro` now harvests**: after the S6 retro it routes each Learned/Lacked item
+  to the right `memory/<role>.md` (append-only, de-dup, no filler) — the safety net so a skipped inline
+  write-back doesn't lose the lesson. Advisory, not gate-enforced (forcing it would breed filler entries).
 - **`ai/` reachable on Claude.** `developer.md` + `qa.md` now point to `.claude/ai/sonar-policy.md`
   (+ `sonar-rules.md`) on-demand, closing the one knowledgeBase gap where Kiro wired `ai` via
   `resources[]` but Claude had no pointer. (`openspec-rules.yaml` is not a gap — `init` installs it

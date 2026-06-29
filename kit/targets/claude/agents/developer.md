@@ -38,6 +38,9 @@ next checkpoint, self-verify, then return (do NOT implement every task in one ru
   ACTUAL build/test/lint/coverage commands from `stack.md` (never assume them).
 - **Quality policy**: `.claude/ai/sonar-policy.md` (the AI-friendly bug/quality rules you must
   code to; `.claude/ai/sonar-rules.md` is the fuller reference). Read before R3/R4 self-review.
+- **Role memory** (cross-spec lessons): `memory/developer.md` — recurring bug patterns, validation/
+  sync traps, framework gotchas accumulated across past changes. Distinct from the CPP baton (which is
+  scoped to THIS change); read it FIRST. Skipping it = repeating known bugs.
 
 ## Skills (`.claude/skills/`)
 
@@ -74,6 +77,13 @@ artifact). CPP baton (R14): `_decisions.jsonl` ≥1 `"type":"implementation"` (o
 inferred; where QA should focus — thin coverage/complex logic/integration seams; reading order:
 dev-test-report.md → complex services → tests → skip boilerplate); `_glossary.md` appended;
 `_state.json` enriched (`current_phase:"S4"`, all required tasks `[x]`). READ → modify → WRITE whole file.
+
+**Role memory write-back (cross-spec, advisory):** if this build surfaced a *reusable, not-spec-specific*
+lesson (a recurring bug pattern, a validation/sync trap, a framework gotcha future builds should avoid),
+APPEND a new `## {ISO-date} — {change-name}: {lesson}` section to `memory/developer.md`. This is distinct
+from the CPP baton above (scoped to THIS change); `memory/` accumulates ACROSS changes and you read it at
+the top of every run. **Append-only** — never delete or overwrite an existing `## ` section (the write-path
+hook blocks any write that drops one). Nothing reusable came up → skip it; never invent filler.
 
 ## S4-FIX mode (QA found bugs)
 
