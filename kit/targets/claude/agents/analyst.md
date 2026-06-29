@@ -83,7 +83,9 @@ lesson (a recurring requirement-ambiguity pattern, a domain edge case easy to mi
 APPEND a new `## {ISO-date} — {change-name}: {lesson}` section to `memory/analyst.md`. Distinct from the
 CPP baton above (scoped to THIS change); `memory/` accumulates ACROSS changes and you read it at the top of
 every run. **Append-only** — never delete or overwrite an existing `## ` section (the write-path hook blocks
-any write that drops one). Nothing reusable → skip; never invent filler.
+any write that drops one). **The hook fires on a FULL Write, so first READ `memory/analyst.md`, keep every
+existing `## ` section verbatim, append your new section at the end, then WRITE the whole concatenated text**
+— writing only the new section alone will be BLOCKED for dropping the old ones. Nothing reusable → skip; never invent filler.
 
 ## Return to the orchestrator (your final message — it owns the gate)
 

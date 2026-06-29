@@ -64,6 +64,12 @@ _DENY = [
     (re.compile(r"\bnode\b[^|;&]*?\s(?:-e|--eval|-p|--print)\b"), "`node -e/--eval/-p` (inline code → arbitrary write)"),
     (re.compile(r"\bpython3?\b[^|;&]*?\s-c\b"), "`python -c` (inline code → arbitrary write)"),
     (re.compile(r"\b(?:node|python3?)\b[^|;&]*?(?:<<|\s-\s*$|\s-\s)"), "interpreter reading stdin/heredoc (→ arbitrary write)"),
+    # Running an arbitrary SCRIPT FILE is the same escalation as `-c`: a non-developer role could
+    # author gen_xlsx.py inside its (path-allowed) openspec/ fence and then EXECUTE it here. Block
+    # `python/node/… <some-script.(py|js|mjs|…)>`. The kit's OWN generators (under .kiro//.claude/
+    # skills|tools — kit-owned, read-only, not authorable by any role) are whitelisted in classify().
+    (re.compile(r"\b(?:python3?|node|deno|bun|ts-node|ruby|perl|php|bash|sh)\b[^|;&]*?\s[^\s|;&]*\.(?:py|js|mjs|cjs|ts|tsx|jsx|rb|pl|php|sh|bash)\b"),
+     "running a script file (→ arbitrary write; use the kit generator, not a one-off script)"),
     (re.compile(r"\b(?:cp|mv|rm|rmdir|touch|mkdir|dd|truncate|ln|chmod|chown)\b"), "filesystem-mutating command"),
     # `(?:\S+\s+)*?` non-greedily consumes any git global options (`-c x`, `-C /repo`,
     # `--git-dir=…`) smuggled between `git` and the mutating subcommand — closes the bypass.
@@ -94,6 +100,15 @@ _BRANCH_CREATE = [
     re.compile(r"^git\s+switch\s+-c\s+\S"),           # modern equivalent of checkout -b
     re.compile(r"^git\s+worktree\s+add\s+\S"),        # create a new working tree (may carry -b)
 ]
+
+# Kit-OWNED helper scripts a restricted role IS allowed to run via an interpreter: they live under
+# the platform dir (.kiro//.claude/) in skills/ or tools/, are kit-managed (regenerated on --force,
+# never authorable by any role's write-fence), and only emit artifacts into the role's own fence
+# (e.g. gen_testcases_xlsx.py → openspec/**/qa/testcases.xlsx). This is what lets qa produce its XLSX
+# the SANCTIONED way while a one-off script it authored itself stays blocked. Must contain no shell
+# chaining/substitution (checked alongside in classify via _CMD_SEP-free single command).
+_KIT_SCRIPT = re.compile(
+    r"\b(?:python3?|node)\s+(?:\./)?\.(?:kiro|claude)/(?:skills|tools)/[^\s|;&]+\.(?:py|mjs|js)\b")
 
 
 def resolve_actor(data, argv=None):
@@ -142,6 +157,11 @@ def classify(command: str, cls: str = "restricted"):
         return None  # developer = the code-writing role; default = the user's own session — full shell
     if cls == "orchestrator" and _is_branch_create(command):
         return None  # single deliberate exception: isolation branch/worktree create
+    # Sanctioned exception (all restricted roles incl. orchestrator): run a KIT-OWNED generator
+    # (.kiro//.claude/ skills|tools) — kit-managed, not role-authorable, writes only into the role's
+    # fence. Must be a single command with no chaining/substitution smuggled alongside.
+    if not _CMD_SEP.search(command.strip()) and _KIT_SCRIPT.search(command):
+        return None
     # Remove harmless /dev/null + fd-dup redirections so they don't trip the `>` rule.
     denoised = _FD_DUP.sub(" ", _DEVNULL.sub(" ", command))
     for rx, label in _DENY:
@@ -215,6 +235,16 @@ def _self_test() -> int:
         (None, "architect", "rm x",                         BLOCK),
         (None, "qa",        "sed -i s/a/b/ f",              BLOCK),
         (None, "onboarder", "echo x > context/p.md",        BLOCK),  # restricted roles: read-only shell
+        # --- script-execution guard: running an authored script == arbitrary write ---
+        (None, "qa",        "python3 openspec/changes/x/qa/gen_xlsx.py", BLOCK),  # the exact bypass we are closing
+        (None, "qa",        "node openspec/changes/x/qa/gen.mjs",        BLOCK),
+        ("sdlc-full", None, "python3 openspec/changes/x/foo.py",         BLOCK),  # Kiro host too
+        # sanctioned: the kit's OWN generator (kit-managed, writes only into the role fence)
+        (None, "qa",        "python3 .claude/skills/qa-test-design/gen_testcases_xlsx.py openspec/changes/x/qa/testcases.json openspec/changes/x/qa/testcases.xlsx", ALLOW),
+        ("qa",        None, "python3 .kiro/skills/qa-test-design/gen_testcases_xlsx.py a.json a.xlsx", ALLOW),
+        (None, "qa",        "python3 .claude/skills/qa-test-design/gen_testcases_xlsx.py a.json a.xlsx && rm x", BLOCK),  # chaining defeats it
+        (None, "developer", "python3 openspec/changes/x/qa/gen_xlsx.py", ALLOW),  # developer runs any script
+        (None, None,        "python3 some_script.py",         ALLOW),  # default session — unrestricted
     ]
     fails = 0
     for argv_agent, agent_type, command, expect in vectors:

@@ -319,10 +319,50 @@ def preserve(norm, tool_input):
         lost = lost_sections(read_text(norm), new_content)
         if lost:
             return (f"BLOCKED: write to {norm} would delete memory section(s): {', '.join(lost)}.\n"
-                    f"  memory/ is append-only — keep every existing '## ' section and add new ones\n"
-                    f"  (you may edit a section's body in place, just don't drop its header).\n")
+                    f"  memory/ is APPEND-ONLY — a full Write must re-include every existing '## '\n"
+                    f"  section. To add a lesson the right way:\n"
+                    f"    1. READ {norm} first (get its current full text),\n"
+                    f"    2. KEEP every existing '## ' section verbatim,\n"
+                    f"    3. APPEND your new '## <date> — <change>: <lesson>' section at the end,\n"
+                    f"    4. WRITE the whole concatenated content back.\n"
+                    f"  (You may edit a section's BODY in place — just never drop a '## ' header.)\n")
     snapshot_existing(norm)
     return None
+
+
+# --- Code-file guard: the write fence is PATH-based, so a non-developer role whose fence
+#     includes openspec/** (analyst/architect/qa/onboarder/…) could drop an executable SCRIPT
+#     (gen_xlsx.py, foo.mjs) into openspec/ and then run it — sidestepping "only developer writes
+#     code". This is CONTENT-aware: source/script extensions are developer-only. Roles still write
+#     their data artifacts freely (.md/.json/.xlsx/.csv/.yaml/…). The ONE exception is test code in a
+#     genuine test dir (test/** tests/** e2e/** spec/** __tests__/**) — qa is explicitly allowed to
+#     author tests there, and developer writes code everywhere anyway. "qa sinh artifact dữ liệu,
+#     không tự viết + chạy script". ---
+_CODE_EXTS = (".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".sh", ".bash",
+              ".rb", ".php", ".go", ".rs", ".java", ".pl", ".ps1")
+_TEST_DIR_PREFIXES = ("test/", "tests/", "e2e/", "spec/", "__tests__/")
+
+
+def code_write_denied(actor, norm, claude_host):
+    """Return a deny message if `actor` (a non-developer) is writing an executable CODE file outside
+    a real test dir, else None. developer may write code anywhere; test code in test dirs is allowed
+    for everyone whose fence already reaches it (qa). Keyed on the HOST-PROVIDED actor, never prose."""
+    if actor == "developer":
+        return None                                  # the one code-writing role
+    if not norm or not norm.lower().endswith(_CODE_EXTS):
+        return None                                  # data artifact (.md/.json/.xlsx/…) → fine
+    if any(norm == p[:-1] or norm.startswith(p) for p in _TEST_DIR_PREFIXES):
+        return None                                  # test code in a genuine test dir → allowed
+    # Project-configured test roots (sdlc.config.json `paths.test_roots`, e.g. Modules/**/Tests/**)
+    # are ALSO legitimate test dirs — qa authors tests there. Reuse the same globs merged into its fence.
+    if actor == "qa" and path_allowed(norm, project_extra_paths("qa")):
+        return None
+    who = actor or "the main session"
+    return (f"BLOCKED: {who} cannot write the code/script file {norm}.\n"
+            f"  Only the developer agent (S4) writes executable code; other roles write DATA\n"
+            f"  artifacts (.md/.json/.xlsx/.csv/.yaml) — and tests under test/** tests/** e2e/**.\n"
+            f"  To produce an .xlsx, write your testcases.json and run the kit generator\n"
+            f"  (skills/qa-test-design/gen_testcases_xlsx.py) — do NOT author a one-off script.\n")
 
 
 def decide(actor, raw_path, claude_host=None):
@@ -350,7 +390,13 @@ def decide(actor, raw_path, claude_host=None):
     if not allowed:
         return (False, allowed, "")
     norm = normalize_path(raw_path)
-    return (path_allowed(norm, allowed), allowed, norm)
+    if not path_allowed(norm, allowed):
+        return (False, allowed, norm)
+    # Path is allowed — now the CONTENT-aware gate: a non-developer may not drop an executable
+    # script into its (path-allowed) fence. Returns deny on a code file outside a real test dir.
+    if code_write_denied(actor, norm, claude_host):
+        return (False, allowed, norm)
+    return (True, allowed, norm)
 
 
 def main():
@@ -379,6 +425,13 @@ def main():
             sys.stderr.write(deny)
             sys.exit(2)
         sys.exit(0)
+
+    # Distinguish a CODE-file rejection (path was fine, content isn't) from a path rejection,
+    # so the agent gets the actionable message instead of a misleading "path not allowed".
+    code_deny = code_write_denied(actor, norm, IS_CLAUDE_HOST) if path_allowed(norm, allowed) else None
+    if code_deny:
+        sys.stderr.write(code_deny)
+        sys.exit(2)
 
     who = actor or "the main session (orchestrator)"
     sys.stderr.write(
@@ -454,6 +507,20 @@ def _self_test():
         (None, "context-refresh", ".claude/context/stack.md",   BLOCK),  # platform dir is NOT a write target
         (None, "context-refresh", ".kiro/context/stack.md",     BLOCK),  # foreign platform dir — also not a target
         (None, "context-refresh", "src/app.ts",                 BLOCK),  # never code
+        # --- CONTENT guard: non-developer may not drop an executable script into its path-fence ---
+        ("qa",        None, "openspec/changes/x/qa/gen_xlsx.py", BLOCK),  # the exact bypass we are closing
+        ("qa",        None, "openspec/changes/x/qa/testcases.json", ALLOW),  # data artifact → fine
+        ("qa",        None, "openspec/changes/x/qa/testcases.xlsx", ALLOW),  # data artifact → fine
+        ("qa",        None, "openspec/changes/x/qa/coverage_summary.md", ALLOW),  # data artifact → fine
+        ("qa",        None, "tests/e2e/login.spec.ts",          ALLOW),  # test code in a real test dir → allowed
+        ("analyst",   None, "openspec/changes/x/helper.js",     BLOCK),  # analyst can't author scripts either
+        ("architect", None, "openspec/changes/x/gen.mjs",       BLOCK),
+        ("developer", None, "src/util.py",                      ALLOW),  # developer writes code anywhere
+        (None, "qa",        "openspec/changes/x/qa/gen_xlsx.py", BLOCK),  # same on Claude host
+        (None, "qa",        "openspec/changes/x/qa/testcases.xlsx", ALLOW),
+        (None, "qa",        "tests/e2e/login.spec.ts",          ALLOW),  # test code allowed
+        (None, "analyst",   "openspec/changes/x/run.sh",        BLOCK),
+        (None, "developer", "scripts/build.sh",                 ALLOW),  # developer code → fine
     ]
     fails = 0
     for argv_agent, agent_type, raw_path, expect in vectors:

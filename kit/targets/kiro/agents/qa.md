@@ -98,7 +98,7 @@ You own exactly 1 SDLC phase:
   - Risky Areas: areas that passed but are fragile
   - Recommended Reading Order: for developer (S4-fix) or release prep (S6)
 - **`_state.json`**: Update with enriched fields
-- 🧠 **`memory/qa.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S5 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (hollow-assertion pattern, coverage gap hay tái diễn, 5xx/validation bug pattern, mục thêm cho smoke checklist) → APPEND một section `## {ISO-date} — {change-name}: {lesson}` mới. KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/qa.md` tích luỹ XUYÊN spec, được đọc đầu MỖI run (xem block đầu file). **Append-only** — không xoá/đè section `## ` cũ (write-path hook chặn write làm mất section). Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler.
+- 🧠 **`memory/qa.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S5 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (hollow-assertion pattern, coverage gap hay tái diễn, 5xx/validation bug pattern, mục thêm cho smoke checklist) → APPEND một section `## {ISO-date} — {change-name}: {lesson}` mới. KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/qa.md` tích luỹ XUYÊN spec, được đọc đầu MỖI run (xem block đầu file). **Append-only** — không xoá/đè section `## ` cũ (write-path hook chặn write làm mất section). **Hook chạy trên một lần Write TOÀN BỘ file, nên BẮT BUỘC: (1) READ `memory/qa.md` hiện tại trước, (2) giữ NGUYÊN VĂN mọi section `## ` cũ, (3) APPEND section mới ở cuối, (4) WRITE lại toàn bộ nội dung nối lại** — ghi MỖI section mới sẽ bị BLOCK vì làm rớt section cũ. Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler.
 - ❌ NEVER present GO/NO-GO without CPP artifacts updated
 
 # CONTEXT
