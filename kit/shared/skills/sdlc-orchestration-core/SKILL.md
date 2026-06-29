@@ -191,6 +191,15 @@ IF active change AND action = approve:
      next phase to its role agent (Claude: Task spawn · Kiro CLI: "use the {role} agent") — never
      produce its artifact yourself (the guard printed the next phase).
 
+> **`_state.json` shape contract (deterministically enforced).** `gates` is keyed by **phase ID**
+> (`S2`/`S3`/…) with a **string** value (`"passed"`) — that's exactly what `--set gates.<phase>=passed`
+> writes. NEVER store gate-name keys (`SPEC_LOCK`/`DESIGN_REVIEW`) or rich per-gate objects in `gates`
+> — keep audit detail (auditor, rounds, timestamps, bug lists) in a SEPARATE key such as `gate_audit`.
+> `convergence` is likewise `{ "<PHASE>": { "stable":<int>, "rounds":<int> } }`. Always go through
+> `state-set.mjs` (never hand-rewrite); it **refuses to write** a non-canonical shape, and
+> `pipeline-guard` STEP 0 **blocks every status/gate check** on a drifted `_state.json` until you
+> normalize it (e.g. `--unset gates.SPEC_LOCK --set gates.S2=passed`).
+
 IF active change AND action = dispute:  → see Dispute Resolution Protocol
 IF active change AND action = reject:   → record reason via `node {{PLATFORM_DIR}}/tools/state-set.mjs --set 'blocker=<reason>'`; return to current agent
 IF action = status:  → openspec list + status + _progress.md → show full progress

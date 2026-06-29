@@ -122,7 +122,7 @@ if (existsSync(settingsPath)) {
 }
 
 // 6. Tools installed (the 4 Claude engines) + the core orchestration skill present
-for (const t of ['context-check.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs']) {
+for (const t of ['context-check.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs', 'state-set.mjs', 'state-schema.mjs']) {
   existsSync(join(cc, 'tools', t)) ? ok(`tool ${t}`) : fail(`missing .claude/tools/${t}`);
 }
 const skillsDir = join(cc, 'skills');

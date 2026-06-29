@@ -74,6 +74,24 @@ if (!CHANGE_DIR) die(changeName ? `no _state.json in change "${changeName}"` : '
 const state = readJson(join(CHANGE_DIR, '_state.json'));
 if (!state) die(`unreadable _state.json in ${CHANGE_DIR}`);
 
+// ── STEP 0: canonical-shape validation. Catches drift introduced by a raw Write (the path state-set
+//    cannot police) at the very next status/gate check — deterministically, not via the LLM noticing. ──
+try {
+  const { validateState } = await import('./state-schema.mjs');
+  const { ok, problems } = validateState(state);
+  if (!ok) {
+    console.log(`  ✗ NON-CANONICAL _state.json (shape drift) in ${CHANGE_DIR.split('/').pop()}:`);
+    for (const p of problems) console.log(`       - ${p}`);
+    console.log('  → normalize via state-set BEFORE any gate (rich per-gate data goes in gate_audit), e.g.:');
+    console.log(`       node <platform>/tools/state-set.mjs --change ${changeName || CHANGE_DIR.split('/').pop()} --unset gates.SPEC_LOCK --set gates.S2=passed`);
+    process.exit(1);
+  }
+} catch (e) {
+  if (e && e.code === 'ERR_MODULE_NOT_FOUND')
+    console.log('  ⚠ state-schema.mjs not found — _state.json shape NOT enforced (re-run init to install it).');
+  else throw e;
+}
+
 const type = state.type;
 const current = (state.current_phase || 'NEW').toUpperCase();
 // A phase may carry a sub-phase suffix while an agent works through mini-gates (e.g. "S3-B" during

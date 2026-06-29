@@ -289,8 +289,8 @@ function applyTarget(ctx, vals) {
   // Claude counterpart (validates CLAUDE.md @imports, commands/subagents, the Edit-tool invariant,
   // and settings.json hook/tool wiring) — each ships only to its own platform.
   const TOOLS_BY_PLATFORM = {
-    kiro: ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs', 'state-set.mjs'],
-    claude: ['context-check.mjs', 'doctor-claude.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs', 'state-set.mjs'],
+    kiro: ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs', 'state-set.mjs', 'state-schema.mjs'],
+    claude: ['context-check.mjs', 'doctor-claude.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs', 'state-set.mjs', 'state-schema.mjs'],
   };
   for (const tool of TOOLS_BY_PLATFORM[platform] || []) {
     const toolSrc = join(KIT_ROOT, 'bin', 'lib', tool);

@@ -94,6 +94,24 @@ for (const s of sets) {
 }
 for (const p of unsets) changes.push(`${p}: ${JSON.stringify(unsetPath(state, p))} → (removed)`);
 
+// ── canonical-shape validation: refuse to persist drift (covers BOTH new writes and pre-existing drift
+//    in the file we just read — so the fix is a single state-set that ends in a canonical shape). ──
+try {
+  const { validateState } = await import('./state-schema.mjs');
+  const { ok, problems } = validateState(state);
+  if (!ok) {
+    console.log('  ✗ refusing to write — result would be a non-canonical _state.json:');
+    for (const p of problems) console.log(`      - ${p}`);
+    console.log('  → fix in the SAME command (state-set validates the final shape), e.g.:');
+    console.log('      --unset gates.SPEC_LOCK --unset gates.DESIGN_REVIEW --set gates.S2=passed');
+    console.log('    Rich per-gate data goes in gate_audit/gate_details, never in `gates`.');
+    process.exit(1);
+  }
+} catch (e) {
+  if (!(e && e.code === 'ERR_MODULE_NOT_FOUND')) throw e;
+  console.log('  ⚠ state-schema.mjs not found — shape NOT validated (re-run init to install it).');
+}
+
 writeFileSync(stateFile, JSON.stringify(state, null, 2) + '\n');
 console.log(`  ✓ state-set · ${stateFile.split(/[\\/]/).slice(-2).join('/')}`);
 for (const c of changes) console.log(`      ${c}`);

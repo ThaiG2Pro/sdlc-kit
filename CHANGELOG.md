@@ -68,6 +68,25 @@ Kept `@bookstack` (an active org knowledge source).
   change automatically, and parses values as JSON-or-string. Runs via the already-allowed
   `Bash(node <platform>/tools/…)` path (shell-guard permits kit node tools; self-test vector added).
   The `sdlc-orchestration-core` skill now drives gate approve/reject through it.
+- **`state-schema.mjs` — write-time `_state.json` shape validation (was read-only/reactive).** The
+  canonical shape of `_state.json` (the keys the guards READ) lived only as a comment + implicit
+  read-expectations, so nothing validated it at WRITE time. In practice orchestrators kept merging
+  rich per-gate objects INTO `gates` (`gates.SPEC_LOCK={…}`, `gates.S5={…}`) instead of canonical
+  `gates:{ "<PHASE>":"passed" }`, or omitting `convergence` at `rigor=full`. The guards only noticed
+  at the NEXT gate (reactive — each change burned a manual repair turn), and when the drift sat on a
+  **terminal** gate it slipped through entirely (observed across 3 consecutive `issues-sum` changes:
+  state-store-3 clean → summarizer-llm-4 drift reached archive → digest-renderer-5 needed an
+  `S2_REPAIR` turn). New shared validator `state-schema.mjs` (shipped to both `<platform>/tools/`)
+  defines the contract — `gates` keyed by phase ID with string values; `convergence` =
+  `{ "<PHASE>":{ "stable":int,"rounds":int } }`; rich audit detail belongs in a separate `gate_audit`
+  key. Enforced at **both** choke points: `state-set.mjs` **refuses to write** a non-canonical result
+  (and a single command can normalize: `--unset gates.SPEC_LOCK --set gates.S2=passed`), and
+  `pipeline-guard` **STEP 0** blocks every status/gate check on a drifted state until normalized —
+  so drift introduced by a raw Write (the path state-set can't police) surfaces deterministically at
+  the next check, not via the LLM noticing. Both degrade gracefully (warn, don't crash) if the module
+  is absent on an older install. `doctor-claude` now checks for `state-set.mjs` + `state-schema.mjs`;
+  `sdlc-orchestration-core` + the state template document the contract. Validated against the 3 real
+  `issues-sum` states (rejects the drift, passes the clean ones).
 - **Optional kit `.gitignore` block (`init`).** `init` now offers to add a kit-owned block to the
   project's `.gitignore` — interactive prompt defaults to **yes**; `--gitignore` / `--no-gitignore`
   decide it non-interactively. It ignores only what the kit regenerates on every `--force`
