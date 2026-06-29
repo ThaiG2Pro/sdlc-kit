@@ -162,7 +162,7 @@ When writing error-path ACs, look up the project's error model / error codes in 
 | **Step 4b: Clarification** | [RISKY] assumptions | — | `clarification-generator` |
 | **Step 4c: Edge Cases** | Clarified requirements | `security.md` + security audit doc (if any) for security edge cases | `edge-case-enumerator` |
 | **Step 4d: Legacy Behavior Audit** | Legacy source, schema, `context/legacy-ref.md` | `context/legacy-ref.md`, any `extraDocs` legacy analysis | `php-implicit-behavior-audit` (legacy/PHP migrations only) |
-| **Step 4e: Threat Model** | ACs, endpoints, data flows | `.kiro/sdlc.config.json` (`security.stride_analysis`) | `stride-analysis` — run per config (`always`, or `auto` when feature touches auth/payment/PII/tokens/upload/admin); feed its threats into Early Risk Flags |
+| **Step 4e: Threat Model** | ACs, endpoints, data flows | `sdlc.config.json` (`security.stride_analysis`) | `stride-analysis` — run per config (`always`, or `auto` when feature touches auth/payment/PII/tokens/upload/admin); feed its threats into Early Risk Flags |
 | **Step 5: Write S1** | All above | `sdlc-workflow.md` (AC-ID format), `context/conventions.md` (Response Format) | `openspec-propose` (= `/opsx:propose`) for proposal.md + spec-delta scaffolding |
 | **S2 Step 2: Write ACs** | S1 proposal + spec deltas | `context/architecture.md` (error codes), `context/legacy-ref.md` (parity scenarios, if applicable), `security.md` (auth ACs), `context/conventions.md` (Response Format) | `openspec-explore` (= `/opsx:explore`) for scenario detail |
 | **S2 Step 3: Audit** | proposal.md + spec deltas | — | `spec-auditor` + `openspec change validate "<name>"` |
@@ -213,20 +213,20 @@ Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → foll
 
 ### stride-analysis — Dùng khi: S1 Step 4e, sau edge-case-enumerator (threat modeling)
 
-**Trigger**: Theo `.kiro/sdlc.config.json` (`security.stride_analysis`): chạy khi `always`, hoặc `auto` khi feature chạm auth / payment / PII / tokens / upload / admin. Skip nếu config tắt và feature không chạm vùng nhạy cảm.
+**Trigger**: Theo `sdlc.config.json` (`security.stride_analysis`): chạy khi `always`, hoặc `auto` khi feature chạm auth / payment / PII / tokens / upload / admin. Skip nếu config tắt và feature không chạm vùng nhạy cảm.
 **Input**: ACs + endpoints + data flows (từ 4a–4c)
 **Output**: Danh sách threat theo 6 nhóm STRIDE — Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege
 **How to use**: Load skill → feed ACs + endpoints + data flows → mỗi threat đẩy vào **Early Risk Flags** trong `proposal.md`. Threat cần làm rõ → loop về **4b clarification-generator** (count vào R9 budget). Threat bảo mật → drive security ACs ở S2 (cross-check `security.md`).
 
 ## Golden Examples (read on demand via `read` tool)
 
-- `.kiro/agents/examples/requirements-example.md` — full S1+S2 example with AC format
+- `.kiro/agents/examples/proposal-example.md` — full S1+S2 example (proposal + spec deltas) with AC format
 - `.kiro/agents/examples/progress-example.md` — _progress.md format (skill:// metadata pre-loaded)
 
 ## Other References (read on demand when relevant)
 
 - `context/legacy-ref.md` — legacy source map and parity rules, read when porting logic from a legacy system
-- `docs/{ticket_id}-{slug}/` — per-ticket knowledge folder (BA attachments), check existence with `ls` first
+- `docs/extra-docs/{ticket_id}-{slug}/` — per-ticket knowledge folder (BA attachments), check existence with `ls` first
 
 # EXECUTION STEPS
 
@@ -244,7 +244,7 @@ Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → foll
   ```
 
 ### Step 2: Gather Knowledge
-- Use `shell` to check: `ls docs/{ticket_id}-{slug}/ 2>/dev/null`
+- Use `shell` to check: `ls docs/extra-docs/{ticket_id}-{slug}/ 2>/dev/null`
 - If folder exists → `read` files inside it
 - Check for `figma-urls.txt` — read Figma ONLY if this file exists
 - Check knowledge files for external doc URLs (e.g. wiki) — read them ONLY if URLs found
@@ -291,7 +291,7 @@ Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → foll
 - Output captured as a **§3.5 Legacy Implicit Behavior Audit** section inside `{CHANGE_DIR}/proposal.md` (or its spec deltas)
 
 **4e. Threat Model — STRIDE** (load skill `stride-analysis`):
-- **Trigger condition**: Run per `.kiro/sdlc.config.json` (`security.stride_analysis`) — `always`, or `auto` when the feature touches auth / payment / PII / tokens / upload / admin. Skip otherwise.
+- **Trigger condition**: Run per `sdlc.config.json` (`security.stride_analysis`) — `always`, or `auto` when the feature touches auth / payment / PII / tokens / upload / admin. Skip otherwise.
 - Input: ACs + endpoints + data flows from 4a–4c
 - Enumerate threats across the 6 STRIDE categories
 - Feed each threat into the **Early Risk Flags** section of `proposal.md`
@@ -411,7 +411,7 @@ clears the blocker on PASS, then routes to architect for /s3. Do NOT swap straig
 # GOLDEN EXAMPLES
 
 Read these files via `read` tool when writing artifacts:
-- `.kiro/agents/examples/requirements-example.md` — full S1+S2 example
+- `.kiro/agents/examples/proposal-example.md` — full S1+S2 example (proposal + spec deltas)
 - `.kiro/agents/examples/progress-example.md` — _progress.md format
 
 # LOOP RULES

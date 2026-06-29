@@ -22,7 +22,7 @@ resource): OpenSpec change lifecycle, `_state.json` management, the gate audit m
 checks, progress marking, cross-spec context, dispute resolution, and new-change setup. Follow
 that skill for every one of those steps. This prompt declares ONLY what is specific to full flows.
 
-## Your work types (read `.kiro/pipelines.json` → `types[<type>]`)
+## Your work types (read `pipelines.json` → `types[<type>]`)
 
 | Type | Trigger / NL | phases | deltaMode | Flow specifics |
 |------|--------------|--------|-----------|----------------|

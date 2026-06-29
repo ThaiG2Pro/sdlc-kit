@@ -1,16 +1,19 @@
 # kiro-sdlc-kit
 
 A **project-agnostic, dual-target** SDLC kit for **Kiro** (IDE + CLI) *and* **Claude Code**. Drop a
-full S1→S6 pipeline (orchestrator + 4 role agents + 24 skills + steering rules + hooks) into
+full S1→S6 pipeline (orchestrator + 4 role agents + 3 utility agents + 24 skills + steering rules + hooks) into
 any project with one command, then fill a small **context contract** so the agents understand
 *your* project.
 
 One source emits both targets — `kit/shared/**` overlaid by `kit/targets/<platform>/**`. You pick
 the platform at install time (`--target kiro|claude|both`); the framework (process, skills, gates,
 security model) is identical on both. The project's **workspace + config** — `./openspec/`,
-`./memory/`, `./context/`, `./sdlc.config.json`, `./pipelines.json` — lives **once at the project
-root** and is symlinked into each `<platform>/`, so the two targets never drift and a kiro↔claude
-switch never loses state. No project domain is baked into the agents.
+`./memory/`, `./context/`, `./docs/`, `./sdlc.config.json`, `./pipelines.json` — lives **once at the
+project root, with no per-platform copy and no symlink**. Both platforms reference it **root-relative**
+(Claude: `@../context/*` in `CLAUDE.md`, `openspec/…`/`docs/…` via the Read tool; Kiro: `file://./<entry>`
+resources wired by the mapper), so the two targets never drift, a kiro↔claude switch never loses state,
+and **removing one platform never breaks the other** (there are no cross-platform links to dangle). No
+project domain is baked into the agents.
 
 | | **Kiro** (IDE + CLI) | **Claude Code** |
 |---|---|---|
@@ -29,13 +32,14 @@ role agents, so normal interactive work is never blocked.
 ## Two layers
 
 ```
-FRAMEWORK — per-platform, re-emitted by init        SHARED — one root copy, symlinked into each platform
+FRAMEWORK — per-platform, re-emitted by init        SHARED — one root copy (no symlink), referenced root-relative
   <platform>/agents/   role + orchestrator agents       ./context/    project·stack·conventions·
   <platform>/commands/ slash commands (Claude)                        architecture·glossary·legacy-ref.md
   <platform>/skills/   24 skills                         ./openspec/   spec-driven workspace
   <platform>/steering/ always-on rules                  ./memory/     per-role memory
-  <platform>/ai/  <platform>/tools/  rules + guards      ./sdlc.config.json · ./pipelines.json
-  .kiro/context-map.json   (Kiro wiring only)            (.kiro/ and .claude/ each symlink to these)
+  <platform>/ai/  <platform>/tools/  rules + guards      ./docs/       intake packages + project docs
+  .kiro/context-map.json   (Kiro wiring only)            ./sdlc.config.json · ./pipelines.json
+                                                         (both platforms read these at the root, no symlink)
 ```
 
 `<platform>` is `.kiro/` or `.claude/`. The orchestrator is the **`sdlc-full`/`sdlc-fast` agent**
@@ -72,15 +76,28 @@ node /path/to/kiro-sdlc-kit/bin/init.mjs ../other --target both # into another p
 ```
 
 Flags: `--target kiro|claude|both` (which platform(s) to emit; default = interactive menu, or
-**both** non-interactively), `--force` (overwrite kit files; never touches `openspec/`/`memory/`),
+**both** non-interactively), `--force` (overwrite kit files; never touches `openspec/`/`memory/`/`docs/`
+contents, and **merges** `.claude/settings.json` so your `enabledPlugins`/`env`/`model` + extra
+permissions survive a kit upgrade),
 `--yes` (defaults, no prompts), `--title "Name"` (set the project title non-interactively),
-`--check` / `--dry-run` (print the per-target add/overwrite/preserve/prune plan and exit — writes nothing).
+`--check` / `--dry-run` (print the per-target add/overwrite/preserve/prune plan and exit — writes nothing),
+`--gitignore` / `--no-gitignore` (force-add / never-touch the kit `.gitignore` block — see below).
+
+**`.gitignore` (optional).** `init` offers to add a kit-owned block to the project's `.gitignore`
+(interactive prompt defaults to **yes**; `--gitignore`/`--no-gitignore` decide it non-interactively).
+The block ignores only what the kit **regenerates** on every `--force`: `.claude/`, `.kiro/`,
+`/sdlc.config.json`, `/pipelines.json`. Your hand-authored knowledge — `context/`, `openspec/`,
+`docs/`, `memory/` — is deliberately **kept committable**. The block is bounded by
+`# >>> kiro-sdlc-kit >>>` / `# <<< kiro-sdlc-kit <<<` markers, so re-running `init` refreshes it in
+place (never duplicates), and deleting the whole block opts you back into committing the kit.
 
 `init` copies the framework for each target, runs `openspec init --tools <platform>` (scaffolds
-`openspec/` + the namespaced `opsx`/`openspec-*` skills), scaffolds `memory/`, symlinks
-`<platform>/openspec` + `<platform>/memory`, and installs the `<platform>/tools/` engines. On
-**Kiro** it also **wires context → agents** via the mapper; on **Claude** there is no wiring step
-— context is `@import`ed in `CLAUDE.md` and skills are auto-discovered.
+`openspec/` + the namespaced `opsx`/`openspec-*` skills), scaffolds the root `./context/` +
+`./memory/` + `./docs/` + config (all root-only, no symlink), strips any stale per-platform
+copy/symlink a prior install left behind, and installs the `<platform>/tools/` engines. On
+**Kiro** it also **wires context → agents** via the mapper (root-relative `file://./…` resources); on
+**Claude** there is no wiring step — context is `@import`ed (`@../context/*`) in `CLAUDE.md` and skills
+are auto-discovered.
 
 > ⚠️ On **Claude**, agents/commands/hooks load only at session start. After `init` (or a `--force`
 > update), open a **new Claude Code session** before the slash commands take effect.
@@ -88,8 +105,8 @@ Flags: `--target kiro|claude|both` (which platform(s) to emit; default = interac
 ## Usage — end to end
 
 ```
-0. Setup once   →  1. Onboard project  →  2. Run a work item  →  3. Pass gates  →  4. Archive
-   (per machine)    (per project)          (per feature/fix)      (per phase)       (auto at S6)
+0. Setup once   →  1. Onboard project  →  1b. Intake ticket  →  2. Run a work item  →  3. Pass gates  →  4. Archive
+   (per machine)    (per project)          (per work item, opt)   (per feature/fix)      (per phase)       (auto at S6)
 ```
 
 **0. Setup (once)** — install the OpenSpec CLI, then init the kit into the repo for your platform:
@@ -101,12 +118,29 @@ node /path/to/kiro-sdlc-kit/bin/init.mjs . --target claude   # or --target kiro 
 **1. Onboard the project (once per repo)** — establish the context contract every role reads:
 - **Kiro:** open the **`onboarder`** agent (`ctrl+9`) and say "bắt đầu".
 - **Claude:** run **`/onboarder`** — it spawns the one-shot onboarder subagent, drafts
-  `.claude/context/*.md`, and returns a **Facts-to-commit** table for your sign-off (the main
+  `./context/*.md`, and returns a **Facts-to-commit** table for your sign-off (the main
   session never finalizes context on its own).
 
-  Either way it detects/asks your stack & domain, fills `<platform>/context/*.md`, and mirrors
-  a summary into `openspec/config.yaml`. For a known stack, pre-fill first:
-  `node <platform>/tools/apply-stack.mjs nestjs`. On Kiro, verify with `node .kiro/tools/doctor.mjs`.
+  Either way it detects/asks your stack & domain, fills the shared root `./context/*.md` (read by
+  both platforms, no symlink), and mirrors a summary into `openspec/config.yaml`. For a known stack,
+  pre-fill first: `node <platform>/tools/apply-stack.mjs nestjs`. On Kiro, verify with `node .kiro/tools/doctor.mjs`.
+
+**1b. Prepare the ticket input (optional, per work item)** — when the work originates from a Redmine
+ticket (with a Figma UI link and/or a docs folder), run the **`intake`** agent first so the analyst
+starts from a complete, captured package instead of a one-line request:
+- **Kiro:** open the **`intake`** agent (`ctrl+6`) → `intake <slug> <ticket-id>`.
+- **Claude:** run **`/intake <slug> <ticket-id>`**.
+
+  It uses the Redmine + Figma MCP servers to pull the ticket description/status/attachments + the
+  linked Figma screens, normalizes them into `docs/extra-docs/<ticket_id>-<slug>/` (`intake.md` +
+  `figma-urls.txt` + `figma/` + `attachments/`), and — when the ticket has UI — plans **one
+  `ui/<screen>.md` per screen** (layout, component states, fields, interactions). It reports any gaps.
+  The **analyst** reads this folder as its primary S1 input; the **developer** reads `ui/*.md` when
+  building the frontend at S4. Skip this step for ad-hoc work with no ticket.
+
+> Over many features the context contract drifts (a new stack lands, new `docs/extra-docs/` packages
+> pile up). Run **`context-refresh`** (Kiro `ctrl+7` · Claude `/context-refresh`) to re-scan, diff,
+> update only what changed, and re-wire — the incremental counterpart to the onboarder.
 
 **2. Run a work item** — state the work type:
 ```
@@ -164,6 +198,8 @@ it runs. Edit `pipelines.json` to tune a type per project — no prompt edits.
 | `architect` | `ctrl+2` / `/architect` | `/architect` | S3 Design |
 | `developer` | `ctrl+3` / `/developer` | `/developer` | S4 Build + S6 Release |
 | `qa` | `ctrl+4` / `/qa` | `/qa` | S5 QA |
+| `intake` | `ctrl+6` / `/intake` | `/intake` | pre-S1 input prep (Redmine + Figma → `docs/extra-docs/<ticket_id>-<slug>/`) |
+| `context-refresh` | `ctrl+7` / `/context-refresh` | `/context-refresh` | context re-sync when it drifts (not an SDLC phase) |
 | `onboarder` | `ctrl+9` / `/onboarder` | `/onboarder` | context setup (not an SDLC phase) |
 
 The **orchestrator** (`sdlc-full`/`sdlc-fast`) is a dedicated agent you launch (Kiro: switch to it;
@@ -195,9 +231,11 @@ Claude: `check-write-path.py`'s built-in policy, host-selected):
 |----------|-----------|-------|
 | **plain session** (no role agent — your default workspace) | anything | your own session |
 | orchestrator (`sdlc-full`/`sdlc-fast` agent) | **baton/state only** — `openspec/changes/**/_*`, `openspec/_*.md`, `memory/**` | ❌ |
-| `analyst` | `openspec/**`, `docs/knowledge/**` | ❌ |
-| `architect` | `openspec/**`, `docs/**` | ❌ |
+| `analyst` | `openspec/**` | ❌ |
+| `architect` | `openspec/**` | ❌ |
 | `qa` | `openspec/**`, `test/** … __tests__/**` | ❌ tests only |
+| `intake` | `docs/extra-docs/**` + baton/state only | ❌ input docs only |
+| `context-refresh` | `context/**`, `openspec/**` | ❌ |
 | `onboarder` | `context/**`, `openspec/**` | ❌ |
 | **`developer`** | `src/** app/** lib/** … package.json …` + the above | ✅ **only this one** |
 
@@ -229,12 +267,22 @@ Run the **onboarder** (Kiro: `ctrl+9` agent · Claude: `/onboarder`). It:
 1. **Scans the repo** (package.json / lockfiles / schema / folder layout / README) to
    auto-detect stack & architecture.
 2. **Asks only for gaps** (domain, API/status policy, boundaries, glossary, legacy/parity).
-3. **Writes** `<platform>/context/*.md`.
-4. **Wires** context → agents — on Kiro via the `context-mapper` skill; on Claude the context
-   files are `@import`ed in `CLAUDE.md`, so there is nothing to re-wire.
+3. **Writes** the shared root `./context/*.md` (one copy, read by both platforms).
+4. **Wires** context → agents — on Kiro via the `context-mapper` skill (root-relative `file://./context/…`
+   resources); on Claude the context files are `@import`ed (`@../context/*`) in `CLAUDE.md`, so there is
+   nothing to re-wire.
 
-You can also edit `<platform>/context/*.md` by hand (on Kiro, re-run
-`node .kiro/tools/context-map.mjs` afterwards).
+You can also edit `./context/*.md` by hand (on Kiro, re-run
+`node .kiro/tools/context-map.mjs` afterwards). When the project has moved on since onboarding —
+a new stack, new `docs/extra-docs/` packages, changed conventions — run **`context-refresh`** (Kiro
+`ctrl+7` · Claude `/context-refresh`) instead of re-onboarding: it diffs the repo against the
+existing context, updates only what drifted (preserving curated facts), and re-wires.
+
+> 🛟 **Preservation net.** Onboarder/context-refresh write through a PreToolUse hook that snapshots
+> every `context/*.md` to `./.snapshots/` (rotating, last 5) **before** any overwrite, and
+> append-guards `memory/*.md` (a write that would drop an existing `## ` section is blocked). So a
+> bad refresh is always one `cp` from recovery. `.snapshots/` is local-only — add it to `.gitignore`
+> if you don't want it tracked.
 
 ## How context maps to each agent (Kiro only)
 
@@ -292,7 +340,7 @@ node .claude/tools/doctor-claude.mjs  # Claude — validates @imports, commands/
 ```
 
 Each platform ships its own structural validator (their internals differ completely). Both check
-workspace symlinks + context completeness and exit non-zero on any FAIL (a WARN for unfilled
+the root workspace + context completeness and exit non-zero on any FAIL (a WARN for unfilled
 context is fine before onboarding).
 
 - **`doctor.mjs`** (Kiro) validates agent JSON, every `resources[]` prompt/skill/knowledge-base
@@ -365,10 +413,16 @@ re-init then **start a new session** so the refreshed agents/commands/hooks load
   these belong to the kit; **local edits to them are replaced**. Customize via your `context/` and
   `pipelines.json`, not by editing agent/skill files.
 - **preserves filled `context/*.md`** (any file without a `<!-- TODO` marker) — your project
-  identity survives upgrades untouched.
+  identity survives upgrades untouched. ⚠️ A **not-yet-onboarded** repo (context still has `<!-- TODO`
+  markers) is treated as unfilled, so `--force` **re-scaffolds** those template files — pass
+  `--title "Name"` when upgrading such a repo so its name isn't reset to the default.
+- **merges `.claude/settings.json`** instead of clobbering it — the kit refreshes its own security
+  policy (hooks + its permission entries + `$schema`), but your `enabledPlugins`/`env`/`model` and
+  any extra `permissions` (e.g. from `/fewer-permission-prompts`) are kept and the allow/deny lists
+  are unioned.
 - **prunes stale files** the previous kit version shipped but this one dropped (renamed/removed
   agents or skills), using the manifest — so nothing phantom lingers to mis-wire the mapper.
-- **never touches** `openspec/` or `memory/` (per-project workspace).
+- **never touches** `openspec/`, `memory/`, or `docs/` (per-project workspace).
 
 Run `--check` first whenever you're unsure — especially on targets that aren't git repos, where
 there's no `git diff` to fall back on.

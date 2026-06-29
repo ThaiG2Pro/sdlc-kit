@@ -49,7 +49,7 @@ specifics + the Claude execution model.
    Validation. 3. Failure → show all blockers, STOP. 4. On approval → clear blocker, set
    `gates["<phase>"]="passed"`, mark `_progress.md`, spawn the next phase. Honor `gates.auto_pass`.
 
-## Work types (read `.claude/pipelines.json` → `types[<type>]`; rigor is forced **lite**)
+## Work types (read `pipelines.json` → `types[<type>]`; rigor is forced **lite**)
 
 | Type | Trigger / NL | phases | specifics |
 |------|--------------|--------|-----------|

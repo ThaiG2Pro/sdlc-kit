@@ -213,7 +213,7 @@ def _self_test() -> int:
         (None, "analyst",   "echo x > openspec/p.md",       BLOCK),  # restricted roles: read-only shell
         (None, "architect", "rm x",                         BLOCK),
         (None, "qa",        "sed -i s/a/b/ f",              BLOCK),
-        (None, "onboarder", "echo x > .claude/context/p.md",BLOCK),
+        (None, "onboarder", "echo x > context/p.md",        BLOCK),  # restricted roles: read-only shell
     ]
     fails = 0
     for argv_agent, agent_type, command, expect in vectors:

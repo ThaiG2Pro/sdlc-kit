@@ -6,7 +6,7 @@
 // One source (kit/shared + kit/targets/<platform>) emits each target.
 // Zero runtime dependencies (Node >= 18 built-ins only).
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, lstatSync, symlinkSync, copyFileSync, rmSync, rmdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, lstatSync, copyFileSync, cpSync, rmSync, rmdirSync } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
@@ -49,6 +49,8 @@ const TARGET = resolve(positional[0] || '.');
 const FORCE = flags.has('--force');
 const YES = flags.has('--yes') || flags.has('-y');
 const CHECK = flags.has('--check') || flags.has('--dry-run');
+const GITIGNORE = flags.has('--gitignore');       // force-write the kit .gitignore block (no prompt)
+const NO_GITIGNORE = flags.has('--no-gitignore'); // never touch .gitignore (no prompt)
 
 // Text extensions that get placeholder substitution
 const TEXT_EXT = /\.(md|json|txt|ts|js|mjs|py|yaml|yml)$/i;
@@ -75,14 +77,54 @@ function applyTokens(content, vals) {
   return content.replace(/\{\{([A-Z_]+)\}\}/g, (m, k) => (k in vals ? vals[k] : m));
 }
 
+// .claude/settings.json is the ONE kit-owned file that also carries USER config (enabledPlugins,
+// env, model, statusLine, …) and user/skill-added permissions (e.g. /fewer-permission-prompts). A
+// blind overwrite on --force would wipe those. Merge instead: the kit OWNS its security policy
+// (hooks + its own permission entries + $schema) and wins there, but every user-owned top-level key
+// is preserved and the permission lists are UNIONed so additions survive a kit upgrade.
+function mergeClaudeSettings(kit, user) {
+  const out = JSON.parse(JSON.stringify(kit)); // kit base: $schema, permissions, hooks
+  // 1. Preserve user-owned top-level keys the kit template doesn't manage.
+  for (const k of Object.keys(user || {})) if (!(k in out)) out[k] = user[k];
+  // 2. permissions: union allow + deny so user/skill additions are kept (kit list stays first).
+  const uni = (a = [], b = []) => [...new Set([...(a || []), ...(b || [])])];
+  if (user && user.permissions) {
+    out.permissions = out.permissions || {};
+    out.permissions.allow = uni(out.permissions.allow, user.permissions.allow);
+    out.permissions.deny = uni(out.permissions.deny, user.permissions.deny);
+  }
+  // 3. hooks: kit wins on the events it ships; keep any user-added event the kit doesn't define.
+  if (user && user.hooks) {
+    out.hooks = out.hooks || {};
+    for (const ev of Object.keys(user.hooks)) if (!(ev in out.hooks)) out.hooks[ev] = user.hooks[ev];
+  }
+  return out;
+}
+
 const isContextMd = (rel) => /^context[\/\\][^\/\\]+\.md$/.test(rel);
 // Project config that must be a SINGLE source shared by every platform (like openspec/memory/context):
-// scaffolded once at the project root and symlinked into each <platform>/. Edit once, both targets see
-// it; switching kiro↔claude never drifts or loses it.
+// scaffolded once at the project root. Edit once, both targets see it; switching kiro↔claude never
+// drifts or loses it.
 const SHARED_ROOT_FILES = ['sdlc.config.json', 'pipelines.json'];
 const isSharedRootFile = (rel) => SHARED_ROOT_FILES.includes(rel);
-// Everything that lives once at the project root and is symlinked into each platform dir.
-const SHARED_ROOT_LINKS = ['context', ...SHARED_ROOT_FILES];
+
+// Optional kit-owned .gitignore block (opt-in at init). Ignores ONLY what the kit regenerates on
+// every `init --force`: the per-platform framework dirs + the root config files. context/, openspec/,
+// docs/, and memory/ are deliberately NOT listed — they hold hand-authored project knowledge / work
+// products that SHOULD be committed. Bounded by markers so re-init refreshes the block in place
+// (never duplicates) and a user can delete the whole block to commit the kit instead.
+const GI_BEGIN = '# >>> kiro-sdlc-kit >>>';
+const GI_END = '# <<< kiro-sdlc-kit <<<';
+const GITIGNORE_PATTERNS = ['.claude/', '.kiro/', '/sdlc.config.json', '/pipelines.json'];
+// Everything that lives ONCE at the project root — NO per-platform copy and NO symlink. Both
+// platforms reach these via root-relative paths (Claude: `@../context/*` in CLAUDE.md + `./context`,
+// `openspec/…`, `docs/…` via the Read tool/CWD; Kiro: `file://./<entry>` resources[] emitted by the
+// mapper). Keeping the canonical copy at root — never inside a platform dir, never symlinked — means
+// a single-platform install can't point at the other's path AND removing one platform never breaks
+// the share. `docs` is the project doc workspace (intake writes ticket packages to
+// docs/extra-docs/<ticket>-<slug>/; project docs live here too). On re-init, applyTarget() strips any
+// stale <platform>/<name> symlink or migrated dir a PRIOR symlink-based install left behind.
+const SHARED_ROOT_NAMES = ['context', 'docs', 'openspec', 'memory', ...SHARED_ROOT_FILES];
 
 // Normalize a --target value ('kiro' | 'claude' | 'both' | 'kiro,claude') into a deduped list.
 // Returns null when no value was given (caller decides: interactive menu vs. non-interactive default).
@@ -121,9 +163,9 @@ async function promptTarget(rl) {
 // Returns { rel -> absoluteSourcePath }; the platform overlay wins on path collisions.
 function buildSrcMap(platform) {
   // context/*.md is NOT copied per-platform: it's a single project-root ./context/ workspace
-  // (like openspec/ and memory/), scaffolded once and symlinked into each <platform>/context.
+  // (like openspec/ and memory/), scaffolded once at root and read root-relative by each platform.
   // Excluding it here keeps it out of every platform's copy loop, manifest, and prune list.
-  const shared = (rel) => isContextMd(rel) || isSharedRootFile(rel); // emitted once at root + symlinked
+  const shared = (rel) => isContextMd(rel) || isSharedRootFile(rel); // emitted once at root (no per-platform copy)
   const srcMap = new Map();
   for (const rel of walk(SHARED_SRC)) if (!shared(rel)) srcMap.set(rel, join(SHARED_SRC, rel));
   const overlay = join(TARGETS_SRC, platform);
@@ -169,7 +211,7 @@ function computeTarget(platform) {
 }
 
 // Apply one platform's plan: prune, copy with token substitution, write manifest, then run the
-// platform-specific post-steps (Kiro: tools/ + context-map wiring; both: memory symlink).
+// platform-specific post-steps (Kiro: tools/ + context-map wiring; both: strip stale shared-root links).
 function applyTarget(ctx, vals) {
   const { platform, outDir, srcMap, files, manifestPath, prevVersion, pruneList } = ctx;
   const label = TARGET_DIRS[platform];
@@ -209,6 +251,16 @@ function applyTarget(ctx, vals) {
       continue;
     }
     mkdirSync(dirname(dst), { recursive: true });
+    if (platform === 'claude' && rel === 'settings.json' && existsSync(dst)) {
+      // Merge rather than clobber: preserve user-added enabledPlugins/env/model/permissions.
+      const kitJson = JSON.parse(applyTokens(readFileSync(src, 'utf8'), platformVals));
+      let userJson = {};
+      try { userJson = JSON.parse(readFileSync(dst, 'utf8')); } catch { /* corrupt → kit wins */ }
+      writeFileSync(dst, JSON.stringify(mergeClaudeSettings(kitJson, userJson), null, 2) + '\n');
+      log('  ✓ merged settings.json (kit security policy refreshed; your enabledPlugins/env/model + extra permissions kept)');
+      tokened++; copied++;
+      continue;
+    }
     if (TEXT_EXT.test(rel)) {
       let content = readFileSync(src, 'utf8');
       const before = content;
@@ -249,57 +301,53 @@ function applyTarget(ctx, vals) {
       log(`  ✓ installed ${label}/tools/${tool}`);
     }
   }
-  // NOTE (kiro): context→agents wiring (applyContextMap) runs AFTER openspec init/symlink in main(),
+  // NOTE (kiro): context→agents wiring (applyContextMap) runs AFTER openspec init in main(),
   // because context-map.json lists `openspec` as a knowledgeBase that is only wired when
-  // .kiro/openspec exists. Wiring here (before openspec) would drop that resource.
+  // ./openspec exists (shared-root, checked at the project root — see isSharedRootKb in
+  // context-map.mjs). Wiring here (before openspec) would drop that resource.
 
-  // memory/ baton symlink (both platforms point at the single ../memory workspace)
-  {
-    const real = join(TARGET, 'memory');
-    if (!existsSync(real)) { mkdirSync(real, { recursive: true }); log('  ✓ created memory/'); }
-    const link = join(outDir, 'memory');
-    if (!existsSync(link)) {
-      try { symlinkSync(join('..', 'memory'), link); log(`  ✓ symlink ${label}/memory -> ../memory`); }
-      catch (e) { log(`  ! could not symlink ${label}/memory (${e.code})`); }
-    }
-  }
-
-  // openspec workspace symlink so agents can read specs/changes via a stable in-target path
-  if (existsSync(join(TARGET, 'openspec'))) {
-    const link = join(outDir, 'openspec');
-    if (!existsSync(link)) {
-      try { symlinkSync(join('..', 'openspec'), link); log(`  ✓ symlink ${label}/openspec -> ../openspec`); }
-      catch (e) { log(`  ! could not symlink ${label}/openspec (${e.code})`); }
-    }
-  }
-
-  // Shared-root symlinks: context/ (dir) + sdlc.config.json + pipelines.json (files) live ONCE at the
-  // project root and each <platform>/ links to them — so config/context are single-source and a
-  // kiro↔claude switch never drifts or loses them. A pre-symlink real file/dir from an older install
-  // was already migrated to root by the scaffold steps, so it's safe to replace with the link.
-  for (const name of SHARED_ROOT_LINKS) {
-    const link = join(outDir, name);
-    let st = null;
-    try { st = lstatSync(link); } catch { /* not present */ }
-    if (!(st && st.isSymbolicLink())) {
-      try {
-        if (st) rmSync(link, { recursive: true, force: true }); // old real dir/file (migrated to root)
-        symlinkSync(join('..', name), link);
-        log(`  ✓ symlink ${label}/${name} -> ../${name}`);
-      } catch (e) { log(`  ! could not symlink ${label}/${name} (${e.code})`); }
-    }
+  // Strip any stale per-platform shared-root artifact a PRIOR (symlink-based) install left inside this
+  // platform dir — symlink OR a real dir/file. The canonical copy now lives ONLY at the project root
+  // (scaffoldRootContext/scaffoldRootConfig/main migrate + own it before applyTarget runs), and both
+  // platforms reference it root-relative, so nothing per-platform should shadow it.
+  for (const name of SHARED_ROOT_NAMES) {
+    const p = join(outDir, name);
+    try { lstatSync(p); } catch { continue; } // not present → nothing to clean
+    try { rmSync(p, { recursive: true, force: true }); log(`  ✓ removed stale ${label}/${name} (now root-only)`); }
+    catch (e) { log(`  ! could not remove ${label}/${name} (${e.code})`); }
   }
 
   return { copied, tokened, preserved, pruned };
 }
 
-// Establish the single project-root ./context/ workspace (canonical; each <platform>/context is a
-// symlink to it). Migrates a prior install's filled per-platform context into root first, then
-// scaffolds templates (preserving any already-filled file). Runs once for all targets.
+// Migrate a prior install's REAL per-platform <name>/ dir (docs/, memory/) into the project root
+// before applyTarget strips the per-platform copy — so no ticket package or memory baton is lost on
+// the symlink→root-only upgrade. No-op when root already has it (root is canonical) or the
+// per-platform entry is a symlink/absent. Merges file-by-file without overwriting an existing root file.
+function migrateRealDirToRoot(name, targets) {
+  const root = join(TARGET, name);
+  for (const t of targets) {
+    const p = join(TARGET, TARGET_DIRS[t], name);
+    let real = false;
+    try { real = !lstatSync(p).isSymbolicLink() && statSync(p).isDirectory(); } catch { continue; }
+    if (!real) continue;
+    mkdirSync(root, { recursive: true });
+    for (const f of readdirSync(p)) {
+      const dst = join(root, f);
+      if (existsSync(dst)) continue; // root copy wins
+      try { cpSync(join(p, f), dst, { recursive: true }); } catch { /* skip */ }
+    }
+    log(`  ✓ migrated existing ${TARGET_DIRS[t]}/${name} → ./${name}`);
+  }
+}
+
+// Establish the single project-root ./context/ workspace (canonical, root-only — both platforms read
+// it root-relative, no symlink). Migrates a prior install's filled per-platform context into root
+// first, then scaffolds templates (preserving any already-filled file). Runs once for all targets.
 function scaffoldRootContext(targets, vals) {
   const rootCtx = join(TARGET, 'context');
   // Migration: no root ./context yet, but an older install has a REAL <platform>/context dir →
-  // copy its (possibly filled) files to root before that dir gets replaced with a symlink.
+  // copy its (possibly filled) files to root before applyTarget strips that per-platform dir.
   if (!existsSync(rootCtx)) {
     for (const t of targets) {
       const pCtx = join(TARGET, TARGET_DIRS[t], 'context');
@@ -330,8 +378,8 @@ function scaffoldRootContext(targets, vals) {
 }
 
 // Scaffold the shared project-config files (sdlc.config.json, pipelines.json) ONCE at the project
-// root; each <platform>/ symlinks to them (applyTarget). Kit-owned → regenerated from the single kit
-// source ("cùng 1 mẹ") on every init, so the two platforms can never drift.
+// root; both platforms read them root-relative (no per-platform copy/symlink). Kit-owned → regenerated
+// from the single kit source ("cùng 1 mẹ") on every init, so the two platforms can never drift.
 function scaffoldRootConfig(vals) {
   let n = 0;
   for (const f of SHARED_ROOT_FILES) {
@@ -340,22 +388,48 @@ function scaffoldRootConfig(vals) {
     writeFileSync(join(TARGET, f), applyTokens(readFileSync(src, 'utf8'), vals));
     n++;
   }
-  if (n) log(`  ✓ config → ./{${SHARED_ROOT_FILES.join(', ')}} (shared root, symlinked into each platform)`);
+  if (n) log(`  ✓ config → ./{${SHARED_ROOT_FILES.join(', ')}} (shared root, read root-relative by each platform)`);
+}
+
+// Idempotently maintain the kit-owned block in the project's .gitignore. Strips any prior block
+// (between markers, inclusive) and re-appends a fresh one, so re-running init never duplicates it and
+// always reflects the current pattern list. Everything outside the markers is left untouched; delete
+// the whole block to commit the kit instead.
+function updateGitignore() {
+  const giPath = join(TARGET, '.gitignore');
+  let body = '', existed = false;
+  try { body = readFileSync(giPath, 'utf8'); existed = true; } catch { /* no .gitignore yet */ }
+  const re = new RegExp(`\\n*${GI_BEGIN}[\\s\\S]*?${GI_END}\\n?`, 'g');
+  const stripped = body.replace(re, '');
+  const block = [
+    GI_BEGIN,
+    '# Kit-owned: regenerated by `kiro-sdlc-init --force`. Delete this block to commit the kit.',
+    '# (context/, openspec/, docs/, memory/ are intentionally NOT ignored — commit those.)',
+    ...GITIGNORE_PATTERNS,
+    GI_END,
+  ].join('\n');
+  const next = stripped.replace(/\s*$/, '') + (stripped.trim() ? '\n\n' : '') + block + '\n';
+  if (next === body) { log('  ✓ .gitignore kit block already up to date'); return; }
+  writeFileSync(giPath, next);
+  log(`  ✓ ${existed ? 'updated' : 'created'} .gitignore (kit block: ${GITIGNORE_PATTERNS.join(', ')})`);
 }
 
 function printNextSteps(targets, hasOpenspec) {
   log('\n  Done. Next steps:');
   if (targets.includes('kiro')) {
     log('   [kiro] Open the project in Kiro:');
-    log('     • agents: ctrl+0 sdlc-full · ctrl+5 sdlc-fast · ctrl+1..4 (analyst/architect/developer/qa) · ctrl+9 onboarder');
+    log('     • agents: ctrl+0 sdlc-full · ctrl+5 sdlc-fast · ctrl+1..4 (analyst/architect/developer/qa) · ctrl+6 intake · ctrl+7 context-refresh · ctrl+9 onboarder');
     log('     • After any kit update, run "Developer: Reload Window" (Ctrl+R) so Kiro reloads agent defs + hooks.');
-    log('     • Run the ONBOARDER (ctrl+9) first: fills ./context/*.md (shared, symlinked into .kiro/context), mirrors into openspec/config.yaml, re-wires context.');
+    log('     • Run the ONBOARDER (ctrl+9) first: fills ./context/*.md (shared root, read by both platforms), mirrors into openspec/config.yaml, re-wires context.');
+    log('     • Before a work item, run INTAKE (ctrl+6): pulls a Redmine ticket + its Figma UI into docs/extra-docs/<ticket_id>-<slug>/ so the analyst starts with full context.');
+    log('     • When context drifts (new stack/docs over many features), run CONTEXT-REFRESH (ctrl+7) to re-sync ./context/*.md + re-wire.');
   }
   if (targets.includes('claude')) {
     log('   [claude] Open the project in Claude Code:');
     log('     • Orchestrator (main session): /sdlc-full <slug> ticket <id> · /sdlc-fast bugfix <slug>');
-    log('     • Role subagents (.claude/agents/): analyst · architect · developer · qa · onboarder');
-    log('     • Run the onboarder first on a new project: it fills ./context/*.md (shared, symlinked into .claude/context) + mirrors openspec/config.yaml.');
+    log('     • Role subagents (.claude/agents/): analyst · architect · developer · qa · onboarder · intake · context-refresh');
+    log('     • Run the onboarder first on a new project: it fills ./context/*.md (shared root, read by both platforms) + mirrors openspec/config.yaml.');
+    log('     • Before a work item: /intake <slug> <ticket-id> pulls a Redmine ticket + its Figma UI into docs/extra-docs/<ticket_id>-<slug>/ for the analyst. /context-refresh re-syncs context when it drifts.');
     log('     • Security: only the developer subagent writes code — enforced by the agent_type-keyed PreToolUse hooks in .claude/settings.json.');
     log('     • New/changed agents, commands, settings & hooks take effect on the NEXT session (or /agents reload) — not mid-session.');
   }
@@ -409,6 +483,16 @@ async function main() {
       vals[p.key] = ans || p.def;
     }
   }
+  // Resolve whether to manage the project's .gitignore (kit-owned framework + config block).
+  // Precedence: --no-gitignore < --gitignore < interactive prompt (default yes) < non-interactive default (yes).
+  let doGitignore;
+  if (NO_GITIGNORE) doGitignore = false;
+  else if (GITIGNORE) doGitignore = true;
+  else if (rl) {
+    const ans = (await rl.question('  Add kit files (.claude/, .kiro/, sdlc.config.json, pipelines.json) to .gitignore? [Y/n]: ')).trim().toLowerCase();
+    doGitignore = !(ans === 'n' || ans === 'no');
+  } else doGitignore = true; // non-interactive (--yes / --title) → default yes; pass --no-gitignore to skip
+
   if (rl) rl.close();
   if (!vals.PROJECT_TITLE) vals.PROJECT_TITLE = 'My Project';
 
@@ -426,20 +510,33 @@ async function main() {
       log(`    + add       ${c.plan.add.length}${sample(c.plan.add)}`);
       log(`    ~ overwrite ${c.plan.overwrite.length} (kit-owned; your edits to these are replaced)${sample(c.plan.overwrite)}`);
       log(`    - prune     ${c.pruneList.length} stale file(s) from the previous version${sample(c.pruneList)}`);
-      log(`    ⇉ shared    symlink ${TARGET_DIRS[c.platform]}/{${SHARED_ROOT_LINKS.join(', ')}} -> ../ (single root copy; filled context preserved)`);
+      log(`    ⌫ strip     stale per-platform ${TARGET_DIRS[c.platform]}/{${SHARED_ROOT_NAMES.join(', ')}} (symlink or dir) — these are now root-only`);
     }
-    log('\n  (openspec init, tools, the shared ./context + ./{sdlc.config,pipelines}.json scaffold, and the context→agents mapper also run on apply.)');
+    log(`\n  ${doGitignore ? '✎ gitignore  add/refresh kit block → ' + GITIGNORE_PATTERNS.join(', ') : '· gitignore  left untouched (--no-gitignore)'}`);
+    log(`\n  (shared workspace + config — ./{${SHARED_ROOT_NAMES.join(', ')}} — live ONCE at the project root, no symlink; both platforms reference them root-relative.`);
+    log('   openspec init, tools, the root ./context + ./{sdlc.config,pipelines}.json scaffold, and the context→agents mapper also run on apply.)');
     log('  Re-run without --check (add --force on an existing install) to apply.\n');
     exit(0);
   }
 
-  // Establish the shared project-root ./context/ FIRST, so applyTarget can symlink each
-  // <platform>/context → ../context (and migrate any older real per-platform context dir).
+  // Establish the shared project-root workspace FIRST (canonical, root-only — no symlink), so the
+  // per-platform strip in applyTarget never discards data: scaffold ./context/ (migrating any older
+  // real per-platform context dir), then migrate any older real per-platform docs/memory to root.
   scaffoldRootContext(targets, vals);
   scaffoldRootConfig(vals);
+  // docs/ workspace (intake's extra-docs/ ticket packages; project docs). memory/ baton workspace.
+  // Both live ONCE at the root and are read root-relative by both platforms.
+  migrateRealDirToRoot('docs', targets);
+  migrateRealDirToRoot('memory', targets);
+  { const d = join(TARGET, 'docs'); if (!existsSync(d)) { mkdirSync(d, { recursive: true }); log('  ✓ created docs/ (shared root)'); } }
+  { const d = join(TARGET, 'memory'); if (!existsSync(d)) { mkdirSync(d, { recursive: true }); log('  ✓ created memory/ (shared root)'); } }
 
   // Apply each target.
   for (const c of ctxs) applyTarget(c, vals);
+
+  // Optionally manage the project's .gitignore (kit-owned framework + config block). Project-wide,
+  // so run ONCE after all targets are applied.
+  if (doGitignore) updateGitignore();
 
   // OpenSpec workspace (spec-driven backend) — project-global, run ONCE for all selected targets.
   let hasOpenspec = false;
@@ -468,22 +565,13 @@ async function main() {
         }
       }
     } catch (e) { log(`  ! could not install openspec rules: ${e.message}`); }
-
-    // Re-link openspec into any target that was created before openspec/ existed.
-    for (const c of ctxs) {
-      const link = join(c.outDir, 'openspec');
-      if (!existsSync(link) && existsSync(join(TARGET, 'openspec'))) {
-        try { symlinkSync(join('..', 'openspec'), link); log(`  ✓ symlink ${TARGET_DIRS[c.platform]}/openspec -> ../openspec`); }
-        catch { /* best-effort */ }
-      }
-    }
   } else {
     log('\n  ! openspec CLI not found — this kit uses OpenSpec as its spec workspace. Install then re-run init:');
     log('      npm install -g @fission-ai/openspec@latest');
   }
 
   // Wire context → each Kiro agent's resources[] from .kiro/context-map.json. Runs LAST so the
-  // openspec/ symlink (created above) is in place — context-map.json lists `openspec` as a KB.
+  // root openspec/ (created by openspec init above) exists — context-map.json lists `openspec` as a KB.
   for (const c of ctxs) {
     if (c.platform !== 'kiro') continue;
     log('\n  Wiring context → agents (context-map):');

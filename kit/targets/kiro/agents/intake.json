@@ -1,0 +1,62 @@
+{
+  "name": "intake",
+  "description": "Ticket Intake — pulls a Redmine ticket (description, status, attachments) + the Figma UI it links to, normalizes them into docs/extra-docs/<ticket_id>-<slug>/ (intake.md + figma-urls.txt + images + one ui/<screen>.md per UI screen), and reports an intake summary. Run BEFORE the SDLC pipeline (feature/cr/bugfix) so the analyst has a complete, wired input package and the developer has a per-screen UI build target. Trigger: /intake <slug> <ticket-id>. Keywords: intake, redmine, figma, ticket, ui, chuẩn bị tài liệu.",
+  "prompt": "file://./intake.md",
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "@redmine",
+    "@figma"
+  ],
+  "allowedTools": [
+    "read",
+    "shell",
+    "@redmine",
+    "@figma"
+  ],
+  "toolsSettings": {
+    "write": {
+      "allowedPaths": [
+        "docs/extra-docs/**",
+        "openspec/changes/**/_*.md",
+        "openspec/changes/**/_*.json",
+        "openspec/changes/**/_*.jsonl",
+        "memory/**"
+      ]
+    },
+    "shell": {
+      "allowedCommands": [
+        "ls",
+        "find",
+        "cat",
+        "head",
+        "wc",
+        "grep",
+        "test",
+        "mkdir"
+      ]
+    }
+  },
+  "resources": [],
+  "hooks": {
+    "agentSpawn": [
+      {
+        "command": "python3 .kiro/agents/scripts/agent-spawn-context.py intake",
+        "timeout_ms": 5000,
+        "cache_ttl_seconds": 15
+      }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "fs_write",
+        "command": "python3 .kiro/agents/scripts/check-write-path.py intake",
+        "timeout_ms": 3000
+      }
+    ]
+  },
+  "includeMcpJson": true,
+  "model": "claude-opus-4.8",
+  "keyboardShortcut": "ctrl+6",
+  "welcomeMessage": "Intake. Tôi sẽ kéo Redmine ticket + Figma UI về docs/extra-docs/<ticket_id>-<slug>/ và chuẩn hóa thành tài liệu cho analyst. Dùng: /intake <slug> <ticket-id>."
+}

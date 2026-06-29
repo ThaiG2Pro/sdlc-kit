@@ -21,7 +21,7 @@ When porting to Node.js, every implicit behavior must be classified:
 If unclassified, ambiguity bleeds into S3 (architect must guess) or S4 (developer
 must ask) — re-work cost 5-25× vs catching in S1/S2 (cost 1×).
 
-Two real cases this skill catches early (from SPEC-04 reserve flow):
+Two real cases this skill catches early (from a reserve-flow feature):
 
 1. **Unbounded recursion**: PHP `Cache::lock` retry uses `return $this->reserved($request)`
    without a depth cap. PHP-FPM stack-overflows under sustained contention → 500.
@@ -49,7 +49,7 @@ Two real cases this skill catches early (from SPEC-04 reserve flow):
 - Vendor/package dirs the legacy app pulls business logic from — check both `app/` AND any
   vendor path named in `context/legacy-ref.md` (merchant logic often lives in vendor packages)
 - DB schema for any tables the feature writes to (note shared tables)
-- Knowledge folder docs for the endpoint (`docs/{ticket_id}-{slug}/`, if present)
+- Knowledge folder docs for the endpoint (`docs/extra-docs/{ticket_id}-{slug}/`, if present)
 - Any legacy method→Node mapping doc listed under `context/legacy-ref.md` / `extraDocs`
 
 ## Audit Checklist (5 categories)

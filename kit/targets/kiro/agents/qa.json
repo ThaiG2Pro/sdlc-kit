@@ -20,7 +20,7 @@
     "write": {
       "allowedPaths": [
         "openspec/**",
-        ".kiro/memory/**",
+        "memory/**",
         "test/**",
         "tests/**",
         "e2e/**",
@@ -61,21 +61,21 @@
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/sdlc.config.json",
+      "source": "file://./sdlc.config.json",
       "name": "Sdlc.config",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/project.md",
+      "source": "file://./context/project.md",
       "name": "Project",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/glossary.md",
+      "source": "file://./context/glossary.md",
       "name": "Glossary",
       "indexType": "best",
       "autoUpdate": false
@@ -89,21 +89,21 @@
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/conventions.md",
+      "source": "file://./context/conventions.md",
       "name": "Conventions",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/stack.md",
+      "source": "file://./context/stack.md",
       "name": "Stack",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/legacy-ref.md",
+      "source": "file://./context/legacy-ref.md",
       "name": "LegacyRef",
       "indexType": "best",
       "autoUpdate": false

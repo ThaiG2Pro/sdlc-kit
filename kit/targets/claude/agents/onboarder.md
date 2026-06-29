@@ -1,6 +1,6 @@
 ---
 name: onboarder
-description: One-time project setup. Scans the repo, drafts the .claude/context/ contract (6 files), mirrors a context digest into openspec/config.yaml, and runs the completeness gate. Spawned for project adoption / when context drifts. Writes ONLY to .claude/context/**, openspec/**, context/**.
+description: One-time project setup. Scans the repo, drafts the context/ contract (6 files), mirrors a context digest into openspec/config.yaml, and runs the completeness gate. Spawned for project adoption / when context drifts. Writes ONLY to context/** and openspec/**.
 tools: Read, Grep, Glob, Bash, Write
 model: opus
 ---
@@ -13,12 +13,17 @@ interactive interview + a Phase 2.5 sign-off gate. Here you do all the non-inter
 draft, self-check) and **return a "Facts to commit" table + an UNKNOWN list** for the main session
 (the `/onboarder` command) to confirm with the user. Do not invent values to fill gaps.
 
-> Writable paths: `.claude/context/**`, `context/**`, `openspec/**` (enforced by the hook). You do
-> not write code.
+> Writable paths: `context/**` (the shared-root workspace at the project root — read by both
+> platforms, no symlink) and `openspec/**` (enforced by the hook). You do not write code.
+
+> 🛟 **Preservation net (automatic).** The write hook snapshots every `context/*.md` to `.snapshots/`
+> (rotating, last 5) *before* it is overwritten — so even an UPDATE-mode clobber is one `cp` from
+> recovery. It is a safety net, NOT a license to overwrite curated facts: stay in UPDATE mode when
+> markers are absent and flag anything you'd replace.
 
 ## Phase 0 — Mode (state it in your return)
 
-- `grep -rln '<!-- TODO' .claude/context/` → if some files have no markers → **UPDATE** (preserve
+- `grep -rln '<!-- TODO' context/` → if some files have no markers → **UPDATE** (preserve
   human-written fields; flag anything you'd overwrite). Else:
 - Probe for manifests + real source → **EXISTING** (extract facts from code) vs **GREENFIELD**
   (empty repo → forward-looking decisions, propose 2–4 options each with a recommended default).
@@ -35,7 +40,7 @@ Probe concretely, not by guessing — read actual files:
   shape + status-code habit. **Legacy**: any sign of porting/mirroring another system.
 Produce a **Detection Table**: each field → `detected (evidence file)` / `guessed (confidence)` / `unknown`.
 
-## Outputs — draft every `.claude/context/*.md`
+## Outputs — draft every `context/*.md`
 
 Replace every `<!-- TODO -->` marker, remove `>` banner lines, substitute `{{PROJECT_TITLE}}` /
 `{{LEGACY_REF_PATH}}`. Be concrete and tight (agents read these every task):
@@ -70,7 +75,7 @@ shape). **Exit 1 if anything unfilled/shallow.** If exit 1 → keep drafting; re
 checklist (✅/❌ per item) in your return.
 
 > **Claude note:** on Claude there is no per-agent JSON `resources[]` to wire (that is Kiro's
-> context-mapper step). Role subagents reference `.claude/context/*.md` by path, and `CLAUDE.md`
+> context-mapper step). Role subagents reference `context/*.md` by path, and `CLAUDE.md`
 > `@import`s the always-on context — so "wiring" is static. Project-doc → role routing (Kiro's
 > `extraDocs`) is advisory here: include it as a table in your return for the user/orchestrator.
 

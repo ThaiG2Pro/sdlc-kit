@@ -21,7 +21,7 @@
         "openspec/changes/**/_*.json",
         "openspec/changes/**/_*.jsonl",
         "openspec/_*.md",
-        ".kiro/memory/**"
+        "memory/**"
       ]
     },
     "shell": {
@@ -50,35 +50,35 @@
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/sdlc.config.json",
+      "source": "file://./sdlc.config.json",
       "name": "Sdlc.config",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/project.md",
+      "source": "file://./context/project.md",
       "name": "Project",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/glossary.md",
+      "source": "file://./context/glossary.md",
       "name": "Glossary",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/conventions.md",
+      "source": "file://./context/conventions.md",
       "name": "Conventions",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/pipelines.json",
+      "source": "file://./pipelines.json",
       "name": "Pipelines",
       "indexType": "best",
       "autoUpdate": false

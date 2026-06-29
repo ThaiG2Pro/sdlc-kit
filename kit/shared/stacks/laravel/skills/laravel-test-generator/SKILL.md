@@ -13,7 +13,7 @@ Test generation patterns cho Laravel, align với `laravel-tdd-workflow` skill.
 ## When to Activate
 
 - Viết tests cho service/controller mới (S4)
-- Generate test scenarios từ AC trong requirements.md (S5)
+- Generate test scenarios từ AC trong spec deltas (`openspec/changes/<change>/specs/`) (S5)
 - Tăng coverage lên ≥80%
 
 ## How to Use
@@ -117,7 +117,7 @@ Cache::shouldReceive('flush')->once();
 
 ## Test Cases Checklist
 
-### From AC (requirements.md)
+### From AC (spec deltas)
 - [ ] Mỗi AC có ít nhất 1 test case
 - [ ] Happy path — valid input, expected response
 - [ ] Error path — invalid input, expected errors

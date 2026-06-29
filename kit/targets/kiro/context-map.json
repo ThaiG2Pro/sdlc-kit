@@ -1,5 +1,5 @@
 {
-  "$schema-note": "Declarative context→agent mapping. The mapper (bin/lib/context-map.mjs) reads this and (re)writes the `resources` array of each .kiro/agents/<agent>.json. Paths are relative to .kiro/ and are SKIPPED if they do not exist — so the kit never produces a broken reference. Edit this file (or let the onboarder agent edit it), then run the mapper.",
+  "$schema-note": "Declarative context→agent mapping. The mapper (bin/lib/context-map.mjs) reads this and (re)writes the `resources` array of each .kiro/agents/<agent>.json. Shared-root entries (context/*, openspec, sdlc.config.json, pipelines.json) resolve to the project root (file://./<entry>, no symlink); platform-local entries (steering, ai) resolve under .kiro/ (file://./.kiro/<entry>). extraDocs are project-root-relative. Any path is SKIPPED if it does not exist — so the kit never produces a broken reference. Edit this file (or let the onboarder agent edit it), then run the mapper.",
 
   "always": {
     "knowledgeBase": ["steering", "openspec", "sdlc.config.json", "context/project.md", "context/glossary.md"]
@@ -33,15 +33,23 @@
     "onboarder": {
       "skills": ["context-mapper"],
       "knowledgeBase": []
+    },
+    "context-refresh": {
+      "skills": ["context-mapper"],
+      "knowledgeBase": []
+    },
+    "intake": {
+      "skills": [],
+      "knowledgeBase": []
     }
   },
 
   "extraDocs": {
     "$comment": "Optional project-specific doc paths (relative to project root, e.g. \"docs/30-architecture\"). Add per-agent arrays to append extra knowledgeBase sources without editing .json by hand.",
-    "analyst": [],
-    "architect": [],
-    "developer": [],
-    "qa": [],
+    "analyst": ["docs/extra-docs"],
+    "architect": ["docs/extra-docs"],
+    "developer": ["docs/extra-docs"],
+    "qa": ["docs/extra-docs"],
     "sdlc-full": [],
     "sdlc-fast": []
   }

@@ -34,7 +34,8 @@ declares only what is specific to full flows + the Claude execution model.
 > installs…). Code is written **only** by the **developer subagent at S4**. Your shell is read-only
 > except the single allowed pipeline-isolation `git checkout -b` / `git switch -c` / `git worktree
 > add` at New Change Setup. You write artifacts only through the Write tool to `openspec/**` and
-> `.claude/memory/**`. This is enforced deterministically: the `Bash` and `Write|Edit` PreToolUse
+> `memory/**` (the shared-root workspace at the project root — no symlink). This is
+> enforced deterministically: the `Bash` and `Write|Edit` PreToolUse
 > hooks key on `agent_type=sdlc-full` to hold you read-only; the developer subagent gets the code
 > exception. "Small" is never an escape hatch — a small change shrinks *which phases run*, never lets
 > you skip the developer.
@@ -71,7 +72,7 @@ Per the core skill's Gate Audit Map, in order:
    append the Cross-Spec Context block, run the convergence loop when `rigor=full` and the gate is a
    convergence gate — all per the core skill. Then spawn the next phase's subagent.
 
-## Work types (read `.claude/pipelines.json` → `types[<type>]`)
+## Work types (read `pipelines.json` → `types[<type>]`)
 
 | Type | Trigger / NL | phases | deltaMode | specifics |
 |------|--------------|--------|-----------|-----------|

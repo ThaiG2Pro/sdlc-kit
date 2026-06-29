@@ -1,8 +1,8 @@
 ---
-name: requirements-example
+name: proposal-example
 description: >
-  Golden example of requirements.md — full S1+S2 output for CMS Brand Management.
-  Use as pattern reference when writing requirements.md for any feature.
+  Golden example of an S1/S2 output — proposal.md + spec deltas for CMS Brand Management.
+  Use as a pattern reference when writing the proposal + spec deltas (openspec/changes/<change>/) for any feature.
   Contains: Problem Statement, User Stories, ACs with tags, BRs, Edge Cases, Structured Extract.
 ---
 

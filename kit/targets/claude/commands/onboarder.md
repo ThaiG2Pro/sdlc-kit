@@ -1,5 +1,5 @@
 ---
-description: Run the onboarder role directly (one-time project context setup). Spawns the one-shot onboarder subagent to scan the repo, draft the .claude/context/ contract (6 files), mirror a digest into openspec/config.yaml, and run the completeness gate — then relays a Facts-to-commit table for your sign-off. Run this FIRST on a new project. Usage: /onboarder · /onboarder update
+description: Run the onboarder role directly (one-time project context setup). Spawns the one-shot onboarder subagent to scan the repo, draft the context/ contract (6 files), mirror a digest into openspec/config.yaml, and run the completeness gate — then relays a Facts-to-commit table for your sign-off. Run this FIRST on a new project. Usage: /onboarder · /onboarder update
 argument-hint: (blank = detect mode) | update
 ---
 
@@ -13,7 +13,7 @@ Request: **$ARGUMENTS**
 
 > ### 🚫 INVARIANT — you (the main session) confirm facts; you do not silently commit them
 > You spawn the onboarder and **own the sign-off**: the subagent never finalizes context on its own.
-> It writes `.claude/context/**`, `context/**`, `openspec/config.yaml` (drafts), and returns a
+> It writes `context/**`, `context/**`, `openspec/config.yaml` (drafts), and returns a
 > Facts-to-commit table + UNKNOWN list; **you get explicit user confirmation** before treating
 > context as final. No code is written. Enforced by the `agent_type`-keyed PreToolUse hooks.
 

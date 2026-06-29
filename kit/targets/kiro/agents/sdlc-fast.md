@@ -22,7 +22,7 @@ resource): OpenSpec change lifecycle, `_state.json` management, the gate audit m
 checks, progress marking, and dispute resolution. Follow that skill. This prompt declares ONLY
 what is specific to fast-track flows.
 
-## Your work types (read `.kiro/pipelines.json` → `types[<type>]`)
+## Your work types (read `pipelines.json` → `types[<type>]`)
 
 | Type | Trigger / NL | phases | Flow specifics |
 |------|--------------|--------|----------------|

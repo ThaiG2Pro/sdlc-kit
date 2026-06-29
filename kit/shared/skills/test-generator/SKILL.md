@@ -13,7 +13,7 @@ Test generation patterns cho NestJS + Vitest, align với `{{PLATFORM_DIR}}/cont
 ## When to Activate
 
 - Viết tests cho domain service / use case / controller
-- Generate test scenarios từ docs/knowledge/SPEC-XX.md
+- Generate test scenarios từ spec deltas của change (`openspec/changes/<change>/specs/`)
 - Khi cần tăng coverage lên ≥80%
 
 ## Coverage Requirements (P1)
@@ -184,9 +184,9 @@ describe('POST /v6.0/checkmultiple', () => {
 
 ## Test Cases Checklist
 
-### Per Spec (from docs/knowledge/SPEC-XX.md)
+### Per Spec (from the change's spec deltas)
 - [ ] Happy path — valid input, expected output
-- [ ] Error mapping — each error code from knowledge file has a test
+- [ ] Error mapping — each error code from the spec deltas has a test
 - [ ] Edge cases — boundary values, concurrent requests
 
 ### Domain (Aggregate + Services)

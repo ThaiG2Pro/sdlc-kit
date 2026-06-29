@@ -128,13 +128,9 @@ if na.get('agent'):
         for item in wi[:5]:
             print(f"  ⚠ {item}")
 
-# 6. Role memory (last 2 entries) — memory/ is symlinked from both .kiro/ and .claude/, so try
-#    each host plus the project-root target the symlinks point at.
-memory_path = next(
-    (p for p in (f'.kiro/memory/{agent_name}.md', f'.claude/memory/{agent_name}.md', f'memory/{agent_name}.md')
-     if os.path.isfile(p)),
-    f'.kiro/memory/{agent_name}.md',
-)
+# 6. Role memory (last 2 entries) — memory/ lives ONCE at the project root (no symlink); both
+#    platforms read it via the root path. "một gốc duy nhất".
+memory_path = f'memory/{agent_name}.md'
 if os.path.isfile(memory_path):
     with open(memory_path) as mf:
         mem_content = mf.read()

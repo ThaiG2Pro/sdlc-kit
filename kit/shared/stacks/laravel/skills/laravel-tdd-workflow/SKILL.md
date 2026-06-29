@@ -41,7 +41,7 @@ PHPUnit test patterns cho Laravel, align với company conventions.
 
 ## TDD Loop
 
-1. **Write test** (from AC in requirements.md)
+1. **Write test** (from AC in the spec deltas)
 2. **Run test** → should FAIL: `php artisan test --filter=TestName`
 3. **Write minimal code** to make test pass
 4. **Run test** → should PASS

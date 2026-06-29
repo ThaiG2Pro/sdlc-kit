@@ -25,7 +25,10 @@ rules:
     - "Never write \"TBD\" / \"to be determined\" — if you cannot resolve something, tag it [MISSING] or [UNCLEAR] with a reason."
 
   # ── spec deltas (analyst S2) — the testable ACs/scenarios under specs/<capability>/spec.md ──
-  spec:
+  # NOTE: key MUST be `specs` (plural) — the spec-driven schema's artifact id is `specs`.
+  # A `spec:` key is silently dropped ("Unknown artifact ID in rules: spec"), so these
+  # AC-format rules never reach the analyst at S2.
+  specs:
     - "Every acceptance criterion uses the id format AC-{ticket}-{NNN} (zero-padded 3 digits) and carries EXACTLY one tag: [CONFIRMED] / [ASSUMED] / [MISSING] / [UNCLEAR]. Wrong: AC-1, AC-1.1, AC-001, AC-69555-1."
     - "Business rules use BR-{ticket}-{NNN}; integration points use INT-{ticket}-{NNN}. Never drop the ticket id."
     - "At least 3 happy-path + 3 error-path scenarios per user story."

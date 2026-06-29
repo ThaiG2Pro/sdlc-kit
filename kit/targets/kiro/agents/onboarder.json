@@ -1,6 +1,6 @@
 {
   "name": "onboarder",
-  "description": "Project Onboarder — scans the repo to auto-detect stack/architecture, interviews for gaps, fills the .kiro/context/ contract, and wires context to each agent via the context-mapper. Run once when adopting the kit in a project, or anytime context changes.",
+  "description": "Project Onboarder — scans the repo to auto-detect stack/architecture, interviews for gaps, fills the context/ contract, and wires context to each agent via the context-mapper. Run once when adopting the kit in a project, or anytime context changes.",
   "prompt": "file://./onboarder.md",
   "tools": [
     "read",
@@ -15,9 +15,8 @@
   "toolsSettings": {
     "write": {
       "allowedPaths": [
-        ".kiro/context/**",
+        "context/**",
         "openspec/**",
-        ".kiro/openspec/**",
         ".kiro/context-map.json"
       ]
     },
@@ -45,21 +44,21 @@
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/sdlc.config.json",
+      "source": "file://./sdlc.config.json",
       "name": "Sdlc.config",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/project.md",
+      "source": "file://./context/project.md",
       "name": "Project",
       "indexType": "best",
       "autoUpdate": false
     },
     {
       "type": "knowledgeBase",
-      "source": "file://./.kiro/context/glossary.md",
+      "source": "file://./context/glossary.md",
       "name": "Glossary",
       "indexType": "best",
       "autoUpdate": false
@@ -84,5 +83,5 @@
   "includeMcpJson": true,
   "model": "claude-opus-4.8",
   "keyboardShortcut": "ctrl+9",
-  "welcomeMessage": "Onboarder. Tôi sẽ quét dự án, hỏi phần còn thiếu, điền .kiro/context/ và wire context cho từng agent. Gõ 'bắt đầu' để onboard."
+  "welcomeMessage": "Onboarder. Tôi sẽ quét dự án, hỏi phần còn thiếu, điền context/ và wire context cho từng agent. Gõ 'bắt đầu' để onboard."
 }

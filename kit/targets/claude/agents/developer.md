@@ -30,8 +30,14 @@ next checkpoint, self-verify, then return (do NOT implement every task in one ru
 - **Design pack**: `design.md`, `tasks.md`, `proposal.md`, spec deltas, `openapi.yaml`. Verify S3
   done. Read **only what the current task needs** (schema task → design §DB Schema; service →
   §Sequence Flows + §Error Mapping; controller → the openapi path; tests → AC-IDs + existing tests).
-- **Context**: `.claude/context/{project,stack,architecture,conventions,legacy-ref}.md` — read the
+- **Ticket package** (when the change came from intake): `docs/extra-docs/<ticket_id>-<slug>/` —
+  `ls` it first. For a **frontend/UI task**, the matching `ui/<screen>.md` is your build spec: layout,
+  every component state, fields/validation, interactions. Build to it (cross-check the `figma/` image
+  it references); the spec wins over guesswork. Read `intake.md` §4 to map a screen → its `ui/` file.
+- **Context**: `context/{project,stack,architecture,conventions,legacy-ref}.md` — read the
   ACTUAL build/test/lint/coverage commands from `stack.md` (never assume them).
+- **Quality policy**: `.claude/ai/sonar-policy.md` (the AI-friendly bug/quality rules you must
+  code to; `.claude/ai/sonar-rules.md` is the fuller reference). Read before R3/R4 self-review.
 
 ## Skills (`.claude/skills/`)
 

@@ -14,7 +14,7 @@ S1 analyst needs raw requirements to produce `proposal.md`. Three sources, combi
 
 | Source | Convention | When to use |
 |--------|-----------|-------------|
-| **docs folder** | `docs/<ticket-id>-<slug>/` (e.g., `docs/1234-feature-voucher-redeem/`) | BA has attachments (Word, PDF, Figma exports, screenshots). No sub-structure required — drop any file in. |
+| **docs folder** | `docs/extra-docs/<ticket-id>-<slug>/` (e.g., `docs/extra-docs/1234-voucher-redeem/`) | BA attachments + the intake package (Word, PDF, Figma exports, screenshots, `intake.md`, `figma-urls.txt`). Produced by the `intake` agent or dropped in by hand. No sub-structure required. |
 | **Redmine ticket** | `sdlc feature <module> --ticket=1234` | Ticket exists in Redmine; AI fetches subject, description, attachments, comments automatically. Requires Redmine MCP/config. |
 | **Direct chat** | No ticket, no docs | Smallest changes; analyst asks user directly. |
 

@@ -5,7 +5,7 @@ description: "SDLC S3 (Design). Validate spec deltas → full technical design: 
 
 # MEMORY — ĐỌC TRƯỚC KHI LÀM BẤT CỨ VIỆC GÌ
 
-**Bước đầu tiên bắt buộc**: Đọc `.kiro/memory/architect.md` để lấy ADRs đã set, lessons learned, watch items từ các spec trước.
+**Bước đầu tiên bắt buộc**: Đọc `memory/architect.md` để lấy ADRs đã set, lessons learned, watch items từ các spec trước.
 Không đọc = redesign thứ đã có = conflict với existing constraints.
 
 ---
@@ -194,7 +194,7 @@ Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → foll
 **When in execution**: Sub-phase B (writing design.md §API Design + §Error Mapping), Sub-phase C (writing openapi.yaml)
 **How to use**: Load skill → follow its REST API patterns for endpoint naming → use its error response template → ensure response format matches the project's API conventions (see `context/conventions.md`)
 
-### stride-analysis — Dùng khi: feature đụng bảo mật (theo `.kiro/sdlc.config.json → security.stride_analysis`)
+### stride-analysis — Dùng khi: feature đụng bảo mật (theo `sdlc.config.json → security.stride_analysis`)
 
 **Trigger**: Sub-phase B design, when `security.stride_analysis` = `always`, or `auto` and the
 feature touches auth/payment/PII/tokens/upload/admin/external integration.

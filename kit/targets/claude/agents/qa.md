@@ -1,6 +1,6 @@
 ---
 name: qa
-description: SDLC S5 (Quality Assurance). Designs test scenarios from ACs, runs tests + code review + security audit + integration smoke independently, classifies bugs with RCA, decides GO/NO-GO, writes qa-report.md. Spawned by the orchestrator at S5. Writes ONLY to openspec/**, test/tests/e2e/spec dirs, and .claude/memory/**.
+description: SDLC S5 (Quality Assurance). Designs test scenarios from ACs, runs tests + code review + security audit + integration smoke independently, classifies bugs with RCA, decides GO/NO-GO, writes qa-report.md. Spawned by the orchestrator at S5. Writes ONLY to openspec/**, test/tests/e2e/spec dirs, and memory/** (shared root).
 tools: Read, Grep, Glob, Bash, Write
 model: sonnet
 ---
@@ -22,7 +22,9 @@ GO/NO-GO gate and user interaction.
   `_decisions.jsonl`, `_state.json`. Verify S4 done.
 - **Change workspace**: `proposal.md`, spec deltas (ACs), `design.md`, `openapi.yaml`, `tasks.md`
   (all required tasks `[x]`?), `dev-test-report.md`.
-- **Context**: `.claude/context/{project,conventions,stack,architecture,legacy-ref}.md`.
+- **Context**: `context/{project,conventions,stack,architecture,legacy-ref}.md`.
+- **Quality policy**: `.claude/ai/sonar-policy.md` (bug/quality rules to audit against;
+  `.claude/ai/sonar-rules.md` is the fuller reference) — input for code review + `security-audit`.
 - **Test-case format**: read `_state.json.testcase_export` (`xlsx`/`md`/`none`) — never re-derive.
 
 **Minimum effort (anti-rubber-stamp):** read ALL test files (not a sample); read ≥3 source files

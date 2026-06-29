@@ -32,9 +32,7 @@
       "Write(openspec/**)",
       "Edit(openspec/**)",
       "Write(memory/**)",
-      "Edit(memory/**)",
-      "Write(.claude/memory/**)",
-      "Edit(.claude/memory/**)"
+      "Edit(memory/**)"
     ]
   },
   "hooks": {
@@ -70,7 +68,7 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "OUT=$(git diff --name-only -- . ':(exclude)openspec' ':(exclude)memory' ':(exclude).claude' 2>/dev/null); [ -n \"$OUT\" ] && { echo '⚠ NON-SPEC FILE CHANGES detected — the orchestrator (main session) must NOT write code; only the developer subagent (S4) may. Verify these came from the developer:'; echo \"$OUT\" | head -20; }; true", "timeout": 5 }
+          { "type": "command", "command": "OUT=$(git diff --name-only -- . ':(exclude)openspec' ':(exclude)memory' ':(exclude).claude' ':(exclude).snapshots' 2>/dev/null); [ -n \"$OUT\" ] && { echo '⚠ NON-SPEC FILE CHANGES detected — the orchestrator (main session) must NOT write code; only the developer subagent (S4) may. Verify these came from the developer:'; echo \"$OUT\" | head -20; }; true", "timeout": 5 }
         ]
       }
     ]

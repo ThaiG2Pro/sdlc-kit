@@ -34,23 +34,31 @@ workspace** — the pipeline guards do not touch it.
 
 ## Project context contract
 
-@context/project.md
-@context/stack.md
-@context/conventions.md
-@context/architecture.md
-@context/glossary.md
-@context/legacy-ref.md
+<!-- Context lives ONCE at the project root (./context/) — shared by both platforms, no symlink.
+     @imports resolve relative to THIS file's dir (.claude/), so the root copy is `@../context/*`. -->
+@../context/project.md
+@../context/stack.md
+@../context/conventions.md
+@../context/architecture.md
+@../context/glossary.md
+@../context/legacy-ref.md
 
 ## Notes
 
 - **Stack-specific packs** (laravel / nestjs / nextjs, etc.) ship under `.claude/stacks/<stack>/`
   (a `preset.json` + `context/` + `skills/`). Activate one with
   `node .claude/tools/apply-stack.mjs <stack>` (`--list` to see them): it seeds
-  `.claude/context/{stack,conventions}.md` and copies the pack's skills into `.claude/skills/`,
+  `./context/{stack,conventions}.md` (shared root) and copies the pack's skills into `.claude/skills/`,
   where they become **model-invoked skills** that load only when relevant. They are intentionally
   NOT `@import`ed here — keeps every session's base context small (see MIGRATION.md §7 Q2). On
   Claude there is no `context-map.json` wiring step (skills auto-discover); that is Kiro-only.
-- The OpenSpec workspace (`openspec/`) is the spec backend; `.claude/sdlc.config.json` +
-  `.claude/pipelines.json` configure gates, rigor, and the phase pipeline.
+- **Golden examples** — fully worked-out reference artifacts (proposal, design, tasks, qa-report,
+  dev-test-report, openapi, migration, handoff/state/progress, glossary, …) live under
+  `.claude/agents/examples/`. Role subagents should read the matching example before authoring an
+  artifact: it shows the *assembled* document shape, which the OpenSpec `<template>`/`<rules>` (skeleton
+  + checklist) do not. They are reference-only — never edited, never part of a change.
+- The OpenSpec workspace (`openspec/`) is the spec backend; `sdlc.config.json` +
+  `pipelines.json` (shared-root, at the project root — read root-relative) configure gates, rigor,
+  and the phase pipeline.
 - After updating the kit, re-run `npx kiro-sdlc-init . --force` and start a **new session** — agents,
   commands, settings, and hooks load at session start, not mid-session.

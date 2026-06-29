@@ -4,12 +4,12 @@
 // which exist on Claude. This is the Claude-target equivalent: it verifies that the things Claude
 // DOES rely on are intact — CLAUDE.md @imports resolve, all commands/subagents exist, the
 // "only the developer writes code" tool invariant holds, settings.json hooks point at installed
-// scripts/tools, the workspace symlinks are live — then folds in context completeness.
+// scripts/tools, the shared workspace lives at the project root — then folds in context completeness.
 //
 // Usage:  node .claude/tools/doctor-claude.mjs [projectDir]
 // Exit:   0 = no FAIL (WARN allowed)   1 = at least one FAIL
 
-import { readFileSync, existsSync, readdirSync, lstatSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -36,8 +36,8 @@ function frontmatter(file) {
   return fm;
 }
 
-// 1. Required structure
-for (const d of ['agents', 'agents/scripts', 'commands', 'skills', 'steering', 'context', 'tools']) {
+// 1. Required structure (context/ lives at the project root, not under .claude/ — checked in §7)
+for (const d of ['agents', 'agents/scripts', 'commands', 'skills', 'steering', 'tools']) {
   existsSync(join(cc, d)) ? ok(`dir .claude/${d}/`) : fail(`missing .claude/${d}/`);
 }
 existsSync(join(cc, 'settings.json')) ? ok('file .claude/settings.json') : fail('missing .claude/settings.json');
@@ -70,10 +70,10 @@ if (claudeMd) {
 }
 
 // 3. Commands + subagents present (the slash commands and the roles they spawn)
-const EXPECT_COMMANDS = ['sdlc-full', 'sdlc-fast', 'analyst', 'architect', 'developer', 'qa', 'onboarder'];
+const EXPECT_COMMANDS = ['sdlc-full', 'sdlc-fast', 'analyst', 'architect', 'developer', 'qa', 'onboarder', 'intake', 'context-refresh'];
 // Orchestrators (sdlc-full/sdlc-fast) are top-level agents launched via `claude --agent …` so they
 // carry an agent_type the guards key on; the matching commands are thin launchers.
-const EXPECT_AGENTS = ['sdlc-full', 'sdlc-fast', 'analyst', 'architect', 'developer', 'qa', 'onboarder'];
+const EXPECT_AGENTS = ['sdlc-full', 'sdlc-fast', 'analyst', 'architect', 'developer', 'qa', 'onboarder', 'intake', 'context-refresh'];
 for (const [dir, expect, kind] of [['commands', EXPECT_COMMANDS, 'command'], ['agents', EXPECT_AGENTS, 'subagent']]) {
   const d = join(cc, dir);
   if (!existsSync(d)) continue;
@@ -131,20 +131,20 @@ else existsSync(join(skillsDir, 'sdlc-orchestration-core', 'SKILL.md'))
   ? ok('core skill sdlc-orchestration-core present')
   : fail('missing skill sdlc-orchestration-core (the orchestrator commands wrap it)');
 
-// 7. OpenSpec backend + workspace symlinks reachable from .claude/
+// 7. OpenSpec backend + shared workspace at the project root (no symlink — read root-relative).
 try { execSync('openspec --version', { stdio: 'ignore' }); ok('openspec CLI installed'); }
 catch { fail('openspec CLI missing — `npm i -g @fission-ai/openspec` (workspace depends on it)'); }
 existsSync(join(projectDir, 'openspec', 'config.yaml')) ? ok('openspec/ workspace present')
   : fail('no openspec/config.yaml — run `openspec init --tools claude`');
-for (const link of ['openspec', 'memory']) {
-  const p = join(cc, link);
-  if (!existsSync(p)) { warn(`no .claude/${link} symlink — run init`); continue; }
-  try { lstatSync(p).isSymbolicLink() ? ok(`symlink .claude/${link}`) : warn(`.claude/${link} is not a symlink`); }
-  catch { warn(`.claude/${link} unreadable`); }
+for (const name of ['openspec', 'memory', 'context', 'docs']) {
+  existsSync(join(projectDir, name)) ? ok(`root ${name}/`)
+    : warn(`no ./${name} at project root — run init`);
+  if (existsSync(join(cc, name))) warn(`.claude/${name} exists — should be root-only; re-run init --force to strip it`);
 }
 
-// 8. Context completeness (same semantics doctor.mjs uses; context-check.mjs enforces in full)
-const ctx = join(cc, 'context');
+// 8. Context completeness (same semantics doctor.mjs uses; context-check.mjs enforces in full).
+//    Context lives at the project root (shared, no symlink).
+const ctx = join(projectDir, 'context');
 if (existsSync(ctx)) {
   let todo = 0, unknown = 0;
   for (const f of readdirSync(ctx).filter((f) => f.endsWith('.md'))) {

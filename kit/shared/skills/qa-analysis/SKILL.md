@@ -20,8 +20,8 @@ Chạy trong 1 session để tiết kiệm context load.
 ## Input
 
 1. `openspec/changes/<change>/proposal.md` + spec deltas — đọc `_Structured Extract` trước
-2. `docs/knowledge/{ticket}/` — nếu tồn tại
-3. `docs/knowledge/_shared/lesson-learned.md` — bug patterns đã biết
+2. `docs/extra-docs/{ticket}-{slug}/` — intake package (nếu tồn tại)
+3. `memory/qa.md` — bug patterns / lessons đã biết
 4. `dev-test-report.md` — nếu có (cho gap review)
 
 ## Phase 1 — Risk Scanning
@@ -30,7 +30,7 @@ Chạy trong 1 session để tiết kiệm context load.
 
 ```
 1. Đọc _Structured Extract → AC list, business rules, integration points
-2. Đọc lesson-learned.md → có pattern bug quen nào cho domain này?
+2. Đọc memory/qa.md → có pattern bug quen nào cho domain này?
 3. Liệt kê: actors, actions, states, integration points
 ```
 

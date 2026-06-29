@@ -13,11 +13,9 @@
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-// Copied into BOTH .kiro/tools/ and .claude/tools/; resolve the platform context dir from
-// this script's own install path so the onboarder's completeness gate works on either host.
-const PLATFORM_DIR = fileURLToPath(import.meta.url).includes('/.claude/') ? '.claude' : '.kiro';
+// Copied into BOTH .kiro/tools/ and .claude/tools/. The context contract lives ONCE at the project
+// root (./context/) — shared by both platforms, no symlink — so the gate reads it there on either host.
 
 const REQUIRED = ['project.md', 'stack.md', 'conventions.md', 'architecture.md', 'glossary.md', 'legacy-ref.md'];
 const TODO_RE = /<!--\s*TODO/g;          // matches `<!-- TODO -->` AND `<!-- TODO: hint -->`
@@ -64,9 +62,9 @@ function glossary(src) {
 }
 
 const projectDir = resolve(process.argv[2] || '.');
-const ctxDir = join(projectDir, PLATFORM_DIR, 'context');
+const ctxDir = join(projectDir, 'context');
 if (!existsSync(ctxDir)) {
-  console.error(`✗ no ${PLATFORM_DIR}/context/ at ${projectDir}`);
+  console.error(`✗ no ./context/ at ${projectDir}`);
   process.exit(1);
 }
 

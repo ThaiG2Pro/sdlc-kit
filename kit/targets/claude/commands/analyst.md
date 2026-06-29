@@ -14,7 +14,7 @@ Request: **$ARGUMENTS**
 
 > ### 🚫 INVARIANT — you (the main session) do not write specs or code yourself
 > You only resolve the baton, spawn the analyst, and relay its return. The **analyst subagent**
-> writes `openspec/**` + `docs/knowledge/**`; no one writes code here. Enforced by the
+> writes `openspec/**` only; no one writes code here. Enforced by the
 > `agent_type`-keyed PreToolUse hooks (your calls carry no `agent_type` ⇒ orchestrator ⇒ read-only).
 
 ## What this does

@@ -20,7 +20,7 @@ Verify UI đã implement khớp Figma design. Chạy sau S4 Build, trước khi 
 
 ## Input cần có
 
-- Figma URL của màn hình cần verify (từ requirements.md hoặc design.md)
+- Figma URL của màn hình cần verify (từ spec deltas hoặc design.md)
 - File path của component/page đã implement
 - Dev server đang chạy (hoặc screenshot thực tế từ browser)
 

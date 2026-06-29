@@ -510,7 +510,8 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
       could drift). `init` scaffolds them once at the root; each platform symlinks to them. Verified:
       editing `./sdlc.config.json` is seen by both `.kiro/` and `.claude/`. `pipelines.json`'s
       `{{PLATFORM_DIR}}` gate-description was neutralized (a shared file can't carry a per-platform
-      token). `docs/` (extra docs) is already root-shared.
+      token). `docs/` (extra docs) lives at the root too (promoted to a full shared-root **symlink** in
+      Phase 14).
     - **Per-platform (framework runtime, init re-emits):** `agents`, `commands`, `skills`, `steering`,
       `ai`, `tools`, `settings`/hooks, `agents/scripts`.
     - **Isolation:** Claude runtime artifacts are `.kiro/`-free (skills resolve `{{PLATFORM_DIR}}` →
@@ -534,7 +535,7 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
       `allowedTools`/`shell.allowedCommands`. Whether `preToolUse` *hooks* also fire inside a subagent
       is **undocumented**. So the kit must NOT depend on the hook surviving into a subagent — and it
       doesn't need to: the native `write.allowedPaths` already boxes each read-only role out of
-      `src/**` (analyst → `openspec`+`docs/knowledge`; architect → `openspec`+`docs`; qa →
+      `src/**` (analyst → `openspec`; architect → `openspec`; qa →
       `openspec`+`test*`+`memory`), and `shell.allowedCommands` is read-only for analyst/architect.
       The hook is **defense-in-depth**, not the only fence. **One residual risk to verify on a live
       Kiro run:** `qa`'s native `shell.allowedCommands` includes `python3`/`node` (it needs them to run
@@ -546,6 +547,66 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
       one path).
     - Kiro `doctor.mjs` now fails if either orchestrator lacks `subagent`. Verified: fresh
       `--target both` install → both orchestrators carry `subagent`; doctor HEALTHY.
+
+14. ✅ **Platform isolation + shared-root preservation + settings merge — DONE.** Closed the
+    "isolate AND sync" tension and the two data-loss gaps the user flagged.
+    - **`docs/` is now a true shared-root symlink** (added to `SHARED_ROOT_LINKS`), joining
+      `context/`, `openspec/`, `memory/`, `sdlc.config.json`, `pipelines.json`. Before this it was
+      only `mkdir`'d at the root; now each platform reaches it via `<platform>/docs -> ../docs`. The
+      WHOLE `docs/` is the shared unit: intake writes its ticket packages to `docs/extra-docs/**` and
+      a project's own docs live here too. All shared, yet a single-platform install never points at the
+      other side's path. "Vừa cô lập vừa sync." (analyst/architect write specs to `openspec/`, not here.)
+    - **Host-scoped write-fence.** `check-write-path.py` no longer hard-codes `.claude`/`.kiro` in its
+      allow-lists — `policy_for(actor, claude_host)` builds the allowed paths from the **running
+      host** (own `<platform>/…` + root). On a Claude host, writes to `.kiro/memory|context|docs` are
+      now **BLOCKED** (and vice-versa) — true read/write isolation while symlinks keep reads in sync.
+      `agent-spawn-context.py` memory fallback is host-scoped the same way. Self-test 54/54.
+    - **Preservation net (the "don't destroy saved work" requirement).** The same hook now, before any
+      overwrite of `context/**` or `memory/**`, snapshots the prior file to `./.snapshots/<canonical>/NNNN.bak`
+      (rotating last 5; `canonical_rel()` collapses `.claude/`/`.kiro/` so symlinked twins share one
+      history). `memory/*.md` is additionally **append-guarded**: a write that would delete an existing
+      `## ` section is blocked (exit 2). The Stop hook excludes `.snapshots/` from its non-spec-change
+      warning. Onboarder + context-refresh prompts (both platforms) document the net.
+    - **`init` merges `.claude/settings.json` instead of clobbering it** (`mergeClaudeSettings`).
+      `settings.json` is the one kit file mixing kit-owned policy (hooks, its permission entries,
+      `$schema`) with user-owned config (`enabledPlugins`, `env`, `model`, `/fewer-permission-prompts`
+      additions). `--force` used to overwrite the whole file → lost the user's plugins. Now the kit
+      wins on its security policy, every user top-level key is preserved, and `permissions.allow`/`deny`
+      are unioned. Verified: colemark-dh's `enabledPlugins` auto-survives redeploy (no manual restore).
+    - Deployed to all 5 repos: 54/54 fence pass, preserve✓ (claude+kiro), stop-hook✓, doctor HEALTHY.
+
+16. ✅ **Shared workspace is root-only (no symlink) + intake plans the UI — DONE.** Supersedes the
+    symlink mechanism of Phases 12/14. The user's call: drop symlinks entirely (Windows/git fragility,
+    and "remove one platform → dangling links"); make every shared artifact root-only and referenced
+    root-relative; have intake produce per-screen UI specs the developer builds against.
+    - **Root-only shared workspace.** `context/`, `docs/`, `memory/`, `openspec/`, `sdlc.config.json`,
+      `pipelines.json` live ONCE at the project root with **no per-platform copy and no symlink**
+      (`SHARED_ROOT_LINKS` → `SHARED_ROOT_NAMES`). `applyTarget()` now **strips** any stale
+      `<platform>/<name>` (symlink or real dir) a prior install left; `migrateRealDirToRoot()` copies a
+      pre-existing real `docs/`/`memory/` into root first (context already migrated) so no data is lost.
+    - **Reference rewiring.** Claude `CLAUDE.md` `@context/*` → `@../context/*`; Claude agent/command
+      prose `.claude/context|memory` → root `context|memory`. Kiro mapper (`context-map.mjs`) emits
+      shared-root KB as `file://./<entry>` (vs platform-local `steering`/`ai` → `file://./.kiro/<entry>`);
+      committed Kiro agent JSON `resources[]` + `allowedPaths` rewritten to root. `apply-stack` seeds
+      root `./context/`; `context-check` reads root; `agent-spawn-context` reads root `memory/`.
+    - **Guard + doctors.** `check-write-path.py` allow-lists are root-only; platform-prefixed targets
+      (`.claude/context/…`, `.kiro/memory/…`) are now BLOCKED on both hosts (self-test **63/63**). Both
+      doctors validate the root workspace (not symlinks) and no longer require `<platform>/context/`.
+      E2E `--target both` install: zero symlinks, no per-platform workspace leak, both doctors HEALTHY.
+    - **Intake UI specs.** When a ticket has UI, `intake` writes one `docs/extra-docs/<t>-<slug>/ui/<screen>.md`
+      per screen (layout / component states / fields / interactions), linked from `intake.md` §4. The
+      **developer reads `ui/*.md` at S4** as its frontend build target (Claude developer Inputs; Kiro
+      developer `extraDocs` now includes `docs/extra-docs`). New golden templates `intake-example.md`
+      + `ui-screen-example.md`.
+    - **Verification:** write-guard self-test **63/63**, shell-guard **31/31**; E2E `--target both`
+      install = zero symlinks, no per-platform workspace leak, both doctors HEALTHY; simulated
+      symlink-era upgrade preserved filled context + openspec + memory + docs/extra-docs (incl. `ui/`).
+    - **Deployed to all 5 repos.** 4 symlink-era installs upgraded in place (`--force --target both`):
+      `issues-sum`, `portal`, `zellij-claude-sync`, `colemark-dh` — exit 0, 0 symlinks, content
+      preserved, both doctors HEALTHY. `biz` (only a stray `.kiro/steering/`, never a real install)
+      got a fresh `--target both` install. Note: repos whose `context/` was still template (TODO) had
+      their `Name` line re-scaffolded — restored to the repo name afterward; lesson: pass `--title`
+      when upgrading not-yet-onboarded repos.
 
 ---
 

@@ -14,7 +14,7 @@ Test generation patterns cho NestJS, align với `nestjs-tdd-workflow` skill và
 ## When to Activate
 
 - Bắt đầu viết tests cho service/controller mới (S4)
-- Generate test scenarios từ AC trong `requirements.md` (S5)
+- Generate test scenarios từ AC trong spec deltas (`openspec/changes/<change>/specs/`) (S5)
 - Khi cần tăng coverage lên ≥80%
 
 ## How to Use
@@ -161,7 +161,7 @@ describe('ProductController (e2e)', () => {
 
 ## Test Cases Checklist
 
-### From AC (requirements.md)
+### From AC (spec deltas)
 - [ ] Mỗi AC có ít nhất 1 test case tương ứng
 - [ ] Happy path — valid input, expected output, đúng status code
 - [ ] Error path — invalid input, missing data, expected error response

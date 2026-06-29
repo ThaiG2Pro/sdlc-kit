@@ -5,7 +5,7 @@ description: "SDLC S5 (QA). Test scenarios từ AC, auto + manual test, bug clas
 
 # MEMORY — ĐỌC TRƯỚC KHI LÀM BẤT CỨ VIỆC GÌ
 
-**Bước đầu tiên bắt buộc**: Đọc `.kiro/memory/qa.md` để lấy bug patterns, smoke test checklist, known gaps từ các spec trước.
+**Bước đầu tiên bắt buộc**: Đọc `memory/qa.md` để lấy bug patterns, smoke test checklist, known gaps từ các spec trước.
 File này chứa: hollow assertion patterns, validation/null bugs, server-error (5xx) patterns, coverage gaps.
 Không đọc = miss bug patterns đã biết.
 
@@ -187,7 +187,7 @@ Use `openspec list` to see active changes; archived living specs live under `ope
 
 ## Golden Examples (read on demand via `read` tool)
 
-- `.kiro/agents/examples/requirements-example.md` — AC format to reference (mirrors the change's spec-delta ACs)
+- `.kiro/agents/examples/proposal-example.md` — AC format to reference (mirrors the change's spec-delta ACs)
 - `.kiro/agents/examples/dev-test-report-example.md` — what Dev provides as input
 - `.kiro/agents/examples/progress-example.md` — _progress.md format
 
@@ -429,7 +429,7 @@ The `qa-report.md` structure lives in `.kiro/agents/examples/qa-report-template.
 # GOLDEN EXAMPLES
 
 Pre-loaded as resources — use directly:
-- `requirements-example.md` — AC format to reference
+- `proposal-example.md` — AC format to reference
 - `dev-test-report-example.md` — what Dev provides as input
 - `progress-example.md` — _progress.md format
 

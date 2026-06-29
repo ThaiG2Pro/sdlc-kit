@@ -44,12 +44,14 @@ if (!existsSync(join(stackDir, 'preset.json'))) {
 const preset = JSON.parse(readFileSync(join(stackDir, 'preset.json'), 'utf8'));
 console.log(`apply-stack: ${stack} → ${projectDir}`);
 
-// 1. Seed context files (overwrite the templates for the files the preset provides)
+// 1. Seed context files (overwrite the templates for the files the preset provides).
+// Context lives ONCE at the project root (./context/) — shared by both platforms, no symlink — so
+// seed there, NOT into <platform>/context/. (Skills/stacks below stay platform-local under <platform>/.)
 const ctxSrc = join(stackDir, 'context');
 let seeded = 0;
 if (existsSync(ctxSrc)) {
   for (const f of readdirSync(ctxSrc)) {
-    cpSync(join(ctxSrc, f), join(kiro, 'context', f));
+    cpSync(join(ctxSrc, f), join(projectDir, 'context', f));
     seeded++;
   }
 }
@@ -90,4 +92,4 @@ if (IS_KIRO) {
   console.log(`  ✓ stack skills live under ${PLATFORM_DIR}/skills/ — Claude auto-discovers them (no context-map wiring needed)`);
 }
 
-console.log(`\n  Done. Stack "${stack}" applied. Review ${PLATFORM_DIR}/context/stack.md + conventions.md, then run the onboarder for the rest.`);
+console.log(`\n  Done. Stack "${stack}" applied. Review ./context/stack.md + conventions.md, then run the onboarder for the rest.`);
