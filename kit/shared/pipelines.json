@@ -69,6 +69,25 @@
         "S6": "deploy + mandatory post-deploy verification"
       },
       "note": "Orchestrator creates the isolation branch/worktree (git.isolation) before S4 — `hotfix/<ticket>-<slug>`. Backfill spec delta + S5 retroactively after the incident if behavior changed."
+    },
+    "spike": {
+      "desc": "Research/exploration — produces a decision doc, not code. Use when 'should we build X?' is still open.",
+      "deltaMode": "ADDED",
+      "rigor": "lite",
+      "phases": ["S1", "S2"],
+      "gateOverrides": { "S2": "decision-doc.md complete + recommendation clear (GO build / NO-GO / defer); no code artifacts required" },
+      "note": "Output: proposal.md + decision-doc.md (replaces design.md — write it as: Problem, Options Considered, Decision, Consequences). No S3 onwards. Escalate to `feature` if the spike concludes GO."
+    },
+    "tech-debt": {
+      "desc": "Refactor or cleanup — zero behavior change. S3 confirms scope before any code is touched.",
+      "deltaMode": "MODIFIED",
+      "rigor": "lite",
+      "phases": ["S3", "S4", "S5", "S6"],
+      "gateOverrides": {
+        "S3": "design.md MUST contain a 'Zero-Behavior-Change Confirmation' section listing what will NOT change; no new ACs introduced",
+        "S5": "regression-only: retest affected area + run full suite; no new test scenarios, no test design phase"
+      },
+      "note": "No S1/S2 — the behavior is already specified in the living spec. S3 MUST confirm zero-behavior-change before S4 starts. If behavior must change to fix a design flaw, escalate to `cr`."
     }
   }
 }

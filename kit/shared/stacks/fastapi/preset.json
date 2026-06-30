@@ -1,0 +1,9 @@
+{
+  "stack": "fastapi",
+  "contextFiles": ["stack.md", "conventions.md"],
+  "skills": {
+    "architect": ["fastapi-api-design"],
+    "developer": ["fastapi-backend-patterns", "fastapi-database-migrations", "fastapi-tdd-workflow", "fastapi-test-generator"],
+    "qa": ["fastapi-test-generator"]
+  }
+}
