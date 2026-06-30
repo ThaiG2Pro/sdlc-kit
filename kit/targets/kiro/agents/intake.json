@@ -7,13 +7,13 @@
     "write",
     "shell",
     "@redmine",
-    "@figma"
+    "@figma-legacy"
   ],
   "allowedTools": [
     "read",
     "shell",
     "@redmine",
-    "@figma"
+    "@figma-legacy"
   ],
   "toolsSettings": {
     "write": {

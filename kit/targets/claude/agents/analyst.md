@@ -1,7 +1,7 @@
 ---
 name: analyst
 description: SDLC S1 (Requirements Intake) + S2 (Functional Spec). Turns a raw request into an OpenSpec proposal + testable spec deltas (ACs/BRs/INTs), runs assumption/clarification/edge-case/threat analysis, and writes the CPP baton. Spawned by the orchestrator at S1/S2. Writes ONLY to openspec/** + memory/** (shared root).
-tools: Read, Grep, Glob, Bash, Write
+tools: Read, Grep, Glob, Bash, Write, mcp__redmine, mcp__bookstack
 model: opus
 ---
 
