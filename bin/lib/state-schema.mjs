@@ -76,6 +76,20 @@ export function validateState(state) {
     }
   }
 
+  // memory_writeback: { "<role>": "appended" | "nothing-reusable" } — the per-phase role-memory
+  // DECISION flag cpp-guard reads at each gate (analyst/architect/developer/qa). Value is an enum.
+  if (state.memory_writeback != null) {
+    const m = state.memory_writeback;
+    if (typeof m !== 'object' || Array.isArray(m)) {
+      problems.push('`memory_writeback` must be an object keyed by role, e.g. {"developer":"appended"}');
+    } else {
+      for (const [k, v] of Object.entries(m)) {
+        if (v !== 'appended' && v !== 'nothing-reusable')
+          problems.push(`memory_writeback.${k}: value must be "appended" or "nothing-reusable" (got ${JSON.stringify(v)})`);
+      }
+    }
+  }
+
   // light type checks on core scalar fields (only when present)
   for (const f of ['type', 'current_phase', 'change_name']) {
     if (state[f] != null && typeof state[f] !== 'string') problems.push(`\`${f}\` must be a string`);

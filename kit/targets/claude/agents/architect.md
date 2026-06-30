@@ -89,6 +89,10 @@ the top of every run. **Append-only** — never delete or overwrite an existing 
 hook blocks any write that drops one). **The hook fires on a FULL Write, so first READ `memory/architect.md`,
 keep every existing `## ` section verbatim, append your new section at the end, then WRITE the whole
 concatenated text** — writing only the new section alone will be BLOCKED for dropping the old ones. Nothing reusable → skip; never invent filler.
+**Gate flag (enforced):** before you return, set `_state.json.memory_writeback.architect` to `"appended"`
+(you added a section) or `"nothing-reusable"` (clean change). cpp-guard BLOCKS the DESIGN REVIEW gate until
+this is set — it turns a silent skip into a deliberate decision, because a one-shot agent gets no second
+chance after it returns.
 
 ## Return to the orchestrator (it owns the DESIGN REVIEW gate)
 

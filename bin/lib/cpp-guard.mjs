@@ -29,19 +29,23 @@ export const CPP_RULES = {
     decisionType: 'requirement',
     glossaryMinDataRows: 1,
     stateEnriched: true,
+    memoryRole: 'analyst',
   },
   S3: { // DESIGN_REVIEW · architect → developer
     handoffGeneratedBy: 'architect',
     decisionType: 'design',
     glossaryPhase: 'S3',
     stateEnriched: true,
+    memoryRole: 'architect',
   },
   S4: { // BUILD · developer → qa
     handoffGeneratedBy: 'developer',
     decisionTypeAny: ['implementation', 'deviation'],
+    memoryRole: 'developer',
   },
   S5: { // QA GO · qa → release
     handoffGeneratedBy: 'qa',
+    memoryRole: 'qa',
   },
 };
 
@@ -133,6 +137,18 @@ export function checkCpp({ changeDir, gatePhase }) {
       if (!Array.isArray(pr) || pr.length === 0)
         problems.push('_state.json.next_action.priority_reading is empty (not enriched)');
     }
+  }
+
+  // Role-memory write-back DECISION (not content). The per-phase memory/<role>.md write is advisory and
+  // easy to skip in the heat of a build — and a one-shot agent that already returned can never write it
+  // afterwards. So enforce the DECISION: the role must have set _state.json.memory_writeback.<role> to
+  // "appended" (added a cross-spec lesson) or "nothing-reusable" (clean change). Forces a deliberate call
+  // before the gate instead of a silent skip; the actual lesson content stays advisory.
+  if (rule.memoryRole) {
+    const st = readJson(join(changeDir, '_state.json'));
+    const wb = st && st.memory_writeback && st.memory_writeback[rule.memoryRole];
+    if (wb !== 'appended' && wb !== 'nothing-reusable')
+      problems.push(`_state.json.memory_writeback.${rule.memoryRole} not set to "appended"|"nothing-reusable" — decide on memory/${rule.memoryRole}.md before leaving the phase (a one-shot agent gets no second chance after it returns)`);
   }
 
   return { ok: problems.length === 0, problems };
