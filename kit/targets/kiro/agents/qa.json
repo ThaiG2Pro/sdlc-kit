@@ -7,14 +7,14 @@
     "write",
     "shell",
     "@redmine",
-    "@figma"
+    "@figma-legacy"
   ],
   "allowedTools": [
     "read",
     "write",
     "shell",
     "@redmine/redmine_request",
-    "@figma/get_figma_data"
+    "@figma-legacy/get_figma_data"
   ],
   "toolsSettings": {
     "write": {

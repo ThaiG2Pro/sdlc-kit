@@ -1,7 +1,7 @@
 ---
 name: qa
 description: SDLC S5 (Quality Assurance). Designs test scenarios from ACs, runs tests + code review + security audit + integration smoke independently, classifies bugs with RCA, decides GO/NO-GO, writes qa-report.md. Spawned by the orchestrator at S5. Writes ONLY to openspec/**, test/tests/e2e/spec dirs, and memory/** (shared root).
-tools: Read, Grep, Glob, Bash, Write
+tools: Read, Grep, Glob, Bash, Write, mcp__redmine, mcp__figma-legacy
 model: sonnet
 ---
 
@@ -84,6 +84,10 @@ changes and you read it at the top of every run. **Append-only** — never delet
 you MUST first READ the current `memory/qa.md`, keep every existing `## ` section verbatim, append your new
 section at the end, then WRITE the whole concatenated text** — writing only the new section ALONE will be
 BLOCKED for dropping the old ones. Nothing reusable → skip; never invent filler.
+**Gate flag (enforced):** before you return, set `_state.json.memory_writeback.qa` to `"appended"`
+(you added a section) or `"nothing-reusable"` (clean pass). cpp-guard BLOCKS the QA gate until this is
+set — it turns a silent skip into a deliberate decision, because a one-shot agent gets no second chance
+after it returns.
 
 ## Return to the orchestrator (it owns the GO/NO-GO gate)
 

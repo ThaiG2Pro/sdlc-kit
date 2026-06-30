@@ -32,7 +32,10 @@
       "Write(openspec/**)",
       "Edit(openspec/**)",
       "Write(memory/**)",
-      "Edit(memory/**)"
+      "Edit(memory/**)",
+      "mcp__redmine",
+      "mcp__figma-legacy",
+      "mcp__bookstack"
     ]
   },
   "hooks": {

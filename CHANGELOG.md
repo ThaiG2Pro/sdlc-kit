@@ -5,292 +5,75 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); this project use
 
 ## [Unreleased]
 
-**Dual-target: Claude Code support.** The kit now emits both `.kiro/` (Kiro IDE) and `.claude/`
-(Claude Code) from one source — `kit/shared/**` overlaid by `kit/targets/<platform>/**`. Pick the
-platform at install time; the framework (process, skills, gates, security model) is identical on both.
-
-**Platform isolation + shared-root preservation (Phase 14).** Each platform references only the shared
-project root — never the other platform's dir — so a single-platform install never points at a missing
-`.kiro/…` (resp. `.claude/…`) path. Plus a deterministic net so the inter-spec context/memory refresh
-cycle never destroys curated data. *(Superseded by Phase 16: the shared workspaces are now root-only
-with no symlink — see below.)*
-
-**Root-only shared workspace + intake UI specs (Phase 16).** The shared workspace/config
-(`context/`, `docs/`, `memory/`, `openspec/`, `sdlc.config.json`, `pipelines.json`) is now **root-only —
-no per-platform copy and no symlink**; both platforms reference it root-relative (Claude `@../context/*`
-+ `openspec/…`/`docs/…` via CWD; Kiro `file://./<entry>` resources). This removes the symlink fragility
-(Windows, git, and "remove one platform → dangling links"). `init` strips any stale per-platform
-copy/symlink from older installs (migrating real `context/`/`docs/`/`memory/` content to root first).
-The write guard, both doctors, the mapper, `apply-stack`, `context-check`, and `agent-spawn-context`
-all resolve these at the root; `check-write-path` now BLOCKS platform-prefixed write targets (self-test
-63/63). **Intake now plans the UI**: when a ticket has UI, the `intake` agent writes one
-`docs/extra-docs/<ticket_id>-<slug>/ui/<screen>.md` per screen (layout, component states, fields,
-interactions); the **developer reads `ui/*.md` at S4** as its frontend build target (wired into the Kiro
-developer's `extraDocs`). New golden templates `intake-example.md` + `ui-screen-example.md`.
-
-**Vestige cleanup — pre-OpenSpec remnants removed (Phase 15).** The kit predates its OpenSpec
-backend; several references to the old numbered knowledge-base model lingered. Removed:
-`docs/knowledge/` and `SPEC-XX`/`lesson-learned.md` (now: specs live in `openspec/changes/<change>/specs/`,
-lessons in `memory/`); the dead artifact name `requirements.md` (now: `proposal.md` + spec deltas) —
-`requirements-example.md` renamed to `proposal-example.md`. **Least-privilege tightening:** the
-`analyst` and `architect` write-fences dropped their unused `docs/knowledge/**` / `docs/**` grants —
-both write specs only to `openspec/**` (verified against their actual outputs). Self-test 59/59.
-Kept `@bookstack` (an active org knowledge source).
-
-### Fixed
-
-- **Hooks survive a mid-session `cd` (cwd-poisoning).** Claude runs hook commands from the session's
-  current working directory, so once an agent ran `cd openspec/changes/archive`, every later
-  PreToolUse/Write/Bash hook died with `python3: can't open file '.../archive/.claude/agents/scripts/…'`
-  — the relative hook path resolved against the changed cwd, bricking the whole session (even a
-  recovering `cd …` was blocked, since the hook fires first). Two-layer fix: (1) every hook command in
-  `.claude/settings.json` is now prefixed `cd "${CLAUDE_PROJECT_DIR}" && …` so the script is found and
-  runs from the project root; (2) `check-write-path.py` + `agent-spawn-context.py` additionally
-  self-locate the project root from their own path and `chdir` there, so the cwd-relative logic
-  (target-glob match, `.snapshots/`, openspec/memory reads) is correct regardless of host cwd
-  behavior — defense-in-depth that also hardens Kiro. Self-tests still 63/63 + 32/32.
-- **Guards read config from project root (Phase 16 leftover).** `pipeline-guard.mjs` and
-  `cpp-guard.mjs` still read `<platform>/pipelines.json` / `<platform>/sdlc.config.json` — paths that
-  no longer exist after the root-only refactor moved those files to the project root. Any gate check
-  (`pipeline-guard --gate S3`, etc.) died with `no .claude/pipelines.json`. Both now read
-  `./pipelines.json` / `./sdlc.config.json` (root), and the dead `PLATFORM_DIR` auto-detect +
-  `fileURLToPath` import were removed. Same fix applied to the three stale prose pointers that told
-  agents to read `.claude/pipelines.json` (`CLAUDE.md`, `sdlc-full.md`, `sdlc-fast.md`). Not a
-  `.gitignore` regression — gitignore never removed the on-disk file.
+**Theme — dual-target (Kiro + Claude Code) from one source, on a root-only shared workspace.**
+The kit emits both `.kiro/` and `.claude/` from `kit/shared/**` + `kit/targets/<platform>/**`; the
+project workspace/config (`context/`, `docs/`, `memory/`, `openspec/`, `sdlc.config.json`,
+`pipelines.json`) lives once at the project root — no per-platform copy, no symlink — referenced
+root-relative by both. The framework (process, skills, gates, security) is identical on both.
 
 ### Added
 
-- **Per-project code/test roots — the developer/qa write-fence is now project-configurable.** The
-  developer allow-list (built-in `_DEVELOPER` on Claude + the Kiro `developer.json` `allowedPaths`)
-  is a curated set of standard code roots (`src/**`, `app/**`, `lib/**`, … incl. Laravel `artisan`/
-  `phpunit.xml`/`composer.lock`) — but both sources are kit-managed and regenerated on every `--force`,
-  so a project whose code lives elsewhere couldn't durably extend them. This bit an `nwidart/laravel-
-  modules` project (portal) where 100% of app code lives under `Modules/<Name>/` and tests under
-  `Modules/<Name>/Tests/` — the developer was hard-blocked from writing any code, and qa would have
-  been blocked from module tests at S5. New mechanism: `sdlc.config.json` gains a `paths` key with
-  `code_roots` (extra DEVELOPER write globs) and `test_roots` (granted to the developer AND to qa —
-  qa otherwise stays test-only and never receives `code_roots`). `check-write-path.py` reads it at
-  `decide()` time and merges **host-uniformly** (applies whether the base list came from the Kiro JSON
-  or the Claude built-in). `init` now **preserves `paths` across `--force`** (the rest of the file stays
-  kit-regenerated; only re-serializes when roots are present, so the common case keeps template
-  formatting). The glob matcher gained additive support for **interior `**`** (e.g. `Modules/**/Tests/**`
-  → `**` spans path segments, `*` stays within one) — trailing `dir/**` and `fnmatch` patterns are
-  byte-identical to before. Self-test 73/73 (10 new: both-host merge, qa test-only fence preserved,
-  interior-`**`, default repos with empty `paths` unaffected). Default template ships empty `paths` →
-  zero behavior change for existing projects; a project opts in by listing its roots.
-- **`state-set.mjs` — deterministic `_state.json` updates.** New kit tool (shipped to both
-  `<platform>/tools/`) for surgical read-modify-write of a change's `_state.json`:
-  `node <platform>/tools/state-set.mjs --set gates.S2=passed --set current_phase=S3 --unset blocker`.
-  The orchestrator (read-only shell, no Edit tool) previously had to rewrite the WHOLE file via the
-  Write tool on every gate — clobber-prone. The tool preserves every other field, resolves the active
-  change automatically, and parses values as JSON-or-string. Runs via the already-allowed
-  `Bash(node <platform>/tools/…)` path (shell-guard permits kit node tools; self-test vector added).
-  The `sdlc-orchestration-core` skill now drives gate approve/reject through it.
-- **`state-schema.mjs` — write-time `_state.json` shape validation (was read-only/reactive).** The
-  canonical shape of `_state.json` (the keys the guards READ) lived only as a comment + implicit
-  read-expectations, so nothing validated it at WRITE time. In practice orchestrators kept merging
-  rich per-gate objects INTO `gates` (`gates.SPEC_LOCK={…}`, `gates.S5={…}`) instead of canonical
-  `gates:{ "<PHASE>":"passed" }`, or omitting `convergence` at `rigor=full`. The guards only noticed
-  at the NEXT gate (reactive — each change burned a manual repair turn), and when the drift sat on a
-  **terminal** gate it slipped through entirely (observed across 3 consecutive `issues-sum` changes:
-  state-store-3 clean → summarizer-llm-4 drift reached archive → digest-renderer-5 needed an
-  `S2_REPAIR` turn). New shared validator `state-schema.mjs` (shipped to both `<platform>/tools/`)
-  defines the contract — `gates` keyed by phase ID with string values; `convergence` =
-  `{ "<PHASE>":{ "stable":int,"rounds":int } }`; rich audit detail belongs in a separate `gate_audit`
-  key. Enforced at **both** choke points: `state-set.mjs` **refuses to write** a non-canonical result
-  (and a single command can normalize: `--unset gates.SPEC_LOCK --set gates.S2=passed`), and
-  `pipeline-guard` **STEP 0** blocks every status/gate check on a drifted state until normalized —
-  so drift introduced by a raw Write (the path state-set can't police) surfaces deterministically at
-  the next check, not via the LLM noticing. Both degrade gracefully (warn, don't crash) if the module
-  is absent on an older install. `doctor-claude` now checks for `state-set.mjs` + `state-schema.mjs`;
-  `sdlc-orchestration-core` + the state template document the contract. Validated against the 3 real
-  `issues-sum` states (rejects the drift, passes the clean ones).
-- **Optional kit `.gitignore` block (`init`).** `init` now offers to add a kit-owned block to the
-  project's `.gitignore` — interactive prompt defaults to **yes**; `--gitignore` / `--no-gitignore`
-  decide it non-interactively. It ignores only what the kit regenerates on every `--force`
-  (`.claude/`, `.kiro/`, `/sdlc.config.json`, `/pipelines.json`); hand-authored `context/`,
-  `openspec/`, `docs/`, `memory/` stay committable. Bounded by `# >>> kiro-sdlc-kit >>>` /
-  `# <<< kiro-sdlc-kit <<<` markers → re-init refreshes in place (no duplication), delete the block
-  to opt back in. Shown in the `--check` plan.
-- **Role memory write-back is now wired (was read-only dead config).** `memory/<role>.md` accumulates
-  cross-spec lessons and every role was told to READ it — but **nothing ever told an agent to WRITE one
-  back**, so the files only ever got read and the cross-spec learning loop never ran. The plumbing
-  (allow-list `memory/**` for all roles + the append-only section guard) existed with no trigger. Fixed
-  end-to-end: (1) each of `developer`/`qa`/`architect`/`analyst` (both Kiro and Claude targets) now has an
-  advisory **MEMORY WRITE-BACK** step at end of phase — append a dated `## ` section with a *reusable,
-  not-spec-specific* lesson, append-only, skip-if-nothing (no filler); (2) the Claude target also gained
-  the **read** pointers it was missing entirely (Claude dev/qa/architect/analyst never referenced
-  `memory/<role>.md`), and Kiro `analyst` gained the read block it lacked; (3) `architect`/`analyst` prose
-  + descriptions updated from "writes ONLY openspec/**" to include `memory/**` (already allowed by the
-  write-fence); (4) **`sprint-retro` now harvests**: after the S6 retro it routes each Learned/Lacked item
-  to the right `memory/<role>.md` (append-only, de-dup, no filler) — the safety net so a skipped inline
-  write-back doesn't lose the lesson. Advisory, not gate-enforced (forcing it would breed filler entries).
-- **`ai/` reachable on Claude.** `developer.md` + `qa.md` now point to `.claude/ai/sonar-policy.md`
-  (+ `sonar-rules.md`) on-demand, closing the one knowledgeBase gap where Kiro wired `ai` via
-  `resources[]` but Claude had no pointer. (`openspec-rules.yaml` is not a gap — `init` installs it
-  into `openspec/config.yaml` and agents read it via `openspec instructions`.)
-- **`docs/` is a shared-root workspace** (joins `context/`, `memory/`, `openspec/`,
-  `sdlc.config.json`, `pipelines.json`) — root-only, no symlink (Phase 16). `init` scaffolds `./docs/`
-  once at the project root; both platforms read it root-relative. The whole `docs/` is the shared unit —
-  intake writes its ticket packages to `docs/extra-docs/**` (incl. `ui/<screen>.md`) and a project's
-  own docs live here too — so every doc is written once and seen by both platforms; switching
-  kiro↔claude never loses them. (analyst/architect write specs to `openspec/`, not here.)
-- **Preservation net in the write hook** (`check-write-path.py`). After a write is judged allowed,
-  for any `context/**` or `memory/**` target it (1) **snapshots** the prior file to
-  `.snapshots/<path>/NNNN.bak` (rotating, last 5) *before* the overwrite — recovery is one `cp` — and
-  (2) **append-guards `memory/*.md`**: a write that would delete an existing `## ` section is BLOCKED
-  (mirrors the cross-spec bridge's append-only discipline). Needed because the security invariant
-  lets only `developer` carry `Edit`, so every other role rewrites context/memory via a full `Write`.
-  Recommended: add `.snapshots/` to `.gitignore` and run `context-refresh` on a clean tree (git is
-  the second net).
-
-### Changed / Fixed
-
-- **Write-fence host-scoped for isolation.** The Claude built-in policy no longer grants any
-  `.kiro/**` path (and the Kiro source-of-truth JSONs already named only `.kiro/**` + root): each
-  host's allow-list now names ROOT only. Any platform-prefixed write target (`.kiro/memory`,
-  `.claude/context`, …) is BLOCKED — the workspace is the root (Phase 16: root-only, no symlink).
-- **`agent-spawn-context.py` memory lookup** — reads the root `memory/<role>.md` (Phase 16: simplified
-  to root-only; the workspace no longer has per-platform copies).
-- **`Stop` hook** excludes `.snapshots` from its non-spec-changes warning.
-- **`init` merges `.claude/settings.json` instead of clobbering it.** Previously `--force` overwrote
-  the whole file, wiping user/skill-added config — `enabledPlugins`, `env`, `model`, `statusLine`,
-  and permissions added by `/fewer-permission-prompts`. Now the kit owns its security policy (hooks,
-  its own permission entries, `$schema`) and wins there, but every user-owned top-level key is
-  preserved and `permissions.allow`/`deny` are UNIONed — so a kit upgrade never loses user settings.
-
-### Added (original dual-target)
-
-- **`--target kiro|claude|both` flag on `init`.** Default is an interactive platform menu (or `both`
-  non-interactively). Each target gets its own `<platform>/.kit-manifest.json`; `--check`/`--force`
-  report per-target plans.
-- **Claude Code target (`.claude/`).** The orchestrator is the **main session**, driven by slash
-  commands: `/sdlc-full` and `/sdlc-fast` run the whole pipeline and spawn each role as a one-shot
-  subagent; `/onboarder`, `/analyst`, `/architect`, `/developer`, `/qa` run a single role directly.
-  Context is `@import`ed in `CLAUDE.md`; stack skills under `.claude/skills/` are auto-discovered
-  (no `context-map.json`).
-- **Role-aware security via PreToolUse hooks.** "Only the developer writes code" is enforced on
-  Claude by an `agent_type`-keyed hook (a subagent's `agent_type` is present; the main session's is
-  absent ⇒ orchestrator), mirroring the Kiro guard that reads the agent name from `argv[1]`. Fail-closed.
-- **"Role is a playbook, not an identity" invariant** documented in the always-on `sdlc-workflow.md`
-  steering and a new README **Security model** section: loading a role's prompt borrows its checklist,
-  not its write-permissions; the write-fence is keyed to the host-provided identity (`argv[1]` /
-  `agent_type`), so impersonating a read-only role is harmless and impersonating `developer` cannot
-  escalate to code (the guard blocks any non-developer `src/**` write).
+- **Claude Code target (`.claude/`).** Orchestrator runs as a dedicated `sdlc-full`/`sdlc-fast` agent
+  that spawns one-shot role subagents; context via `@import`, skills auto-discovered. `--target
+  kiro|claude|both` on `init` (per-target `.kit-manifest.json`; per-target `--check`/`--force` plans).
+- **Role-aware security on Claude.** An `agent_type`-keyed PreToolUse hook enforces "only the developer
+  writes code"; a bare main session (no `agent_type`) is your unrestricted workspace. Fail-closed.
+- **Per-project code/test roots.** `sdlc.config.json.paths.{code_roots,test_roots}` extend the
+  developer/qa write-fence (preserved across `--force`; interior-`**` globs supported).
+- **`state-set.mjs` + `state-schema.mjs`.** Surgical, schema-validated `_state.json` writes; drift is
+  rejected at write time and at `pipeline-guard` STEP 0 (was read-only/reactive — slipped through on
+  terminal gates).
+- **Role-memory write-back wired and gate-enforced.** Each role appends cross-spec lessons to
+  `memory/<role>.md` at phase end and records the decision in `_state.json.memory_writeback.<role>`
+  (`appended`/`nothing-reusable`); `cpp-guard` blocks the gate until set, and `sprint-retro` harvests at
+  S6 as the safety net. Previously the read pointers existed but nothing ever wrote back.
+- **Subagents granted their MCP tools.** intake/analyst/architect/qa frontmatter + `settings.json`
+  allow `mcp__redmine` / `mcp__figma-legacy` / `mcp__bookstack` (Kiro `@figma` → `@figma-legacy`);
+  fixes "No such tool available" when a subagent calls Redmine/Figma/BookStack.
+- **`spike` + `tech-debt` pipeline types and a `fastapi` stack preset.** `spike` (S1+S2 → decision-doc,
+  no code) and `tech-debt` (S3→S6, zero-behavior-change); `apply-stack fastapi` seeds context + skills.
+- **Optional kit `.gitignore` block.** `init` ignores only kit-regenerated paths (`.claude/`, `.kiro/`,
+  `/sdlc.config.json`, `/pipelines.json`); marker-bounded, refreshed in place, deletable to opt back in.
+- **Intake plans the UI.** When a ticket has UI, intake writes one
+  `docs/extra-docs/<ticket>-<slug>/ui/<screen>.md` per screen; the developer reads them at S4. New
+  golden templates (`intake-example.md`, `ui-screen-example.md`).
+- **Preservation net in the write hook.** Snapshots `context/**`/`memory/**` to `.snapshots/` (last 5)
+  before any overwrite, and append-guards `memory/*.md` (a write dropping a `## ` section is blocked).
+- **`ai/` reachable on Claude** — `developer`/`qa` point to `.claude/ai/sonar-policy.md` (+ `sonar-rules.md`).
 
 ### Changed
 
-- **Kiro orchestrators now delegate via real subagents** (Phase 13). `sdlc-full`/`sdlc-fast` gained
-  the `subagent` tool, so "use the {role} agent to do {phase}" spawns the role as a Kiro CLI
-  subagent (one per phase, sequential — gates stay sequential) that runs under its OWN agent config
-  and returns via the `summary` tool. Previously the prompt told the orchestrator to delegate but the
-  config withheld the `subagent` tool, so it refused ("I'm not a multi-agent runtime") and fell back
-  to manual `/agent swap`. Security note: a spawned subagent inherits the role's native
-  `toolsSettings.write.allowedPaths` + `shell.allowedCommands` (so the write-fence holds on its own —
-  analyst/architect/qa cannot write `src/**`); whether the `preToolUse` hooks also fire inside a
-  subagent is undocumented, so the kit no longer *depends* on the hook surviving — the native
-  allow-lists are the self-sufficient fence, with the hook as defense-in-depth. `/agent swap` remains
-  the manual fallback. Kiro doctor now asserts both orchestrators hold the `subagent` tool.
-- **`apply-stack.mjs` is platform-aware.** On Claude it seeds context + copies skills into
-  `.claude/skills/` and skips the Kiro-only `context-map.json` merge/re-wire.
-- **`openspec init --tools <platform>`** scaffolds the namespaced `opsx`/`openspec-*` skills for the
-  chosen target(s).
-- **Tooling per platform.** Kiro installs `doctor` + `context-map` + the shared guards. Claude
-  installs `doctor-claude` + the shared guards (`context-check`, `apply-stack`, `pipeline-guard`,
-  `cpp-guard`) — no `context-map` (skills auto-discover; nothing to wire).
-- **`settings.json` allow-list widened for the orchestrator's routine ops.** `Task` (spawn role
-  subagents), `Write`/`Edit(openspec/** + memory/**)`, and the branch-create git commands
-  (`checkout -b` / `switch -c` / `worktree add`) are now pre-approved, so `/sdlc-full` no longer
-  prompts on nearly every step. Code writes (`src/**`) are deliberately NOT allowlisted — they still
-  prompt and stay hook-enforced; `deny(openspec/specs/**)` still wins over the new `allow(openspec/**)`.
-- **Context is a single shared project-root `./context/`, read root-relative by both platforms.**
-  Previously each target had its own `<platform>/context/` (duplicated, drift-prone — the source of
-  the dual-target sync/port pain). Now `init` scaffolds `./context/` once (like `openspec/` and
-  `memory/`); both targets read it root-relative (Phase 16: root-only, no symlink — Claude `@../context/*`,
-  Kiro `file://./context/…`). Re-running `init --force` migrates an existing install (its filled
-  per-platform context is copied to `./context` and preserved). Stack-seeded context refs were
-  de-tokenized (`{{PLATFORM_DIR}}/sdlc.config.json` → `sdlc.config.json`) since a shared file
-  can't carry a per-platform token.
-- **`sdlc.config.json` + `pipelines.json` are shared single-source root files too.** They joined
-  `openspec/`/`memory/`/`context/`: `init` scaffolds them once at the project root; both targets read
-  them root-relative (Phase 16: root-only, no symlink). Edit the root copy → both targets see it (no
-  drift; a kiro↔claude switch never loses config). **Separation of concerns:** shared *workspace +
-  project config* live once at the root; *framework runtime* (`agents`, `commands`, `skills`,
-  `steering`, `ai`, `tools`, `settings`/hooks) stays per-platform. Claude runtime artifacts are
-  `.kiro/`-free; each platform reaches the shared workspace through the project root.
-- **The SDLC orchestrator is now a dedicated agent; the bare main session is unrestricted.**
-  Previously the orchestrator WAS the Claude main session (via `/sdlc-full`), so the guards held
-  every bare main session read-only — which blocked normal interactive work in a kit-installed
-  project (e.g. `curl … | python3 -c "…"`), since a session with no `agent_type` was assumed to be
-  the orchestrator. Now the orchestrator runs as a named top-level agent
-  (`claude --agent sdlc-full` / `sdlc-fast`, carrying `agent_type=sdlc-full|sdlc-fast`); the guards
-  hold *that* read-only, while a bare main session (no `agent_type`) on Claude is your **unrestricted
-  default workspace**. New `.claude/agents/{sdlc-full,sdlc-fast}.md`; the `/sdlc-full` `/sdlc-fast`
-  slash commands became thin launchers (orchestrating in the default session would have no guards).
-  Kiro is unchanged (its orchestrator is already the named `sdlc-full` agent; a missing actor still
-  fails closed). Trade-off: pipeline safety is "on inside the sdlc agent" rather than always-on.
-- **Orchestrator delegates via Kiro CLI subagents, not just manual `/agent swap`.** Confirmed against
-  the Kiro CLI docs that the kit's `.kiro/agents/*.json` is already Kiro-CLI-native (same schema:
-  `toolsSettings.write.allowedPaths`, `hooks.preToolUse {matcher, command}` with exit-2 block,
-  `fs_write`/`execute_bash` matchers, `keyboardShortcut`; per-agent hooks, agent identity baked as
-  `argv[1]`) — so every guard works on Kiro CLI as-is. Kiro CLI also supports programmatic delegation
-  ("use the {role} agent" → returns via the `summary` tool), which the orchestrator now uses as the
-  primary routing mechanism (`/agent swap` is the manual fallback), matching how Claude spawns role
-  subagents via Task. The delegated role runs under its own per-agent write-guard, composing with the
-  orchestrator write-fence.
-- **README** rewritten for dual-target install & usage.
+- **Shared workspace + config are root-only** (no symlink); framework runtime stays per-platform. `init`
+  migrates older per-platform copies/symlinks to the root and merges `.claude/settings.json` (unions
+  permissions; preserves `enabledPlugins`/`env`/`model`) instead of clobbering it.
+- **Orchestrator is a dedicated agent**, write-fenced to baton/state files — it cannot author a phase
+  deliverable, forcing delegation to the role agent (Claude: Task spawn · Kiro: subagent / `/agent swap`).
+  A bare main session on Claude is the unrestricted default workspace.
+- **Kiro orchestrators delegate via real subagents** (gained the `subagent` tool); the delegated role
+  runs under its own write-fence. `/agent swap` remains the manual fallback.
+- `apply-stack`, both doctors, the mapper, `context-check`, and `agent-spawn-context` all resolve the
+  shared workspace at the project root; `settings.json` allow-list widened for the orchestrator's routine
+  ops (Task spawn, `Write/Edit(openspec/** + memory/**)`, branch-create git) — code writes stay prompted.
 
 ### Fixed
 
-- **`CLAUDE.md` `@import` paths were wrong for the install location.** The file installs to
-  `.claude/CLAUDE.md`, but its imports used the `@.claude/steering/…` / `@.claude/context/…` prefix —
-  and Claude Code resolves `@imports` relative to the **importing file's own directory**, so those
-  resolved to the non-existent `.claude/.claude/…` and silently dropped **all** steering rules and
-  the context contract at runtime. Fixed to `@steering/…` / `@context/…`.
-
-- **Shared skills hardcoded `.kiro/` paths that break on a claude-only install.** Two were
-  executable and would actually fail there — the mandatory gate guard
-  (`node .kiro/tools/pipeline-guard.mjs`) and the QA test-case xlsx generator
-  (`gen_testcases_xlsx.py`) — plus ~15 advisory refs (`.kiro/context`, `.kiro/sdlc.config.json`,
-  `.kiro/steering`). They only worked so far because every test install also had `.kiro/`. Added a
-  per-platform `{{PLATFORM_DIR}}` token (init substitutes `.kiro`/`.claude` for each target;
-  `.md`/`.json` already go through substitution) and switched all shared refs to it. The
-  now-redundant "translate `.kiro/` to `.claude/`" notes in the Claude commands were removed.
-  (Guard-script `.py` comments/self-test vectors keep their literal `.kiro/` — they describe the
-  dual-platform contract.)
-- **The orchestrator could do a role's job itself (e.g. author `design.md` on `continue`) — no
-  guard stopped it.** The guards only enforced "developer writes code (`src/**`)"; every non-code
-  artifact lives under `openspec/**`, and the orchestrator's write policy was `openspec/**` (all of
-  it), so it could write any phase deliverable with nothing tripping. "You don't do design yourself"
-  was a soft instruction; `continue` didn't hard-block; and the gate's `"Generated by: architect"`
-  provenance is self-declared (impersonation satisfies it). Fixed: the orchestrator's write allow-list
-  is now restricted to the underscore-prefixed baton/state files (`_state.json`, `_progress.md`,
-  `_handoff.md`, `_decisions.jsonl`, `_glossary.md`, `openspec/_cross-spec-context.md`) + memory — so
-  writing `proposal.md`/`design.md`/`tasks.md`/`specs/**`/`*-report.md` is BLOCKED (exit 2), forcing
-  delegation to the role agent (spawn on Claude / `/agent swap` on Kiro). The `sdlc-orchestration-core`
-  prompt was hardened to match (INVARIANT 1: delegate every phase; `continue` = spawn/swap, never
-  produce the deliverable). Applies to both Kiro and Claude.
-- **`doctor-claude` validated the wrong `CLAUDE.md` on a project with its own root file.** It
-  preferred `./CLAUDE.md` (the project's own doc, which has no `@import`s) and falsely warned about
-  missing `@import` lines while never checking the kit's wiring. Now validates the kit-managed
-  `.claude/CLAUDE.md` (falling back to root only if absent).
-- **Write-guard blocked Claude subagents from `.claude/context/**` on dual-target projects.** With
-  both `.kiro/` and `.claude/` installed, `check-write-path.py` always preferred the
-  `.kiro/agents/<role>.json` allow-list ("Kiro JSON wins"), whose paths are all `.kiro/…` — so a
-  Claude-session `onboarder` could fill the contract only into `.kiro/context/` and was blocked from
-  `.claude/context/` (where the Claude session reads). Now the policy **source follows the host**
-  (detected from the hook script's own install path): Claude host → the built-in role policy; Kiro
-  host → the agent JSON. `src/**` stays blocked for every non-developer role. The self-test was
-  rewritten to exercise the real `decide()` (it had pinned the source per vector, hiding the bug).
+- **Hooks survive a mid-session `cd`** — every hook runs `cd "${CLAUDE_PROJECT_DIR}" && …` and the
+  scripts self-locate the project root, so a `cd` into a subdir no longer bricks the session (cwd-poisoning).
+- **Guards read config from the project root** (`./pipelines.json` / `./sdlc.config.json`), not the
+  per-platform paths removed by the root-only refactor.
+- **`CLAUDE.md` `@import` paths** fixed to `@steering/…` / `@context/…` (were `@.claude/…`, silently
+  dropping all steering + context at runtime).
+- **Shared skills no longer hardcode `.kiro/`** — a per-platform `{{PLATFORM_DIR}}` token; a claude-only
+  install no longer fails the gate guard or the xlsx generator.
+- **`check-write-path` follows the host** (Claude built-in policy vs Kiro JSON); platform-prefixed write
+  targets are blocked; `src/**` stays developer-only on every non-developer role.
+- **`doctor-claude`** validates the kit-managed `.claude/CLAUDE.md` (not a project's own root file).
 
 ### Tooling
 
-- **`doctor-claude.mjs` — structural health check for the Claude target** (the Kiro `doctor.mjs`
-  validates agent JSON + `resources[]` + the context map, none of which exist on Claude). It verifies
-  `CLAUDE.md` `@import`s resolve (relative to the file's dir — would have caught the bug above), all
-  7 commands + 5 subagents exist, the **"only `developer` has the `Edit` tool"** security invariant
-  holds, `settings.json` hooks point at installed scripts/tools, the shared root workspace, and context
-  completeness. `node .claude/tools/doctor-claude.mjs`.
+- **`doctor-claude.mjs`** — structural health check for the Claude target: `CLAUDE.md` `@import`s
+  resolve, all commands + subagents exist, the "only `developer` has `Edit`" invariant holds, and
+  `settings.json` hooks point at installed scripts/tools.
 
 ## [1.1.0] — 2026-06-24
 
