@@ -75,9 +75,9 @@ Claude: `check-write-path.py`'s built-in policy, host-selected):
 |----------|-----------|-------|
 | **plain session** (no role agent — your default workspace) | anything | your own session |
 | orchestrator (`sdlc-full`/`sdlc-fast` agent) | **baton/state only** — `openspec/changes/**/_*`, `openspec/_*.md`, `memory/**` | ❌ |
-| `analyst` | `openspec/**` | ❌ |
-| `architect` | `openspec/**` | ❌ |
-| `qa` | `openspec/**`, `test/** … __tests__/**` | ❌ tests only |
+| `analyst` | `openspec/**`, `memory/**` | ❌ |
+| `architect` | `openspec/**`, `memory/**` | ❌ |
+| `qa` | `openspec/**`, `memory/**`, `test/** … __tests__/**` | ❌ tests only |
 | `intake` | `docs/extra-docs/**` + baton/state only | ❌ input docs only |
 | `context-refresh` | `context/**`, `openspec/**` | ❌ |
 | `onboarder` | `context/**`, `openspec/**` | ❌ |

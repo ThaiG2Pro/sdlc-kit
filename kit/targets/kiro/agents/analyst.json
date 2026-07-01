@@ -18,7 +18,8 @@
   "toolsSettings": {
     "write": {
       "allowedPaths": [
-        "openspec/**"
+        "openspec/**",
+        "memory/**"
       ]
     },
     "shell": {

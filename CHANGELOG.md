@@ -74,6 +74,15 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   S3→architect · S4→developer · S5→qa), how to override it when root cause is already known to sit in
   an earlier phase, and `dispute bug #N`'s BUG/DESIGN GAP/SPEC GAP routing — previously undocumented
   outside the shared skill.
+- **Kiro `analyst.json`/`architect.json` write-fence never got `memory/**`** when role-memory
+  write-back shipped (they were narrowed to `openspec/**` only in an earlier, unrelated pass) —
+  `cpp-guard` required the write-back decision but the Kiro host physically blocked the write it
+  gates on. `developer.json` had the same drift for `pkg/**`/`internal/**`/`cmd/**`/`e2e/**`/
+  `pyproject.toml`, present in the built-in policy but never ported to its JSON. Also fixed
+  `check-write-path.py`'s own self-test, which could not have caught this: run from the kit source
+  tree, its cwd-relocation landed one directory short of the repo root, so every "Kiro host" vector
+  silently fell back to the built-in policy instead of reading the real per-agent JSON; added
+  `memory/<role>.md` + the missing developer-path vectors so this class of drift fails loudly.
 
 ### Tooling
 

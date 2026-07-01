@@ -37,20 +37,29 @@ import json, sys, os, fnmatch, re
 
 # Capture this script's absolute path BEFORE any chdir (correct even if __file__ is relative).
 _SCRIPT = os.path.abspath(__file__)
+# The kit SOURCE tree runs this same file one level deeper (kit/shared/agents/scripts/) than any
+# DEPLOYED copy (<root>/.kiro/agents/scripts/ or <root>/.claude/agents/scripts/) — an extra "kit"
+# wrapper directory. Detect it so the "parents up to root" count below stays correct in both trees;
+# otherwise self-test (run directly against the source repo) climbs one level short, lands cwd at
+# <repo>/kit instead of <repo>, and every find_agent_json() lookup silently misses the real
+# .kiro/agents/<agent>.json — falling back to the built-in policy without anyone noticing.
+_IS_KIT_SOURCE = "/kit/shared/agents/scripts" in _SCRIPT.replace("\\", "/")
+_UP = ("..", "..", "..", "..") if _IS_KIT_SOURCE else ("..", "..", "..")
 # Hook robustness: a Bash `cd` in the session can leave this hook's cwd inside a project subdir
 # (the host may run hooks from the session cwd), which would break the cwd-relative target-path
 # resolution and the .snapshots/ writes below. The installed script lives at
-# <root>/<platform>/agents/scripts/, so the project root is three parents up — chdir there so every
-# relative path resolves from the root. Affects only THIS subprocess, never the caller's shell, and
-# is a no-op when cwd is already the root.
+# <root>/<platform>/agents/scripts/, so the project root is three parents up (four in the kit source
+# tree) — chdir there so every relative path resolves from the root. Affects only THIS subprocess,
+# never the caller's shell, and is a no-op when cwd is already the root.
 try:
-    os.chdir(os.path.join(os.path.dirname(_SCRIPT), "..", "..", ".."))
+    os.chdir(os.path.join(os.path.dirname(_SCRIPT), *_UP))
 except OSError:
     pass
 
-# Project root = three parents up from the installed script (<root>/<platform>/agents/scripts/).
-# Derived from _SCRIPT (not cwd) so it is correct even if a Bash `cd` moved the session.
-_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(_SCRIPT), "..", "..", ".."))
+# Project root = three parents up from the installed script (four in the kit source tree; see
+# _IS_KIT_SOURCE above). Derived from _SCRIPT (not cwd) so it is correct even if a Bash `cd` moved
+# the session.
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(_SCRIPT), *_UP))
 
 # Per-project EXTRA write roots, declared once in sdlc.config.json `paths` and MERGED into the
 # developer/qa allow-list at decide() time on BOTH hosts. WHY: the built-in allow-lists (Claude
@@ -164,17 +173,18 @@ def resolve_actor(data, argv=None):
 
 
 def find_agent_json(agent: str):
-    """Locate <agent>.json. Anchor on this script's dir (reliable regardless of cwd), then fall
-    back to cwd-relative locations (and the kit/ source tree for local tests)."""
+    """Locate <agent>.json. Anchor on _SCRIPT/_PROJECT_ROOT (captured before our own module-level
+    chdir), not os.path.abspath(__file__)/os.getcwd() — re-resolving a relative __file__ AFTER we
+    already chdir'd would resolve it against the NEW cwd and silently miss the real file."""
     if not agent:
         return None
-    script_dir = os.path.dirname(os.path.abspath(__file__))  # .../<target>/agents/scripts
+    script_dir = os.path.dirname(_SCRIPT)  # .../<target>/agents/scripts
     candidates = [
         os.path.join(script_dir, "..", f"{agent}.json"),                       # <target>/agents/<agent>.json
-        os.path.join(os.getcwd(), ".kiro", "agents", f"{agent}.json"),
-        os.path.join(os.getcwd(), "kit", "targets", "kiro", "agents", f"{agent}.json"),  # kit repo (dev/testing)
-        os.path.join(os.getcwd(), "kit", "agents", f"{agent}.json"),           # legacy kit layout
-        os.path.join(os.getcwd(), "agents", f"{agent}.json"),
+        os.path.join(_PROJECT_ROOT, ".kiro", "agents", f"{agent}.json"),
+        os.path.join(_PROJECT_ROOT, "kit", "targets", "kiro", "agents", f"{agent}.json"),  # kit repo (dev/testing)
+        os.path.join(_PROJECT_ROOT, "kit", "agents", f"{agent}.json"),         # legacy kit layout
+        os.path.join(_PROJECT_ROOT, "agents", f"{agent}.json"),
     ]
     for c in candidates:
         if os.path.isfile(c):
@@ -450,14 +460,23 @@ def _self_test():
         ("developer", None, "src/app.ts",                       ALLOW),
         ("developer", None, "tests/app.spec.ts",                ALLOW),
         ("developer", None, "random/elsewhere.txt",             BLOCK),
+        ("developer", None, "memory/developer.md",              ALLOW),  # role-memory write-back
+        ("developer", None, "pkg/service.go",                   ALLOW),  # Go layout
+        ("developer", None, "internal/util.go",                ALLOW),
+        ("developer", None, "cmd/app/main.go",                  ALLOW),
+        ("developer", None, "e2e/login.spec.ts",                ALLOW),
+        ("developer", None, "pyproject.toml",                   ALLOW),  # FastAPI/Python stack
         ("analyst",   None, "openspec/changes/x/proposal.md",   ALLOW),
         ("analyst",   None, "src/app.ts",                       BLOCK),  # analyst-openspec-only
         ("analyst",   None, "docs/knowledge/x.md",              BLOCK),  # least-privilege: no docs/ write
+        ("analyst",   None, "memory/analyst.md",                ALLOW),  # role-memory write-back (gated by cpp-guard)
         ("architect", None, "openspec/changes/x/design.md",     ALLOW),  # architect writes design via openspec
         ("architect", None, "docs/design.md",                   BLOCK),  # least-privilege: openspec-only now
         ("architect", None, "src/app.ts",                       BLOCK),
+        ("architect", None, "memory/architect.md",              ALLOW),  # role-memory write-back (gated by cpp-guard)
         ("qa",        None, "tests/e2e.spec.ts",                ALLOW),
         ("qa",        None, "src/app.ts",                       BLOCK),
+        ("qa",        None, "memory/qa.md",                     ALLOW),  # role-memory write-back (gated by cpp-guard)
         ("sdlc-full", None, "openspec/changes/x/_state.json",   ALLOW),  # baton (underscore-prefixed)
         ("sdlc-full", None, "openspec/_cross-spec-context.md",  ALLOW),  # cross-spec bridge
         ("sdlc-full", None, "openspec/changes/x/design.md",     BLOCK),  # DELIVERABLE → must delegate to architect
@@ -489,10 +508,18 @@ def _self_test():
         (None, "analyst",   "openspec/specs/auth/spec.md",      ALLOW),  # analyst-openspec-only
         (None, "analyst",   "docs/knowledge/x.md",              BLOCK),  # least-privilege: no docs/ write
         (None, "analyst",   "src/app.ts",                       BLOCK),
+        (None, "analyst",   "memory/analyst.md",                ALLOW),  # role-memory write-back
         (None, "architect", "openspec/changes/x/design.md",     ALLOW),  # architect-openspec-only
         (None, "architect", "docs/design.md",                   BLOCK),  # least-privilege: openspec-only now
+        (None, "architect", "memory/architect.md",              ALLOW),  # role-memory write-back
         (None, "qa",        "tests/unit.spec.ts",               ALLOW),
         (None, "qa",        "src/app.ts",                       BLOCK),
+        (None, "qa",        "memory/qa.md",                     ALLOW),  # role-memory write-back
+        (None, "developer", "pkg/service.go",                   ALLOW),  # Go layout
+        (None, "developer", "internal/util.go",                ALLOW),
+        (None, "developer", "cmd/app/main.go",                  ALLOW),
+        (None, "developer", "e2e/login.spec.ts",                ALLOW),
+        (None, "developer", "pyproject.toml",                   ALLOW),  # FastAPI/Python stack
         (None, "onboarder", "context/project.md",                ALLOW),  # root context (no symlink)
         (None, "onboarder", ".claude/context/project.md",        BLOCK),  # platform dir is NOT a write target
         (None, "onboarder", ".kiro/context/project.md",          BLOCK),  # foreign platform dir — also not a target
