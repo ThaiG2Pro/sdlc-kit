@@ -125,7 +125,19 @@ gate/advance).
 
 **3. Pass the gates** — reply to the orchestrator (same words on both platforms):
 - `approve` / `ok` / `LGTM` — pass the current gate.
-- `nogo <reason>` — reject and loop back.
+- `nogo <reason>` — reject and loop back to the phase that just ran: **S2→analyst · S3→architect ·
+  S4→developer · S5→qa**. That default fits an unclear-root-cause bug. If you already know the bug
+  is actually a design/spec defect (not that phase's fault) — say so in the reason, e.g. `nogo
+  design gap — <what's wrong>, route to architect` — so the orchestrator respawns the right role
+  instead of the default.
+- `dispute bug #N — <claim>` — once QA has logged a bug as `#N` in `qa-report.md`, use this instead
+  of a bare `nogo` to challenge its RCA classification. The orchestrator re-derives the ruling from
+  evidence (spec deltas, `design.md`, `openapi.yaml`, `_decisions.jsonl`) and routes by type:
+  **BUG** → developer re-fixes it · **DESIGN GAP** → architect fixes `design.md`/`openapi.yaml`
+  (cascades to dev) · **SPEC GAP** → analyst fixes the spec deltas (cascades to architect → dev) ·
+  **FEATURE** → QA closes it as working-as-specified. SPEC GAP and DESIGN GAP cascade through more
+  phases than a plain BUG, so it's worth getting the classification right rather than defaulting to
+  "dev, please fix" every time.
 - `status` — show pipeline progress. · `continue` — resume from saved state.
 
 Gates auto-pass on a clean audit only if `gates.auto_pass: true` in

@@ -68,6 +68,12 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 - **`check-write-path` follows the host** (Claude built-in policy vs Kiro JSON); platform-prefixed write
   targets are blocked; `src/**` stays developer-only on every non-developer role.
 - **`doctor-claude`** validates the kit-managed `.claude/CLAUDE.md` (not a project's own root file).
+- **Gate-rejection vocabulary unified to `nogo`** — `sdlc-orchestration-core` SKILL.md internally named
+  the same action `reject`, diverging from every user-facing doc/agent prompt (both platforms already
+  said `nogo <reason>`). GUIDE.md now documents `nogo`'s default per-phase routing (S2→analyst ·
+  S3→architect · S4→developer · S5→qa), how to override it when root cause is already known to sit in
+  an earlier phase, and `dispute bug #N`'s BUG/DESIGN GAP/SPEC GAP routing — previously undocumented
+  outside the shared skill.
 
 ### Tooling
 

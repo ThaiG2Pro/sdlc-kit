@@ -137,7 +137,7 @@ The pipeline is **OpenSpec-backed**. No per-ticket spec folder, no active-featur
 
 ### 1. Parse Intent
 
-- `action`: new | continue | approve | reject | status | dispute
+- `action`: new | continue | approve | nogo | status | dispute
 - `type`: provided by the calling flow agent (it constrains which types it accepts). On a brand
   new `sdlc … <slug>`, take the type from the trigger; otherwise it comes from state (next step).
 - `feature_slug`: kebab-case (also derives the OpenSpec `<change-name>`)
@@ -201,7 +201,15 @@ IF active change AND action = approve:
 > normalize it (e.g. `--unset gates.SPEC_LOCK --set gates.S2=passed`).
 
 IF active change AND action = dispute:  → see Dispute Resolution Protocol
-IF active change AND action = reject:   → record reason via `node {{PLATFORM_DIR}}/tools/state-set.mjs --set 'blocker=<reason>'`; return to current agent
+IF active change AND action = nogo:     → record reason via `node {{PLATFORM_DIR}}/tools/state-set.mjs --set 'blocker=<reason>'`; return to current agent
+  (current agent = current_phase's role — S2→analyst · S3→architect · S4→developer · S5→qa. That's
+  the DEFAULT target: right when root cause is unclear, or matches that role. If you already know
+  root cause sits in an EARLIER phase — e.g. `nogo` at S4/S5 for a spec/design defect found before
+  QA ever logged a bug # (so `dispute` has nothing to attach to yet) — name that phase explicitly in
+  the reason (`nogo design gap — <what's wrong>, route to architect`) and respawn THAT role instead
+  of the default. Once QA has logged the bug as `#N`, prefer `dispute bug #N — <claim>` over a bare
+  `nogo` — it re-derives the ruling from evidence (spec/design/AC) instead of trusting an unqualified
+  claim. See Dispute Resolution Protocol's Type A/B/C table for the BUG/DESIGN GAP/SPEC GAP split.)
 IF action = status:  → openspec list + status + _progress.md → show full progress
 ```
 
