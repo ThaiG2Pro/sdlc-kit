@@ -542,10 +542,12 @@ Create `{CHANGE_DIR}/release.md` using the template `.kiro/agents/examples/relea
 - Run `openspec archive "{change-name}"` (via `/opsx:archive` or the `openspec-archive` skill). This merges the change's spec deltas into `openspec/specs/<capability>/spec.md` (the living spec) and moves the change folder to `openspec/changes/archive/`.
 - ❌ Do NOT merge spec deltas into the living spec by hand — `openspec archive` owns that.
 - Optionally re-run `openspec list` to confirm the change is no longer in-flight.
+- **Archive runs BEFORE real deploy** — this is intentional (keeps the living spec fresh for other in-flight specs instead of staying stale for however long dev/stg/master promotion takes). It means the RELEASE gate does NOT wait for actual post-deploy stability; that's tracked separately in Step 5.
 
 ### Step 5: Handoff
-- Update `_state.json`: `{"current_phase":"S6","next_action":{"agent":null,"command":null,"prerequisite":"Deploy + monitor 30min","blocker":null}}`
-- Tell user: "Release artifacts ready and change archived. Review `{CHANGE_DIR}/release.md` then deploy." (Note: after archive, the folder lives under `openspec/changes/archive/`.)
+- Update `_state.json` (now at `openspec/changes/archive/{change-name}/_state.json`): `{"current_phase":"S6","deploy_status":{"<env>":"pending", ...},"next_action":{"agent":null,"command":null,"prerequisite":"Deploy + monitor 30min","blocker":null}}` — seed one `deploy_status` entry per real promotion environment this project actually uses (e.g. dev/stg/master, or whatever `sdlc.config.json → git.protected_branches` names), all `"pending"`.
+- Tell user: "Release artifacts ready and change archived. Review `{CHANGE_DIR}/release.md` then deploy." (Note: after archive, the folder lives under `openspec/changes/archive/`.) As each real promotion (dev/stg/master) actually completes — outside this session, hours or days later — update its entry: `node .kiro/tools/state-set.mjs --change {change-name} --set deploy_status.<env>=pass` (or `=fail`). This is a breadcrumb only, never a gate.
+- **If a promotion rejects the change**: do NOT reopen this archived change. A forward-fixable bug (found in dev/stg, or in master without a real rollback) → open a new `bugfix`/`hotfix` pipeline. An actual rollback (deploy reverted) → see `release.md` § "If Rejected After Archive" (`git revert` the archive commit — undoes code + living-spec fold together; never hand-edit the living spec back).
 
 # BUG FIX MODE
 

@@ -105,8 +105,17 @@ Verify S5 = GO with 0 Critical/High (else STOP). Migration review (every migrati
 no destructive change without a backup plan). Generate `<CHANGE_DIR>/release.md` via
 `deployment-patterns` (release notes w/ AC-IDs, migration checklist, rollback plan, post-deploy smoke,
 deploy strategy). **Finalize: `openspec archive "<name>"`** (merges deltas → living spec, moves change
-to archive) — never merge by hand. Update `_state.json` (`current_phase:"S6"`, `next_action.agent:null`).
-Return: release artifacts ready + change archived.
+to archive) — never merge by hand. Archive runs BEFORE real dev/stg/master promotion, on purpose (keeps
+the living spec fresh for other in-flight specs instead of stale for however long promotion takes) — the
+RELEASE gate does not wait on post-deploy stability. Update `_state.json` (`current_phase:"S6"`,
+`deploy_status:{"<env>":"pending",...}` — one entry per real promotion env, all pending,
+`next_action.agent:null`). Return: release artifacts ready + change archived.
+
+As each real promotion actually completes (later, out-of-band): `node .claude/tools/state-set.mjs
+--change <name> --set deploy_status.<env>=pass|fail` — a breadcrumb, never a gate. If a promotion
+rejects the change: forward-fixable → new `bugfix`/`hotfix` pipeline, never reopen this archived change.
+Real rollback (deploy reverted) → `git revert` the archive commit (undoes code + living-spec fold
+together — see `release.md` § "If Rejected After Archive"); never hand-edit the living spec back.
 
 ## Return to the orchestrator (it owns the gate)
 

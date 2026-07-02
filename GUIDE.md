@@ -145,6 +145,13 @@ Gates auto-pass on a clean audit only if `gates.auto_pass: true` in
 
 **4. Finish** — at S6 the developer agent runs `openspec archive`, folding the change's spec
 deltas into the living `openspec/specs/` and moving the change to `openspec/changes/archive/`.
+This runs **before** the change is actually promoted through your real dev/stg/master pipeline —
+on purpose, so the living spec doesn't sit stale for however long that promotion takes. The real
+promotion is tracked separately (not gated) via `_state.json.deploy_status.<env>`, updated as each
+environment actually passes/fails. If a later environment rejects the change: a forward-fixable bug
+opens a new `bugfix`/`hotfix` pipeline (never reopen the archived change); an actual rollback reverts
+the archive commit (`git revert`, undoes code + spec fold together — see `release.md` § "If Rejected
+After Archive").
 
 ### Work types (`pipelines.json`)
 

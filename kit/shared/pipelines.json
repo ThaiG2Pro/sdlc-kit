@@ -22,7 +22,7 @@
     "DESIGN_REVIEW": "cross-artifact-audit 0 CRITICAL  AND  openspec change validate passes",
     "BUILD":         "tests green + coverage/sonar per sdlc.config.json",
     "QA":            "0 Critical/High bugs open; all ACs verified",
-    "RELEASE":       "migration reviewed + rollback plan + 30-min post-deploy stable"
+    "RELEASE":       "migration reviewed + rollback plan documented in release.md (archive runs here, BEFORE real promotion/deploy — the 30-min-stable check happens afterward, out-of-band, tracked via _state.json.deploy_status, not gated)"
   },
 
   "$rigor": "Each type carries a `rigor` field = the FLOOR the orchestrator may resolve to. 'full' = eligible for the convergence loop + .xlsx test cases (heavy, slow — for important / business-logic-tight work). 'lite' = single-pass audits + markdown test cases (fast — small features, bugfix, hotfix). 'lite' is a HARD floor: a type marked lite never runs full, even if sdlc.config gates.convergence=always. Resolution order (orchestrator): (1) runtime flag --rigor=full|lite on the sdlc command; (2) this type floor (lite types stay lite); (3) sdlc.config gates.convergence: always→full, never→lite, auto→ASK the user once at kickoff (full vs lite). The chosen rigor is persisted to _state.json.rigor so later sessions don't re-ask.",

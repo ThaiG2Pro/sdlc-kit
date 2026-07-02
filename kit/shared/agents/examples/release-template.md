@@ -38,3 +38,9 @@ Deploy strategy: {direct | canary | blue-green}
 
 ## Archive
 - [ ] `openspec archive "{change-name}"` run — spec deltas merged into the living spec, change moved to openspec/changes/archive/
+- [ ] `_state.json.deploy_status` initialized (one entry per real promotion env, e.g. `{"dev":"pending","stg":"pending","master":"pending"}`) — updated later, out-of-band, as each promotion actually completes (`state-set --set deploy_status.<env>=pass|fail`). Not a gate — a breadcrumb so a bug found in dev/stg/master traces back here.
+
+## If Rejected After Archive (Revert Playbook)
+Archive already ran BEFORE this reaches dev/stg/master — a bug caught downstream does NOT mean re-opening this change:
+- **Forward-fixable** (bug found in dev/stg, or in master but no rollback needed): open a new `bugfix` (or `hotfix` if already in master) pipeline. Do not touch this archived change or hand-edit the living spec.
+- **Real rollback** (the deploy itself gets reverted, not just patched forward): `git revert <archive-merge-commit>` — `openspec archive` is a plain-file commit (moves the change folder + edits the living spec.md), so reverting it undoes the code AND the spec fold atomically. Never hand-edit `openspec/specs/**` back to the old state — let `git revert` do both at once, then re-run the fix as its own pipeline.

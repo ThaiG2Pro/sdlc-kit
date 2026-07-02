@@ -90,6 +90,24 @@ export function validateState(state) {
     }
   }
 
+  // deploy_status: { "<env>": "pending" | "pass" | "fail" } — OPTIONAL, NEVER gated. A breadcrumb
+  // for the real-world promotion that happens AFTER `openspec archive` (S6) — e.g. dev/stg/master or
+  // whatever env names the project's CI/CD uses. Archive already ran by the time this fills in, so
+  // nothing in pipeline-guard/cpp-guard reads this key or blocks on it; it only lets a bug found
+  // downstream be traced back to the change that archived it, instead of relying on memory. Set later
+  // via state-set, e.g. `--set deploy_status.stg=fail`.
+  if (state.deploy_status != null) {
+    const d = state.deploy_status;
+    if (typeof d !== 'object' || Array.isArray(d)) {
+      problems.push('`deploy_status` must be an object keyed by environment name, e.g. {"dev":"pass","stg":"pending"}');
+    } else {
+      for (const [k, v] of Object.entries(d)) {
+        if (v !== 'pending' && v !== 'pass' && v !== 'fail')
+          problems.push(`deploy_status.${k}: value must be "pending", "pass", or "fail" (got ${JSON.stringify(v)})`);
+      }
+    }
+  }
+
   // light type checks on core scalar fields (only when present)
   for (const f of ['type', 'current_phase', 'change_name']) {
     if (state[f] != null && typeof state[f] !== 'string') problems.push(`\`${f}\` must be a string`);
