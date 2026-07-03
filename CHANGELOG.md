@@ -54,6 +54,17 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 - `apply-stack`, both doctors, the mapper, `context-check`, and `agent-spawn-context` all resolve the
   shared workspace at the project root; `settings.json` allow-list widened for the orchestrator's routine
   ops (Task spawn, `Write/Edit(openspec/** + memory/**)`, branch-create git) — code writes stay prompted.
+- **Role memory + cross-spec bridge are now one-file-per-change, not one shared file.** Every SDLC
+  change runs on its own isolated branch/worktree; a shared `memory/<role>.md` or
+  `openspec/_cross-spec-context.md` that every branch appends to guarantees a merge conflict the moment
+  two changes are in flight at once. Now each write-back targets `memory/<role>/<change-name>.md` /
+  `openspec/_cross-spec-context/<change-name>.md` — unique filenames never collide across branches, and
+  reads glob+concat the directory instead of one file. `cpp-guard`'s trailing check and
+  `check-write-path.py`'s write-fence/append-guard already matched on path *prefixes* (`memory/**`,
+  `openspec/_*.md` with fnmatch spanning `/`), so no guard code changed — only the agent
+  prompts/skill instructions and `cpp-guard`'s cross-spec existence check. Existing shared files in a
+  deployed project are migrated automatically (split by `## ` section into the new per-change files;
+  the original is kept as `<file>.pre-migration-backup`).
 
 ### Fixed
 

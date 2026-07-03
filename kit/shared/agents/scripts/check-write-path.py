@@ -461,6 +461,7 @@ def _self_test():
         ("developer", None, "tests/app.spec.ts",                ALLOW),
         ("developer", None, "random/elsewhere.txt",             BLOCK),
         ("developer", None, "memory/developer.md",              ALLOW),  # role-memory write-back
+        ("developer", None, "memory/developer/fix-login-401.md", ALLOW),  # per-change memory fragment
         ("developer", None, "pkg/service.go",                   ALLOW),  # Go layout
         ("developer", None, "internal/util.go",                ALLOW),
         ("developer", None, "cmd/app/main.go",                  ALLOW),
@@ -470,15 +471,19 @@ def _self_test():
         ("analyst",   None, "src/app.ts",                       BLOCK),  # analyst-openspec-only
         ("analyst",   None, "docs/knowledge/x.md",              BLOCK),  # least-privilege: no docs/ write
         ("analyst",   None, "memory/analyst.md",                ALLOW),  # role-memory write-back (gated by cpp-guard)
+        ("analyst",   None, "memory/analyst/user-profile.md",   ALLOW),  # per-change memory fragment
         ("architect", None, "openspec/changes/x/design.md",     ALLOW),  # architect writes design via openspec
         ("architect", None, "docs/design.md",                   BLOCK),  # least-privilege: openspec-only now
         ("architect", None, "src/app.ts",                       BLOCK),
         ("architect", None, "memory/architect.md",              ALLOW),  # role-memory write-back (gated by cpp-guard)
+        ("architect", None, "memory/architect/user-profile.md", ALLOW),  # per-change memory fragment
         ("qa",        None, "tests/e2e.spec.ts",                ALLOW),
         ("qa",        None, "src/app.ts",                       BLOCK),
         ("qa",        None, "memory/qa.md",                     ALLOW),  # role-memory write-back (gated by cpp-guard)
+        ("qa",        None, "memory/qa/user-profile.md",        ALLOW),  # per-change memory fragment
         ("sdlc-full", None, "openspec/changes/x/_state.json",   ALLOW),  # baton (underscore-prefixed)
-        ("sdlc-full", None, "openspec/_cross-spec-context.md",  ALLOW),  # cross-spec bridge
+        ("sdlc-full", None, "openspec/_cross-spec-context.md",  ALLOW),  # cross-spec bridge (legacy shared path)
+        ("sdlc-full", None, "openspec/_cross-spec-context/user-profile.md", ALLOW),  # per-change cross-spec fragment
         ("sdlc-full", None, "openspec/changes/x/design.md",     BLOCK),  # DELIVERABLE → must delegate to architect
         ("sdlc-full", None, "openspec/changes/x/proposal.md",   BLOCK),  # DELIVERABLE → must delegate to analyst
         ("sdlc-full", None, "src/app.ts",                       BLOCK),  # never writes code
@@ -498,23 +503,28 @@ def _self_test():
         (None, "developer", "/abs/proj/src/models.py",          ALLOW),  # absolute, normalized
         (None, "developer", "secrets.txt",                      BLOCK),
         (None, "developer", "memory/developer.md",              ALLOW),  # root memory (no symlink)
+        (None, "developer", "memory/developer/fix-login-401.md", ALLOW),  # per-change memory fragment
         (None, "developer", ".claude/memory/developer.md",      BLOCK),  # platform dir is NOT a write target
         (None, "developer", ".kiro/memory/developer.md",        BLOCK),  # foreign platform dir — also not a target
         (None, None,        "openspec/changes/x/proposal.md",   ALLOW),  # default session — unrestricted
         (None, None,        "src/app.ts",                       ALLOW),  # default session = the user's own
         (None, "sdlc-full", "openspec/changes/x/_state.json",   ALLOW),  # orchestrator agent — baton only
+        (None, "sdlc-full", "openspec/_cross-spec-context/user-profile.md", ALLOW),  # per-change cross-spec fragment
         (None, "sdlc-full", "openspec/changes/x/design.md",     BLOCK),  # DELIVERABLE → must delegate to architect
         (None, "sdlc-full", "src/app.ts",                       BLOCK),  # never writes code
         (None, "analyst",   "openspec/specs/auth/spec.md",      ALLOW),  # analyst-openspec-only
         (None, "analyst",   "docs/knowledge/x.md",              BLOCK),  # least-privilege: no docs/ write
         (None, "analyst",   "src/app.ts",                       BLOCK),
         (None, "analyst",   "memory/analyst.md",                ALLOW),  # role-memory write-back
+        (None, "analyst",   "memory/analyst/user-profile.md",   ALLOW),  # per-change memory fragment
         (None, "architect", "openspec/changes/x/design.md",     ALLOW),  # architect-openspec-only
         (None, "architect", "docs/design.md",                   BLOCK),  # least-privilege: openspec-only now
         (None, "architect", "memory/architect.md",              ALLOW),  # role-memory write-back
+        (None, "architect", "memory/architect/user-profile.md", ALLOW),  # per-change memory fragment
         (None, "qa",        "tests/unit.spec.ts",               ALLOW),
         (None, "qa",        "src/app.ts",                       BLOCK),
         (None, "qa",        "memory/qa.md",                     ALLOW),  # role-memory write-back
+        (None, "qa",        "memory/qa/user-profile.md",        ALLOW),  # per-change memory fragment
         (None, "developer", "pkg/service.go",                   ALLOW),  # Go layout
         (None, "developer", "internal/util.go",                ALLOW),
         (None, "developer", "cmd/app/main.go",                  ALLOW),

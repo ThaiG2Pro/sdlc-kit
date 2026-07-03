@@ -158,7 +158,8 @@ export function checkCpp({ changeDir, gatePhase }) {
  * Trailing check: the side-effects the ORCHESTRATOR (not the role agent) owes from already-passed
  * gates — recorded as part of an `approve`, which happens AFTER pipeline-guard's STEP 0. So they
  * can only be verified at the NEXT gate. This catches a forgetful orchestrator.
- *   - cross-spec bridge:  appended to openspec/_cross-spec-context.md at S3 approval.
+ *   - cross-spec bridge:  written to openspec/_cross-spec-context/<change-name>.md at S3 approval
+ *                         (one file per change — never a shared file every branch would conflict on).
  *   - progress marking:   _progress.md updated on every gate approval.
  *   - convergence loop:   when rigor=full, a convergence gate (SPEC_LOCK/DESIGN_REVIEW) must have
  *                         stabilized `gates.stable_rounds` times before it was marked passed.
@@ -175,11 +176,13 @@ export function checkTrailing({ projectRoot, changeDir, state }) {
 
   // 1. cross-spec — only when S3 actually ran + passed (skipped for bugfix/hotfix and S3-skipped cr).
   if (gates.S3 === 'passed') {
-    const cs = readText(join(projectRoot, 'openspec', '_cross-spec-context.md'));
     const key = (state && (state.change_name || state.ticket_id)) || '';
-    if (!cs) problems.push('openspec/_cross-spec-context.md missing (S3 cross-spec block never written)');
-    else if (key && !cs.includes(String(key)))
-      problems.push(`openspec/_cross-spec-context.md has no block for "${key}" (cross-spec bridge not recorded at S3)`);
+    if (!key) problems.push('_state.json has no change_name/ticket_id — cannot verify the S3 cross-spec fragment file');
+    else {
+      const csPath = join(projectRoot, 'openspec', '_cross-spec-context', `${key}.md`);
+      if (!readText(csPath).trim())
+        problems.push(`openspec/_cross-spec-context/${key}.md missing (S3 cross-spec block never written)`);
+    }
   }
 
   // 2. progress marking — loose (kit allows both "[x]" and "✅" formats); catches "forgot entirely".

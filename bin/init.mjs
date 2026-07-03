@@ -6,7 +6,7 @@
 // One source (kit/shared + kit/targets/<platform>) emits each target.
 // Zero runtime dependencies (Node >= 18 built-ins only).
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, lstatSync, copyFileSync, cpSync, rmSync, rmdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, lstatSync, copyFileSync, cpSync, rmSync, rmdirSync, renameSync } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
@@ -341,6 +341,58 @@ function migrateRealDirToRoot(name, targets) {
   }
 }
 
+// Split a legacy SHARED file (every SDLC change appended a `## ` section to it) into one file per
+// change under destDir/<change-name>.md. Every change runs on its own isolated branch, so a single
+// shared file that every branch appends to is a guaranteed merge conflict the moment two changes are
+// in flight at once — the fix is one file per change, never a shared path. No-op if srcPath is
+// absent (already migrated, or a fresh install with nothing to migrate yet). The original is kept
+// as `<file>.pre-migration-backup`, never deleted, so a mis-parsed edge case is one `cp` from
+// recovery. `headerRe` must capture the change-name from the `## ` line (group 1).
+function splitSharedFileIntoPerChange(srcPath, destDir, headerRe) {
+  if (!existsSync(srcPath) || !statSync(srcPath).isFile()) return;
+  const text = readFileSync(srcPath, 'utf8');
+  const sections = [];
+  let current = null;
+  for (const line of text.split('\n')) {
+    const m = line.match(headerRe);
+    if (m) { if (current) sections.push(current); current = { changeName: m[1].trim().replace(/\s+/g, '-'), body: [line] }; }
+    else if (current) current.body.push(line);
+  }
+  if (current) sections.push(current);
+  if (sections.length === 0) return; // no '## ' section found — leave the file alone, don't guess
+
+  const byChange = new Map();
+  for (const s of sections) {
+    const body = s.body.join('\n').replace(/\n+$/, '') + '\n';
+    byChange.set(s.changeName, (byChange.get(s.changeName) || '') + body);
+  }
+  mkdirSync(destDir, { recursive: true });
+  for (const [changeName, body] of byChange) {
+    const destPath = join(destDir, `${changeName}.md`);
+    const finalBody = existsSync(destPath) ? readFileSync(destPath, 'utf8').replace(/\n+$/, '') + '\n' + body : body;
+    writeFileSync(destPath, finalBody);
+  }
+  renameSync(srcPath, srcPath + '.pre-migration-backup');
+  log(`  ✓ migrated ${relative(TARGET, srcPath)} → ${byChange.size} per-change file(s) under ${relative(TARGET, destDir)}/ (original kept as .pre-migration-backup)`);
+}
+
+// One-time upgrade path: pre-per-change-fragment installs kept ONE shared memory/<role>.md and ONE
+// openspec/_cross-spec-context.md that every change appended to. Split each into per-change files.
+function migrateSharedMemoryAndCrossSpecToPerChange() {
+  for (const role of ['analyst', 'architect', 'developer', 'qa']) {
+    splitSharedFileIntoPerChange(
+      join(TARGET, 'memory', `${role}.md`),
+      join(TARGET, 'memory', role),
+      /^##\s+\S+\s+—\s+([^:]+):/,
+    );
+  }
+  splitSharedFileIntoPerChange(
+    join(TARGET, 'openspec', '_cross-spec-context.md'),
+    join(TARGET, 'openspec', '_cross-spec-context'),
+    /^##\s+\S+\s+—\s+([^(]+)\(S3/,
+  );
+}
+
 // Establish the single project-root ./context/ workspace (canonical, root-only — both platforms read
 // it root-relative, no symlink). Migrates a prior install's filled per-platform context into root
 // first, then scaffolds templates (preserving any already-filled file). Runs once for all targets.
@@ -550,6 +602,10 @@ async function main() {
   migrateRealDirToRoot('memory', targets);
   { const d = join(TARGET, 'docs'); if (!existsSync(d)) { mkdirSync(d, { recursive: true }); log('  ✓ created docs/ (shared root)'); } }
   { const d = join(TARGET, 'memory'); if (!existsSync(d)) { mkdirSync(d, { recursive: true }); log('  ✓ created memory/ (shared root)'); } }
+  // Upgrade path: split any legacy shared memory/<role>.md + openspec/_cross-spec-context.md (one
+  // file every change appended to — a merge-conflict magnet across isolated change branches) into
+  // one file per change. No-op once already migrated or on a fresh install.
+  migrateSharedMemoryAndCrossSpecToPerChange();
 
   // Apply each target.
   for (const c of ctxs) applyTarget(c, vals);

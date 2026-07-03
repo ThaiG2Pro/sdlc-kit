@@ -148,29 +148,32 @@ Liệt kê:
 ## Persist lessons to role memory (HARVEST — do this last)
 
 The retro above is a one-time report. Its **Learned** / **Lacked** items are exactly the cross-spec
-lessons that the role agents read at the top of every future run (`memory/<role>.md`). The per-phase
-write-back is advisory and easy to skip in the heat of a build — so the retro is the **safety net** that
-makes sure nothing reusable is lost before the change is archived.
+lessons that the role agents read at the top of every future run (`memory/<role>/*.md` — one file per
+change, so parallel changes on separate branches never touch the same path). The per-phase write-back is
+advisory and easy to skip in the heat of a build — so the retro is the **safety net** that makes sure
+nothing reusable is lost before the change is archived.
 
 For each Learned/Lacked item that is **reusable and not specific to this one change**, route it to the
-role most likely to re-encounter it and **APPEND** a new section to that file:
+role most likely to re-encounter it and **WRITE** a new section to that role's file for THIS change:
 
 | Lesson type | File |
 |---|---|
-| recurring bug pattern · validation/sync trap · framework gotcha | `memory/developer.md` |
-| hollow-assertion pattern · coverage gap · 5xx/validation bug pattern · smoke-checklist item | `memory/qa.md` |
-| recurring ADR trade-off · cross-feature constraint · design anti-pattern | `memory/architect.md` |
-| requirement-ambiguity pattern · domain edge case easy to miss · clarification trap | `memory/analyst.md` |
+| recurring bug pattern · validation/sync trap · framework gotcha | `memory/developer/{change-name}.md` |
+| hollow-assertion pattern · coverage gap · 5xx/validation bug pattern · smoke-checklist item | `memory/qa/{change-name}.md` |
+| recurring ADR trade-off · cross-feature constraint · design anti-pattern | `memory/architect/{change-name}.md` |
+| requirement-ambiguity pattern · domain edge case easy to miss · clarification trap | `memory/analyst/{change-name}.md` |
 
 Section format: `## {ISO-date} — {change-name}: {one-line lesson}` followed by 1–4 bullets (the pattern +
 how to avoid it next time). Rules:
 
-- **Append-only.** Never delete or overwrite an existing `## ` section — the write-path hook blocks any
-  write that drops one. Add new sections; leave old ones intact.
-- **De-dup.** If a near-identical lesson already exists, don't add a twin — skip it (or refine the existing
-  one by appending a dated note under it).
+- **Append-only within the file.** If that role already wrote to `memory/<role>/{change-name}.md` earlier
+  in THIS change's pipeline, READ it first — never delete or overwrite an existing `## ` section (the
+  write-path hook blocks a write that drops one). Add new sections; leave old ones intact.
+- **De-dup across the role's whole directory.** Before writing, skim every `memory/<role>/*.md` file (not
+  just this change's) — if a near-identical lesson already exists in an earlier change's file, don't add a
+  twin; skip it (or note the refinement in this change's file instead).
 - **No filler.** A clean change with no reusable lesson writes nothing to memory. Process/tooling action
   items (e.g. "add a skill", "fix a hook") are NOT role memory — leave those in the retro's Action Items.
 
-This is the only place the orchestrator itself writes `memory/**`; the role agents write their own files
-inline at end of phase.
+This is the only place the orchestrator itself writes `memory/**`; the role agents write their own
+change-scoped file inline at end of phase.

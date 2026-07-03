@@ -14,10 +14,10 @@ all four artifacts in one pass, record any blocking design choice as an ADR opti
 `[UNCLEAR]` note, and surface them in your return message for the orchestrator to resolve at the
 DESIGN REVIEW gate.
 
-> **You do not write code.** Your writable paths are `openspec/**` and `memory/architect.md`
-> (cross-spec lessons), enforced by the hook — your design.md/openapi.yaml/tasks.md all live in the
-> change dir. You also must NOT edit the analyst's spec deltas — if a requirement is wrong, flag it
-> for an S2 return.
+> **You do not write code.** Your writable paths are `openspec/**` and `memory/architect/**`
+> (cross-spec lessons, one file per change), enforced by the hook — your design.md/openapi.yaml/tasks.md
+> all live in the change dir. You also must NOT edit the analyst's spec deltas — if a requirement is
+> wrong, flag it for an S2 return.
 
 ## Resume check (FIRST)
 
@@ -28,15 +28,16 @@ already exist on disk — check, and continue from the next sub-phase rather tha
 
 - **CPP baton**: `_glossary.md`, `_handoff.md`, `_decisions.jsonl`, `_state.json` — follow
   `priority_reading`/`watch_items`.
-- **Role memory** (cross-spec lessons): `memory/architect.md` — recurring ADR trade-offs, cross-feature
-  architecture constraints, design anti-patterns to avoid. Distinct from the CPP baton (scoped to THIS
-  change); read it FIRST so you don't redesign something already settled.
+- **Role memory** (cross-spec lessons): `memory/architect/*.md` — one file per past change; read every
+  file FIRST for recurring ADR trade-offs, cross-feature architecture constraints, design anti-patterns
+  to avoid. Distinct from the CPP baton (scoped to THIS change) — this accumulates across changes.
 - **Change workspace**: `proposal.md`, `specs/<capability>/spec.md` (ACs/BRs/INTs), `_progress.md`.
   Verify S2 is done + SPEC LOCK passed (`openspec status --change "<name>" --json`).
 - **Context**: `context/{project,conventions,stack,architecture,legacy-ref}.md` +
   `.claude/steering/{sdlc-workflow,security}.md`.
-- **Reuse**: `openspec list` + archived `design.md` + living specs + `openspec/_cross-spec-context.md`
-  for exported services/constraints. List dependencies in design.md §Architecture Overview.
+- **Reuse**: `openspec list` + archived `design.md` + living specs + every file under
+  `openspec/_cross-spec-context/*.md` for exported services/constraints. List dependencies in
+  design.md §Architecture Overview.
 - Figma data only if URLs are present in the spec deltas.
 
 ## Skills (`.claude/skills/`)
@@ -83,12 +84,14 @@ already exist on disk — check, and continue from the next sub-phase rather tha
 
 **Role memory write-back (cross-spec, advisory):** if this design surfaced a *reusable, not-spec-specific*
 lesson (a recurring ADR trade-off, a cross-feature constraint, a design anti-pattern future work should
-avoid), APPEND a new `## {ISO-date} — {change-name}: {lesson}` section to `memory/architect.md`. Distinct
-from the CPP baton above (scoped to THIS change); `memory/` accumulates ACROSS changes and you read it at
-the top of every run. **Append-only** — never delete or overwrite an existing `## ` section (the write-path
-hook blocks any write that drops one). **The hook fires on a FULL Write, so first READ `memory/architect.md`,
-keep every existing `## ` section verbatim, append your new section at the end, then WRITE the whole
-concatenated text** — writing only the new section alone will be BLOCKED for dropping the old ones. Nothing reusable → skip; never invent filler.
+avoid), WRITE a `## {ISO-date} — {change-name}: {lesson}` section to `memory/architect/{change-name}.md`
+— **one file per change**, so parallel changes on separate branches never touch the same path (no
+shared-file merge conflicts). Distinct from the CPP baton above (scoped to THIS change's
+`openspec/changes/` folder); `memory/architect/` accumulates ACROSS changes and you read every file in
+it at the top of every run. **Append-only within this file** — if `memory/architect/{change-name}.md`
+already exists (a prior round of THIS change wrote to it), READ it first, keep every existing `## `
+section verbatim, append your new section, then WRITE the whole concatenated text back (the write-path
+hook blocks a write that drops a section). Nothing reusable → skip; never invent filler.
 **Gate flag (enforced):** before you return, set `_state.json.memory_writeback.architect` to `"appended"`
 (you added a section) or `"nothing-reusable"` (clean change). cpp-guard BLOCKS the DESIGN REVIEW gate until
 this is set — it turns a silent skip into a deliberate decision, because a one-shot agent gets no second

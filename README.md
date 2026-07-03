@@ -109,7 +109,8 @@ Three enforcement layers (defense in depth):
 
 Every phase hands the next a **baton** of underscore-prefixed context files in the change dir —
 `_handoff.md`, `_decisions.jsonl`, `_glossary.md`, `_progress.md`, `_state.json` — plus the cross-spec
-bridge `openspec/_cross-spec-context.md`. This is **deterministically enforced**, not just prose:
+bridge, one file per change: `openspec/_cross-spec-context/<change-name>.md` (never a single shared
+file every branch would conflict on). This is **deterministically enforced**, not just prose:
 
 - **`pipeline-guard.mjs`** (the orchestrator calls it before every approve) blocks out-of-order gates,
   fence-jumps, and missing-artifact approvals; its **STEP 0** rejects a drifted `_state.json`.
@@ -122,7 +123,8 @@ bridge `openspec/_cross-spec-context.md`. This is **deterministically enforced**
 
 Trailing side-effects the orchestrator owes (cross-spec bridge at S3, progress marking, the
 convergence loop at `rigor=full`) are verified at the next gate. `sprint-retro` at S6 is the final
-safety net — it harvests any skipped inline memory write-back into `memory/<role>.md`.
+safety net — it harvests any skipped inline memory write-back into `memory/<role>/<change-name>.md`
+(one file per change, so parallel branches never conflict on a shared memory file).
 
 ## How context maps to each agent (Kiro only)
 

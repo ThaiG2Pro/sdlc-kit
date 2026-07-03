@@ -5,8 +5,8 @@ description: "SDLC S5 (QA). Test scenarios từ AC, auto + manual test, bug clas
 
 # MEMORY — ĐỌC TRƯỚC KHI LÀM BẤT CỨ VIỆC GÌ
 
-**Bước đầu tiên bắt buộc**: Đọc `memory/qa.md` để lấy bug patterns, smoke test checklist, known gaps từ các spec trước.
-File này chứa: hollow assertion patterns, validation/null bugs, server-error (5xx) patterns, coverage gaps.
+**Bước đầu tiên bắt buộc**: Đọc TOÀN BỘ file trong `memory/qa/*.md` (mỗi file = 1 change trước đó) để lấy bug patterns, smoke test checklist, known gaps từ các spec trước.
+Các file này chứa: hollow assertion patterns, validation/null bugs, server-error (5xx) patterns, coverage gaps. Mỗi change ghi ra 1 file riêng (`memory/qa/{change-name}.md`) — không còn 1 file chung để tránh conflict khi nhiều change chạy song song trên branch khác nhau.
 Không đọc = miss bug patterns đã biết.
 
 ---
@@ -98,7 +98,7 @@ You own exactly 1 SDLC phase:
   - Risky Areas: areas that passed but are fragile
   - Recommended Reading Order: for developer (S4-fix) or release prep (S6)
 - **`_state.json`**: Update with enriched fields
-- 🧠 **`memory/qa.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S5 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (hollow-assertion pattern, coverage gap hay tái diễn, 5xx/validation bug pattern, mục thêm cho smoke checklist) → APPEND một section `## {ISO-date} — {change-name}: {lesson}` mới. KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/qa.md` tích luỹ XUYÊN spec, được đọc đầu MỖI run (xem block đầu file). **Append-only** — không xoá/đè section `## ` cũ (write-path hook chặn write làm mất section). **Hook chạy trên một lần Write TOÀN BỘ file, nên BẮT BUỘC: (1) READ `memory/qa.md` hiện tại trước, (2) giữ NGUYÊN VĂN mọi section `## ` cũ, (3) APPEND section mới ở cuối, (4) WRITE lại toàn bộ nội dung nối lại** — ghi MỖI section mới sẽ bị BLOCK vì làm rớt section cũ. Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler. **Cờ gate (BẮT BUỘC):** trước khi return, set `_state.json.memory_writeback.qa` = `"appended"` (đã thêm section) hoặc `"nothing-reusable"` (pass sạch, không có gì để thêm). cpp-guard CHẶN gate QA đến khi cờ này được set — biến việc "im lặng bỏ qua" thành quyết định có chủ đích, vì agent one-shot không có cơ hội thứ hai sau khi đã return.
+- 🧠 **`memory/qa/{change-name}.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S5 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (hollow-assertion pattern, coverage gap hay tái diễn, 5xx/validation bug pattern, mục thêm cho smoke checklist) → WRITE một section `## {ISO-date} — {change-name}: {lesson}` vào `memory/qa/{change-name}.md` — **1 file riêng cho change này**, để 2 change chạy song song trên 2 branch khác nhau không bao giờ đụng cùng 1 đường dẫn (hết conflict khi merge). KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/qa/` tích luỹ XUYÊN spec (mỗi change 1 file), bạn đọc TOÀN BỘ thư mục đầu MỖI run (xem block đầu file). **Append-only trong phạm vi file này** — nếu `memory/qa/{change-name}.md` đã tồn tại (một round trước của CHÍNH change này đã ghi), BẮT BUỘC: (1) READ nó trước, (2) giữ NGUYÊN VĂN mọi section `## ` cũ, (3) APPEND section mới ở cuối, (4) WRITE lại toàn bộ nội dung nối lại (write-path hook chặn write làm mất section). Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler. **Cờ gate (BẮT BUỘC):** trước khi return, set `_state.json.memory_writeback.qa` = `"appended"` (đã thêm section) hoặc `"nothing-reusable"` (pass sạch, không có gì để thêm). cpp-guard CHẶN gate QA đến khi cờ này được set — biến việc "im lặng bỏ qua" thành quyết định có chủ đích, vì agent one-shot không có cơ hội thứ hai sau khi đã return.
 - ❌ NEVER present GO/NO-GO without CPP artifacts updated
 
 # CONTEXT

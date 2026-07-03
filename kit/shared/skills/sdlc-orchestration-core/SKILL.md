@@ -19,7 +19,7 @@ phase to its role agent** and own only the gates and the baton.
 > **analyst**; S3 `design.md`/`openapi.yaml`/`tasks.md` → **architect**; S4 code + `dev-test-report.md`
 > → **developer**; S5 `qa-report.md` + testcases → **qa**. You write **only** the baton/state — the
 > underscore-prefixed `_state.json`, `_progress.md`, `_handoff.md` (setup template), `_decisions.jsonl`,
-> `_glossary.md`, and `openspec/_cross-spec-context.md`. **This is enforced**: the `write` tool's
+> `_glossary.md`, and `openspec/_cross-spec-context/<change-name>.md`. **This is enforced**: the `write` tool's
 > allow-list lets the orchestrator touch only those `_`-files — try to write `proposal.md`/`design.md`/
 > `tasks.md`/`specs/**`/`*-report.md` and the PreToolUse guard BLOCKS you (exit 2). That block means
 > **delegate** the phase to its role agent — which runs as a subagent under its OWN per-agent guard
@@ -284,21 +284,24 @@ orchestrator is the only agent that sees all gates, so it owns the authoritative
 
 Read `_progress.md`, find `## Overall Progress`, replace `- [ ] {phase}` → `- [x] {phase}`.
 
-> **Trailing enforcement:** progress marking, cross-spec append, and (at `rigor=full`) the
+> **Trailing enforcement:** progress marking, cross-spec write, and (at `rigor=full`) the
 > convergence loop are orchestrator side-effects recorded *during* an approval (after STEP 0).
 > `pipeline-guard` therefore verifies them at the NEXT gate (via `cpp-guard` checkTrailing): a later
-> gate fails with "MISSING RECORDS" if `openspec/_cross-spec-context.md` has no block for this change,
+> gate fails with "MISSING RECORDS" if `openspec/_cross-spec-context/<change-name>.md` is missing,
 > if `_progress.md` wasn't marked, or if a passed convergence gate never stabilized
 > (`convergence[<PHASE>].stable < stable_rounds`). (The final S5→S6/archive transition has no later
 > gate, so confirm it manually.)
 
 ### Cross-Spec Context (MANDATORY on S3 approval)
 
-On S3 approval, append a ≤15-line block to `openspec/_cross-spec-context.md` (the cross-spec
-knowledge bridge agents read when starting a NEW change). Extract from `design.md`:
+On S3 approval, WRITE a ≤15-line block to `openspec/_cross-spec-context/<change-name>.md` — **one file
+per change**, so parallel changes on separate branches never touch the same path (no shared-file merge
+conflicts). Together these files are the cross-spec knowledge bridge: an agent starting a NEW change
+reads and concatenates every file under `openspec/_cross-spec-context/*.md`. Extract from `design.md`:
 **Dependencies** (imported from other changes), **Shared Decisions** (ADRs affecting others),
 **Exports** (services/interfaces others reuse), **Constraints Set** (rules subsequent changes
-must follow). Focus on INTERFACES, exact names. Append only — never modify existing blocks.
+must follow). Focus on INTERFACES, exact names. This change's file normally has just ONE block; if S3
+re-approves after a rework loop, READ the existing file first and append rather than overwrite.
 
 ```markdown
 ## {TICKET_ID} — {change-name} (S3 done: {date})

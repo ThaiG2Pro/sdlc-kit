@@ -26,7 +26,7 @@ next checkpoint, self-verify, then return (do NOT implement every task in one ru
 ## Inputs — read FIRST (R14: CPP before code)
 
 - **CPP baton**: `_glossary.md`, `_handoff.md`, `_decisions.jsonl`, `_state.json` (follow
-  `priority_reading`/`watch_items`); `openspec/_cross-spec-context.md` if present.
+  `priority_reading`/`watch_items`); every file under `openspec/_cross-spec-context/*.md` if present.
 - **Design pack**: `design.md`, `tasks.md`, `proposal.md`, spec deltas, `openapi.yaml`. Verify S3
   done. Read **only what the current task needs** (schema task → design §DB Schema; service →
   §Sequence Flows + §Error Mapping; controller → the openapi path; tests → AC-IDs + existing tests).
@@ -38,9 +38,9 @@ next checkpoint, self-verify, then return (do NOT implement every task in one ru
   ACTUAL build/test/lint/coverage commands from `stack.md` (never assume them).
 - **Quality policy**: `.claude/ai/sonar-policy.md` (the AI-friendly bug/quality rules you must
   code to; `.claude/ai/sonar-rules.md` is the fuller reference). Read before R3/R4 self-review.
-- **Role memory** (cross-spec lessons): `memory/developer.md` — recurring bug patterns, validation/
-  sync traps, framework gotchas accumulated across past changes. Distinct from the CPP baton (which is
-  scoped to THIS change); read it FIRST. Skipping it = repeating known bugs.
+- **Role memory** (cross-spec lessons): `memory/developer/*.md` — one file per past change; read every
+  file FIRST for recurring bug patterns, validation/sync traps, framework gotchas. Distinct from the CPP
+  baton (scoped to THIS change) — this accumulates across changes. Skipping it = repeating known bugs.
 
 ## Skills (`.claude/skills/`)
 
@@ -80,12 +80,14 @@ dev-test-report.md → complex services → tests → skip boilerplate); `_gloss
 
 **Role memory write-back (cross-spec, advisory):** if this build surfaced a *reusable, not-spec-specific*
 lesson (a recurring bug pattern, a validation/sync trap, a framework gotcha future builds should avoid),
-APPEND a new `## {ISO-date} — {change-name}: {lesson}` section to `memory/developer.md`. This is distinct
-from the CPP baton above (scoped to THIS change); `memory/` accumulates ACROSS changes and you read it at
-the top of every run. **Append-only** — never delete or overwrite an existing `## ` section (the write-path
-hook blocks any write that drops one). **The hook fires on a FULL Write, so first READ `memory/developer.md`,
-keep every existing `## ` section verbatim, append your new section at the end, then WRITE the whole
-concatenated text** — writing only the new section alone will be BLOCKED for dropping the old ones. Nothing reusable came up → skip it; never invent filler.
+WRITE a `## {ISO-date} — {change-name}: {lesson}` section to `memory/developer/{change-name}.md` — **one
+file per change**, so parallel changes on separate branches never touch the same path (no shared-file
+merge conflicts). This is distinct from the CPP baton above (scoped to THIS change's `openspec/changes/`
+folder); `memory/developer/` accumulates ACROSS changes and you read every file in it at the top of every
+run. **Append-only within this file** — if `memory/developer/{change-name}.md` already exists (a prior
+round of THIS change wrote to it), READ it first, keep every existing `## ` section verbatim, append your
+new section, then WRITE the whole concatenated text back (the write-path hook blocks a write that drops a
+section). Nothing reusable came up → skip it; never invent filler.
 **Gate flag (enforced):** before you return from S4, set `_state.json.memory_writeback.developer` to
 `"appended"` (you added a section) or `"nothing-reusable"` (clean build). cpp-guard BLOCKS the BUILD gate
 until this is set — it turns a silent skip into a deliberate decision, because a one-shot agent gets no

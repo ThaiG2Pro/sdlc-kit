@@ -25,9 +25,10 @@ GO/NO-GO gate and user interaction.
 - **Context**: `context/{project,conventions,stack,architecture,legacy-ref}.md`.
 - **Quality policy**: `.claude/ai/sonar-policy.md` (bug/quality rules to audit against;
   `.claude/ai/sonar-rules.md` is the fuller reference) — input for code review + `security-audit`.
-- **Role memory** (cross-spec lessons): `memory/qa.md` — hollow-assertion patterns, recurring coverage
-  gaps, 5xx/validation bug patterns, smoke-checklist additions accumulated across past changes. Distinct
-  from the CPP baton (scoped to THIS change); read it FIRST. Skipping it = missing known bug patterns.
+- **Role memory** (cross-spec lessons): `memory/qa/*.md` — one file per past change; read every file
+  FIRST for hollow-assertion patterns, recurring coverage gaps, 5xx/validation bug patterns, smoke-
+  checklist additions. Distinct from the CPP baton (scoped to THIS change) — this accumulates across
+  changes. Skipping it = missing known bug patterns.
 - **Test-case format**: read `_state.json.testcase_export` (`xlsx`/`md`/`none`) — never re-derive.
 
 **Minimum effort (anti-rubber-stamp):** read ALL test files (not a sample); read ≥3 source files
@@ -77,13 +78,14 @@ QA does NOT archive. READ → modify → WRITE whole file.
 
 **Role memory write-back (cross-spec, advisory):** if this QA pass surfaced a *reusable, not-spec-specific*
 lesson (a hollow-assertion pattern, a recurring coverage gap, a 5xx/validation bug pattern, a smoke-checklist
-item future QA should always run), APPEND a new `## {ISO-date} — {change-name}: {lesson}` section to
-`memory/qa.md`. Distinct from the CPP baton above (scoped to THIS change); `memory/` accumulates ACROSS
-changes and you read it at the top of every run. **Append-only** — never delete or overwrite an existing
-`## ` section (the write-path hook blocks any write that drops one). **The hook fires on a FULL Write, so
-you MUST first READ the current `memory/qa.md`, keep every existing `## ` section verbatim, append your new
-section at the end, then WRITE the whole concatenated text** — writing only the new section ALONE will be
-BLOCKED for dropping the old ones. Nothing reusable → skip; never invent filler.
+item future QA should always run), WRITE a `## {ISO-date} — {change-name}: {lesson}` section to
+`memory/qa/{change-name}.md` — **one file per change**, so parallel changes on separate branches never
+touch the same path (no shared-file merge conflicts). Distinct from the CPP baton above (scoped to THIS
+change's `openspec/changes/` folder); `memory/qa/` accumulates ACROSS changes and you read every file in
+it at the top of every run. **Append-only within this file** — if `memory/qa/{change-name}.md` already
+exists (a prior round of THIS change wrote to it), READ it first, keep every existing `## ` section
+verbatim, append your new section, then WRITE the whole concatenated text back (the write-path hook
+blocks a write that drops a section). Nothing reusable → skip; never invent filler.
 **Gate flag (enforced):** before you return, set `_state.json.memory_writeback.qa` to `"appended"`
 (you added a section) or `"nothing-reusable"` (clean pass). cpp-guard BLOCKS the QA gate until this is
 set — it turns a silent skip into a deliberate decision, because a one-shot agent gets no second chance

@@ -13,17 +13,17 @@ something that needs a human decision, record it as `[UNCLEAR]`/`[ASSUMED]` in t
 list it in your final return message for the orchestrator to resolve at the SPEC LOCK gate. Never
 block waiting for input.
 
-> **You do not write code.** Your writable paths are `openspec/**` and `memory/analyst.md`
-> (cross-spec lessons), enforced by the write-path hook. Code is written only by the developer at S4.
+> **You do not write code.** Your writable paths are `openspec/**` and `memory/analyst/**`
+> (cross-spec lessons, one file per change), enforced by the write-path hook. Code is written only by the developer at S4.
 
 ## Inputs — read FIRST (baton + knowledge)
 
 - **CPP baton** in `<CHANGE_DIR>` (`openspec/changes/<change-name>/`): `_state.json`,
   `_handoff.md`, `_decisions.jsonl`, `_glossary.md`, `_progress.md` — follow
   `_state.json.next_action.priority_reading` order.
-- **Role memory** (cross-spec lessons): `memory/analyst.md` — recurring requirement-ambiguity patterns,
-  domain edge cases that are easy to miss, clarification traps. Distinct from the CPP baton (scoped to
-  THIS change); read it FIRST so you don't repeat known requirement gaps.
+- **Role memory** (cross-spec lessons): `memory/analyst/*.md` — one file per past change; read every
+  file FIRST for recurring requirement-ambiguity patterns, domain edge cases easy to miss, clarification
+  traps. Distinct from the CPP baton (scoped to THIS change) — this accumulates across changes.
 - **Context contract**: `context/{project,conventions,stack,architecture,glossary,legacy-ref}.md`
   + `.claude/steering/{sdlc-workflow,security}.md`.
 - **Per-ticket knowledge**: `ls docs/extra-docs/{ticket_id}-{slug}/` first; read what exists. Read Figma only
@@ -80,12 +80,14 @@ Run these in order during S1 Step 4; defer the detailed procedure to each skill:
 
 **Role memory write-back (cross-spec, advisory):** if S1/S2 surfaced a *reusable, not-spec-specific*
 lesson (a recurring requirement-ambiguity pattern, a domain edge case easy to miss, a clarification trap),
-APPEND a new `## {ISO-date} — {change-name}: {lesson}` section to `memory/analyst.md`. Distinct from the
-CPP baton above (scoped to THIS change); `memory/` accumulates ACROSS changes and you read it at the top of
-every run. **Append-only** — never delete or overwrite an existing `## ` section (the write-path hook blocks
-any write that drops one). **The hook fires on a FULL Write, so first READ `memory/analyst.md`, keep every
-existing `## ` section verbatim, append your new section at the end, then WRITE the whole concatenated text**
-— writing only the new section alone will be BLOCKED for dropping the old ones. Nothing reusable → skip; never invent filler.
+WRITE a `## {ISO-date} — {change-name}: {lesson}` section to `memory/analyst/{change-name}.md` — **one
+file per change**, so parallel changes on separate branches never touch the same path (no shared-file
+merge conflicts). Distinct from the CPP baton above (scoped to THIS change's `openspec/changes/` folder);
+`memory/analyst/` accumulates ACROSS changes and you read every file in it at the top of every run.
+**Append-only within this file** — if `memory/analyst/{change-name}.md` already exists (a prior round of
+THIS change wrote to it), READ it first, keep every existing `## ` section verbatim, append your new
+section, then WRITE the whole concatenated text back (the write-path hook blocks a write that drops a
+section). Nothing reusable → skip; never invent filler.
 **Gate flag (enforced):** before you return, set `_state.json.memory_writeback.analyst` to `"appended"`
 (you added a section) or `"nothing-reusable"` (clean change). cpp-guard BLOCKS the SPEC LOCK gate until
 this is set — it turns a silent skip into a deliberate decision, because a one-shot agent gets no second
