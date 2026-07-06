@@ -217,8 +217,13 @@ def normalize_path(path: str) -> str:
     if path.startswith(cwd + "/"):
         return path[len(cwd) + 1 :]
 
+    # Order matters: the loop returns on the FIRST marker that matches, so a marker that can be a
+    # nested SUBSTRING of another (openspec/changes/**/specs/**) must come before the more generic
+    # one, or a git-worktree path (cwd-strip above doesn't apply — the worktree lives at a sibling
+    # dir, not under cwd) gets truncated at the inner "specs/" and never reaches "openspec/",
+    # dropping the openspec/** prefix an OpenSpec write needs to match its allow-list.
     markers = [
-        "specs/", "openspec/",
+        "openspec/", "specs/",
         ".kiro/memory/", ".kiro/openspec/", ".kiro/context/", ".kiro/context-map.json",
         ".claude/memory/", ".claude/context/",
         "memory/", "context/", "docs/",
@@ -626,6 +631,21 @@ def _self_test():
         fails += not ok
         total += 1
         sys.stdout.write(f"  [{'PASS' if ok else 'FAIL'}] mem-guard {label:18} lost={got}\n")
+
+    # --- normalize_path: git-worktree path (sibling dir, cwd-strip doesn't apply) must fall back to
+    #     the "openspec/" marker, not the nested "specs/" one, or an openspec/**/specs/** write gets
+    #     truncated to specs/** and wrongly denied (real incident: analyst blocked writing spec.md
+    #     from inside a worktree at a sibling path). ---
+    npz = [
+        ("/tmp/some-other-worktree/openspec/changes/x/specs/foo/spec.md", "openspec/changes/x/specs/foo/spec.md"),
+        ("/tmp/some-other-worktree/openspec/specs/foo/spec.md",           "openspec/specs/foo/spec.md"),
+    ]
+    for raw, expect in npz:
+        got = normalize_path(raw)
+        ok = got == expect
+        fails += not ok
+        total += 1
+        sys.stdout.write(f"  [{'PASS' if ok else 'FAIL'}] normalize_path worktree :: {raw} -> {got}\n")
 
     # --- per-project code/test roots (sdlc.config.json `paths`) merged into the developer/qa fence ---
     global _CONFIG_OVERRIDE
