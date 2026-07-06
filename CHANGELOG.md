@@ -65,6 +65,19 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   prompts/skill instructions and `cpp-guard`'s cross-spec existence check. Existing shared files in a
   deployed project are migrated automatically (split by `## ` section into the new per-change files;
   the original is kept as `<file>.pre-migration-backup`).
+- **Legacy shared memory/cross-spec paths are now hard-blocked**, not just migrated. A role running
+  under a stale cached agent definition (agent defs only reload at session start — a session opened
+  before an upgrade keeps using the old prompt for its whole lifetime) could otherwise keep
+  recreating `memory/<role>.md` / `openspec/_cross-spec-context.md` indefinitely, silently
+  reintroducing the shared-file merge-conflict hazard the per-change split was meant to remove.
+  `check-write-path.py` now denies a write to those five exact legacy paths outright with a message
+  pointing at the new per-change path and naming the stale-session cause, instead of allowing it
+  through `memory/**`.
+- **The per-change-file migration in `init.mjs` no longer clobbers its own backup.** A second
+  migration pass (e.g. triggered by a stale session recreating the legacy file after the first
+  upgrade) used to `rename()` straight onto `<file>.pre-migration-backup`, silently overwriting the
+  first pass's backup — the actual mechanism behind a real data-loss incident. Backups are now
+  numbered (`.pre-migration-backup`, `.pre-migration-backup.2`, …) and never overwritten.
 
 ### Fixed
 

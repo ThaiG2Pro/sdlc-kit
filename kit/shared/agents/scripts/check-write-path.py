@@ -375,6 +375,34 @@ def code_write_denied(actor, norm, claude_host):
             f"  (skills/qa-test-design/gen_testcases_xlsx.py) — do NOT author a one-off script.\n")
 
 
+# --- Legacy shared-file guard: memory/<role>.md and openspec/_cross-spec-context.md were the
+#     PRE one-file-per-change paths — every SDLC change appended to the SAME file, which is a
+#     guaranteed merge conflict the moment two changes are in flight on separate isolated branches.
+#     init.mjs migrates any existing one on upgrade, but a role running under a STALE cached prompt
+#     (agent defs only reload at session start — see CLAUDE.md) can still target the old exact path.
+#     `memory/**` would otherwise ALLOW it, so hard-block these specific paths and fail LOUDLY
+#     instead of silently recreating the shared-file hazard the redesign eliminated. ---
+_LEGACY_SHARED_MEMORY_PATHS = frozenset({
+    "memory/analyst.md", "memory/architect.md", "memory/developer.md", "memory/qa.md",
+    "openspec/_cross-spec-context.md",
+})
+
+
+def legacy_shared_memory_denied(norm):
+    """Return a deny message if `norm` is a legacy shared memory/cross-spec path, else None."""
+    crel = canonical_rel(norm)
+    if crel not in _LEGACY_SHARED_MEMORY_PATHS:
+        return None
+    new_path = crel.replace('.md', '/<change-name>.md', 1) if crel.startswith('memory/') \
+        else 'openspec/_cross-spec-context/<change-name>.md'
+    return (f"BLOCKED: {norm} is a legacy SHARED path — every change used to append to it, which\n"
+            f"  guarantees a merge conflict once two changes are in flight on separate branches.\n"
+            f"  Write to {new_path} instead (one file per change). If your\n"
+            f"  agent prompt still says to write {crel} verbatim, your session is running a stale\n"
+            f"  cached agent definition — end this session and start a new one so it reloads the\n"
+            f"  current kit-shipped prompt (agent defs only reload at session start).\n")
+
+
 def decide(actor, raw_path, claude_host=None):
     """Return (allowed: bool, allowed_list, normalized_path). Shared by main() and the self-test.
     Policy SOURCE is host-based: Claude host → the built-in role policy (it knows `.claude/…`
@@ -402,8 +430,11 @@ def decide(actor, raw_path, claude_host=None):
     norm = normalize_path(raw_path)
     if not path_allowed(norm, allowed):
         return (False, allowed, norm)
-    # Path is allowed — now the CONTENT-aware gate: a non-developer may not drop an executable
+    # Path is allowed by the glob — but a legacy shared memory/cross-spec path is hard-blocked
+    # regardless (see legacy_shared_memory_denied), and a non-developer may not drop an executable
     # script into its (path-allowed) fence. Returns deny on a code file outside a real test dir.
+    if legacy_shared_memory_denied(norm):
+        return (False, allowed, norm)
     if code_write_denied(actor, norm, claude_host):
         return (False, allowed, norm)
     return (True, allowed, norm)
@@ -436,12 +467,18 @@ def main():
             sys.exit(2)
         sys.exit(0)
 
-    # Distinguish a CODE-file rejection (path was fine, content isn't) from a path rejection,
-    # so the agent gets the actionable message instead of a misleading "path not allowed".
-    code_deny = code_write_denied(actor, norm, IS_CLAUDE_HOST) if path_allowed(norm, allowed) else None
-    if code_deny:
-        sys.stderr.write(code_deny)
-        sys.exit(2)
+    # Distinguish a LEGACY-SHARED-PATH or CODE-file rejection (path was fine, content/target isn't)
+    # from a plain path rejection, so the agent gets the actionable message instead of a misleading
+    # "path not allowed".
+    if path_allowed(norm, allowed):
+        legacy_deny = legacy_shared_memory_denied(norm)
+        if legacy_deny:
+            sys.stderr.write(legacy_deny)
+            sys.exit(2)
+        code_deny = code_write_denied(actor, norm, IS_CLAUDE_HOST)
+        if code_deny:
+            sys.stderr.write(code_deny)
+            sys.exit(2)
 
     who = actor or "the main session (orchestrator)"
     sys.stderr.write(
@@ -460,7 +497,7 @@ def _self_test():
         ("developer", None, "src/app.ts",                       ALLOW),
         ("developer", None, "tests/app.spec.ts",                ALLOW),
         ("developer", None, "random/elsewhere.txt",             BLOCK),
-        ("developer", None, "memory/developer.md",              ALLOW),  # role-memory write-back
+        ("developer", None, "memory/developer.md",              BLOCK),  # legacy shared path — hard-blocked
         ("developer", None, "memory/developer/fix-login-401.md", ALLOW),  # per-change memory fragment
         ("developer", None, "pkg/service.go",                   ALLOW),  # Go layout
         ("developer", None, "internal/util.go",                ALLOW),
@@ -470,19 +507,19 @@ def _self_test():
         ("analyst",   None, "openspec/changes/x/proposal.md",   ALLOW),
         ("analyst",   None, "src/app.ts",                       BLOCK),  # analyst-openspec-only
         ("analyst",   None, "docs/knowledge/x.md",              BLOCK),  # least-privilege: no docs/ write
-        ("analyst",   None, "memory/analyst.md",                ALLOW),  # role-memory write-back (gated by cpp-guard)
+        ("analyst",   None, "memory/analyst.md",                BLOCK),  # legacy shared path — hard-blocked
         ("analyst",   None, "memory/analyst/user-profile.md",   ALLOW),  # per-change memory fragment
         ("architect", None, "openspec/changes/x/design.md",     ALLOW),  # architect writes design via openspec
         ("architect", None, "docs/design.md",                   BLOCK),  # least-privilege: openspec-only now
         ("architect", None, "src/app.ts",                       BLOCK),
-        ("architect", None, "memory/architect.md",              ALLOW),  # role-memory write-back (gated by cpp-guard)
+        ("architect", None, "memory/architect.md",              BLOCK),  # legacy shared path — hard-blocked
         ("architect", None, "memory/architect/user-profile.md", ALLOW),  # per-change memory fragment
         ("qa",        None, "tests/e2e.spec.ts",                ALLOW),
         ("qa",        None, "src/app.ts",                       BLOCK),
-        ("qa",        None, "memory/qa.md",                     ALLOW),  # role-memory write-back (gated by cpp-guard)
+        ("qa",        None, "memory/qa.md",                     BLOCK),  # legacy shared path — hard-blocked
         ("qa",        None, "memory/qa/user-profile.md",        ALLOW),  # per-change memory fragment
         ("sdlc-full", None, "openspec/changes/x/_state.json",   ALLOW),  # baton (underscore-prefixed)
-        ("sdlc-full", None, "openspec/_cross-spec-context.md",  ALLOW),  # cross-spec bridge (legacy shared path)
+        ("sdlc-full", None, "openspec/_cross-spec-context.md",  BLOCK),  # legacy shared path — hard-blocked
         ("sdlc-full", None, "openspec/_cross-spec-context/user-profile.md", ALLOW),  # per-change cross-spec fragment
         ("sdlc-full", None, "openspec/changes/x/design.md",     BLOCK),  # DELIVERABLE → must delegate to architect
         ("sdlc-full", None, "openspec/changes/x/proposal.md",   BLOCK),  # DELIVERABLE → must delegate to analyst
@@ -502,7 +539,7 @@ def _self_test():
         (None, "developer", "src/app.ts",                       ALLOW),  # developer-allowed
         (None, "developer", "/abs/proj/src/models.py",          ALLOW),  # absolute, normalized
         (None, "developer", "secrets.txt",                      BLOCK),
-        (None, "developer", "memory/developer.md",              ALLOW),  # root memory (no symlink)
+        (None, "developer", "memory/developer.md",              BLOCK),  # legacy shared path — hard-blocked
         (None, "developer", "memory/developer/fix-login-401.md", ALLOW),  # per-change memory fragment
         (None, "developer", ".claude/memory/developer.md",      BLOCK),  # platform dir is NOT a write target
         (None, "developer", ".kiro/memory/developer.md",        BLOCK),  # foreign platform dir — also not a target
@@ -515,15 +552,15 @@ def _self_test():
         (None, "analyst",   "openspec/specs/auth/spec.md",      ALLOW),  # analyst-openspec-only
         (None, "analyst",   "docs/knowledge/x.md",              BLOCK),  # least-privilege: no docs/ write
         (None, "analyst",   "src/app.ts",                       BLOCK),
-        (None, "analyst",   "memory/analyst.md",                ALLOW),  # role-memory write-back
+        (None, "analyst",   "memory/analyst.md",                BLOCK),  # legacy shared path — hard-blocked
         (None, "analyst",   "memory/analyst/user-profile.md",   ALLOW),  # per-change memory fragment
         (None, "architect", "openspec/changes/x/design.md",     ALLOW),  # architect-openspec-only
         (None, "architect", "docs/design.md",                   BLOCK),  # least-privilege: openspec-only now
-        (None, "architect", "memory/architect.md",              ALLOW),  # role-memory write-back
+        (None, "architect", "memory/architect.md",              BLOCK),  # legacy shared path — hard-blocked
         (None, "architect", "memory/architect/user-profile.md", ALLOW),  # per-change memory fragment
         (None, "qa",        "tests/unit.spec.ts",               ALLOW),
         (None, "qa",        "src/app.ts",                       BLOCK),
-        (None, "qa",        "memory/qa.md",                     ALLOW),  # role-memory write-back
+        (None, "qa",        "memory/qa.md",                     BLOCK),  # legacy shared path — hard-blocked
         (None, "qa",        "memory/qa/user-profile.md",        ALLOW),  # per-change memory fragment
         (None, "developer", "pkg/service.go",                   ALLOW),  # Go layout
         (None, "developer", "internal/util.go",                ALLOW),

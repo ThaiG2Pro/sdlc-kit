@@ -372,8 +372,13 @@ function splitSharedFileIntoPerChange(srcPath, destDir, headerRe) {
     const finalBody = existsSync(destPath) ? readFileSync(destPath, 'utf8').replace(/\n+$/, '') + '\n' + body : body;
     writeFileSync(destPath, finalBody);
   }
-  renameSync(srcPath, srcPath + '.pre-migration-backup');
-  log(`  ✓ migrated ${relative(TARGET, srcPath)} → ${byChange.size} per-change file(s) under ${relative(TARGET, destDir)}/ (original kept as .pre-migration-backup)`);
+  // Never clobber a PRIOR backup — a stale session that keeps recreating the legacy flat file (its
+  // agent defs only reload at session start, so it can keep writing the old path for a long time
+  // after an upgrade) must not cause a second migration pass to overwrite the first backup's content.
+  let backupPath = srcPath + '.pre-migration-backup';
+  for (let n = 2; existsSync(backupPath); n++) backupPath = `${srcPath}.pre-migration-backup.${n}`;
+  renameSync(srcPath, backupPath);
+  log(`  ✓ migrated ${relative(TARGET, srcPath)} → ${byChange.size} per-change file(s) under ${relative(TARGET, destDir)}/ (original kept as ${relative(TARGET, backupPath)})`);
 }
 
 // One-time upgrade path: pre-per-change-fragment installs kept ONE shared memory/<role>.md and ONE
