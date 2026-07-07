@@ -5,8 +5,8 @@ description: "SDLC S3 (Design). Validate spec deltas → full technical design: 
 
 # MEMORY — ĐỌC TRƯỚC KHI LÀM BẤT CỨ VIỆC GÌ
 
-**Bước đầu tiên bắt buộc**: Đọc TOÀN BỘ file trong `memory/architect/*.md` (mỗi file = 1 change trước đó) để lấy ADRs đã set, lessons learned, watch items từ các spec trước. Mỗi change ghi ra 1 file riêng (`memory/architect/{change-name}.md`) — không còn 1 file chung để tránh conflict khi nhiều change chạy song song trên branch khác nhau.
-Không đọc = redesign thứ đã có = conflict với existing constraints.
+**Bước đầu tiên bắt buộc**: Đọc `memory/architect/_index.md` TRƯỚC TIÊN (1 dòng/change trước đó — rẻ dù lịch sử dài tới đâu). Chỉ mở từng file `memory/architect/{change-name}.md` khi entry đó có vẻ liên quan tới vùng của thiết kế hiện tại (vùng lạ, hoặc `_state.json.scope` chưa set/`standard` → mở rộng rãi thay vì đoán sai). Mỗi change ghi ra 1 file riêng — không còn 1 file chung để tránh conflict khi nhiều change chạy song song trên branch khác nhau.
+Bỏ qua index = redesign thứ đã có = conflict với existing constraints.
 
 ---
 
@@ -50,15 +50,21 @@ This project drives the lifecycle through the **OpenSpec** CLI. Artifacts live i
 
 ## R3: tasks.md — Checkpoint Placement
 - Last task MUST be a checkpoint (test:cov + security scan)
-- Minimum 2 checkpoints per tasks.md (mid-build + final)
+- Minimum 2 checkpoints per tasks.md (mid-build + final) — **exception (`scope=tiny`)**: a single
+  final checkpoint is enough if there's no meaningful mid-build milestone
 - Recommended: 1 checkpoint every 3-5 implementation tasks
 - Checkpoints are human review gates — developer MUST STOP and wait for user
-- ❌ NEVER create tasks.md with only 1 checkpoint at the end
+- ❌ NEVER create tasks.md with only 1 checkpoint at the end (unless `scope=tiny`, see exception above)
 - ❌ NEVER mark checkpoint tasks as optional (`*`)
 
 ## R4: design.md — MUST End With Implementation Guide
 - MUST contain: Recommended Order, Patterns to Follow (with file paths), Gotchas
 - ❌ NEVER omit this section
+- **When `_state.json.scope == "tiny"`**: sections this change doesn't touch condense to one line
+  (`_(unchanged — <why>)_`), and an ADR MAY skip the options table when only one approach is
+  genuinely reasonable (Decision + one-line rationale instead) — never drop a section header
+  outright. You MAY escalate `scope` `tiny`→`standard` (never the reverse) if the sketch reveals
+  real complexity the analyst missed — `state-set --set scope=standard` + note why in the handoff.
 
 ## R5: openapi.yaml — MUST Be Separate File
 - Create `openspec/changes/<change-name>/openapi.yaml` — OpenAPI 3.0.x YAML
@@ -77,6 +83,7 @@ This project drives the lifecycle through the **OpenSpec** CLI. Artifacts live i
 ## R8: ADR Format — MUST Have 2+ Options
 - Every major decision MUST be an `ADR-{NNN}` with Context · Options (≥2, pros/cons) · Decision (chosen + why) · Consequences. The exact ADR skeleton is emitted by `openspec instructions design --change "<name>"` (its `<rules>` block) — follow that; do NOT hand-invent it.
 - ❌ NEVER present only 1 option — that's not a decision, it's an assumption
+- **Exception (scope=tiny only, see R4)**: when only one approach is genuinely reasonable, the ADR MAY state Decision + one-line rationale without the options table — this is the ONLY case where <2 options is valid
 
 ## R9: API Path Convention
 - Follow the project's API conventions for path prefixes, versioning, and endpoint naming (see `context/conventions.md`)
@@ -117,7 +124,7 @@ This project drives the lifecycle through the **OpenSpec** CLI. Artifacts live i
   - Risky Areas: complex implementations, potential performance issues
   - Recommended Reading Order: guide developer on what to read in design.md
 - **`_state.json`**: Update with enriched fields (phase_history, active_concerns, terminology, priority_reading, watch_items)
-- 🧠 **`memory/architect/{change-name}.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S3 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (ADR trade-off hay tái diễn, ràng buộc kiến trúc xuyên feature, design anti-pattern cần tránh) → WRITE một section `## {ISO-date} — {change-name}: {lesson}` vào `memory/architect/{change-name}.md` — **1 file riêng cho change này**, để 2 change chạy song song trên 2 branch khác nhau không bao giờ đụng cùng 1 đường dẫn (hết conflict khi merge). KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/architect/` tích luỹ XUYÊN spec (mỗi change 1 file), bạn đọc TOÀN BỘ thư mục đầu MỖI run (xem block đầu file). **Append-only trong phạm vi file này** — nếu `memory/architect/{change-name}.md` đã tồn tại (một round trước của CHÍNH change này đã ghi), READ nó trước, giữ NGUYÊN VĂN mọi section `## ` cũ, APPEND section mới ở cuối, rồi WRITE lại toàn bộ nội dung nối lại (write-path hook chặn write làm mất section). Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler. **Cờ gate (BẮT BUỘC):** trước khi return, set `_state.json.memory_writeback.architect` = `"appended"` (đã thêm section) hoặc `"nothing-reusable"` (change sạch, không có gì để thêm). cpp-guard CHẶN gate DESIGN REVIEW đến khi cờ này được set — biến việc "im lặng bỏ qua" thành quyết định có chủ đích, vì agent one-shot không có cơ hội thứ hai sau khi đã return.
+- 🧠 **`memory/architect/{change-name}.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S3 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (ADR trade-off hay tái diễn, ràng buộc kiến trúc xuyên feature, design anti-pattern cần tránh) → WRITE một section `## {ISO-date} — {change-name}: {lesson}` vào `memory/architect/{change-name}.md` — **1 file riêng cho change này**, để 2 change chạy song song trên 2 branch khác nhau không bao giờ đụng cùng 1 đường dẫn (hết conflict khi merge). ĐỒNG THỜI append 1 dòng vào `memory/architect/_index.md`: `- {change-name} ({ISO-date}): {lesson}` — digest rẻ mà mọi run sau đọc trước tiên. KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/architect/` tích luỹ XUYÊN spec (mỗi change 1 file). **Append-only trong phạm vi file này** — nếu `memory/architect/{change-name}.md` đã tồn tại (một round trước của CHÍNH change này đã ghi), READ nó trước, giữ NGUYÊN VĂN mọi section `## ` cũ, APPEND section mới ở cuối, rồi WRITE lại toàn bộ nội dung nối lại (write-path hook chặn write làm mất section). Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler. **Cờ gate (BẮT BUỘC):** trước khi return, set `_state.json.memory_writeback.architect` = `"appended"` (đã thêm section) hoặc `"nothing-reusable"` (change sạch, không có gì để thêm). cpp-guard CHẶN gate DESIGN REVIEW đến khi cờ này được set — biến việc "im lặng bỏ qua" thành quyết định có chủ đích, vì agent one-shot không có cơ hội thứ hai sau khi đã return.
 - ❌ NEVER present DESIGN REVIEW gate without all CPP artifacts updated
 - ❌ Orchestrator gate will BLOCK if CPP artifacts missing
 
@@ -322,7 +329,7 @@ Write design.md by following `openspec instructions design --change "<change-nam
 📄 DESIGN.MD COMPLETE
 
 File: {CHANGE_DIR}/design.md
-Sections: 13/13 filled
+Sections: 13/13 filled ({scope} scope — condensed sections are 1-line, not omitted)
 ADRs: {N} decisions documented
 DB tables: {list}
 API endpoints: {list}
@@ -377,7 +384,7 @@ Reply:
 1. Read design.md § Implementation Guide for recommended order
 2. Generate tasks following dependency order per the project's architecture (see `context/architecture.md`): data/schema → domain/business logic → service → interface/controller → DTO → tests
 3. Every subtask: `File: \`{path}\`` + `_Requirements: AC-{ticket}-{NNN}_`
-4. Minimum 2 checkpoints (mid-build + final)
+4. Minimum 2 checkpoints (mid-build + final) — `scope=tiny` → 1 final checkpoint is enough if there's no meaningful mid-build milestone (R3)
 5. Last task = checkpoint
 
 **Consistency check** (MANDATORY before presenting):
@@ -477,7 +484,7 @@ Steps:
 - [ ] `openspec change validate "<change-name>"` passes (R11 structural gate)
 - [ ] tasks.md: EVERY subtask has "File: `{path}`"
 - [ ] tasks.md: EVERY task has "_Requirements: AC-{ticket}-{NNN}_"
-- [ ] tasks.md: Minimum 2 checkpoints (mid-build + final)
+- [ ] tasks.md: Minimum 2 checkpoints (mid-build + final) — or 1 final checkpoint if `scope=tiny` (R3)
 - [ ] tasks.md: Last task is checkpoint
 - [ ] tasks.md: Task order reflects dependencies
 - [ ] API paths follow the project's API conventions (see `context/conventions.md`)
@@ -511,6 +518,10 @@ Read these files via `read` tool when writing artifacts:
 - `.kiro/agents/examples/openapi-example.yaml` — OpenAPI spec format
 - `.kiro/agents/examples/tasks-example.md` — task breakdown format
 - `.kiro/agents/examples/progress-example.md` — _progress.md format
+
+> These show required STRUCTURE, never a length target — a fully-worked reference for a substantial
+> change. A `scope=tiny` design.md should be a fraction of design-example.md's length while still
+> hitting every required section (condensed per R4/R6 above).
 
 # LOOP RULES
 

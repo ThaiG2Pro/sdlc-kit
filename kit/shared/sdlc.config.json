@@ -18,6 +18,10 @@
     "branches_threshold": 80
   },
 
+  "tests": {
+    "final_scope": "auto"
+  },
+
   "security": {
     "stride_analysis": "auto"
   },
@@ -49,6 +53,7 @@
     "qa.testcase_export": "DEFAULT SEED for the per-pipeline test-case artifact choice (not the final word). At kickoff the orchestrator resolves PER CHANGE: runtime flag (--xlsx/--md/--no-xlsx) → this config seed → ASK one question, then persists the answer to _state.json.testcase_export — which is what the qa agent reads at S5. Values: auto = derive default by rigor (full→xlsx, lite→md, hotfix→none) then ask; xlsx/md/none = that value is the offered default. When the resolved value is xlsx/md, the file qa/testcases.{xlsx|md|csv} is a HARD prerequisite of the S5 gate. Important projects: set xlsx.",
     "coverage.diff_threshold": "% of CHANGED lines that must be covered (developer S4 gate).",
     "coverage.lines_threshold / branches_threshold": "Overall coverage floor (developer S4 gate).",
+    "tests.final_scope": "How wide the DEVELOPER S4 FINAL checkpoint and the QA S5 independent re-run reach — both use the SAME scope, resolved once and persisted to _state.json.test_scope. auto (default) = derive by rigor: full→full (whole-app suite); lite→module (test + lint/static-analysis commands restricted to the module/directory containing every file the change touched, siblings included — still catches regressions next to the edit, just not across the whole app). module/full = pin that value regardless of rigor. A runtime flag --test-scope=module|full overrides. QA must never unilaterally run wider than this — a wider run is an orchestrator escalation (state-set test_scope=full), not a QA-side decision.",
     "security.stride_analysis": "auto = run STRIDE threat-model only when the feature touches auth/payment/PII; always = every feature; never = skip. Honored by analyst (early risk) + qa.",
     "test_framework": "auto = use the framework in context/stack.md; or pin one (e.g. vitest, jest, playwright, pytest, phpunit).",
     "sonar_scan": "true = run a SonarQube quality gate in S4 if configured; false = skip.",

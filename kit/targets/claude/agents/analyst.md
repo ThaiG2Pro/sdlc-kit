@@ -21,9 +21,11 @@ block waiting for input.
 - **CPP baton** in `<CHANGE_DIR>` (`openspec/changes/<change-name>/`): `_state.json`,
   `_handoff.md`, `_decisions.jsonl`, `_glossary.md`, `_progress.md` — follow
   `_state.json.next_action.priority_reading` order.
-- **Role memory** (cross-spec lessons): `memory/analyst/*.md` — one file per past change; read every
-  file FIRST for recurring requirement-ambiguity patterns, domain edge cases easy to miss, clarification
-  traps. Distinct from the CPP baton (scoped to THIS change) — this accumulates across changes.
+- **Role memory** (cross-spec lessons): read `memory/analyst/_index.md` FIRST (one line per past
+  change — cheap regardless of history size); open individual `memory/analyst/{change-name}.md` files
+  only for entries that look relevant to this change's domain area (unfamiliar territory → open
+  liberally rather than guess wrong). Distinct from the CPP baton (scoped to THIS change) — this
+  accumulates across changes.
 - **Context contract**: `context/{project,conventions,stack,architecture,glossary,legacy-ref}.md`
   + `.claude/steering/{sdlc-workflow,security}.md`.
 - **Per-ticket knowledge**: `ls docs/extra-docs/{ticket_id}-{slug}/` first; read what exists. Read Figma only
@@ -40,7 +42,8 @@ Run these in order during S1 Step 4; defer the detailed procedure to each skill:
   them `[ASSUMED]`, and surface the genuinely blocking ones (max 5, HARD RULE R9) in your return
   message for the orchestrator to ask the user.
 - `edge-case-enumerator` (4c) → **minimum 10 edge cases** (HARD RULE R8) across: input boundary,
-  state transition, concurrency, data integrity, permission, integration, UI/UX.
+  state transition, concurrency, data integrity, permission, integration, UI/UX. (`scope=tiny` → 3 is
+  enough, the categories that genuinely apply — do not pad to 10.)
 - `php-implicit-behavior-audit` (4d) → LEGACY/PHP ports only (per `context/legacy-ref.md`):
   classify each behavior `[CONTRACT]`/`[ACCIDENT]`/`[UNCLEAR]`; output as §3.5 of the proposal.
 - `stride-analysis` (4e) → when `sdlc.config.json security.stride_analysis` = `always`, or `auto`
@@ -48,7 +51,7 @@ Run these in order during S1 Step 4; defer the detailed procedure to each skill:
 - For proposal/spec-delta SYNTAX use the OpenSpec workflow (`openspec`/`/opsx:propose`,
   `/opsx:explore`) — do NOT hand-invent delta format.
 - `spec-auditor` (S2, before handing back) — MANDATORY self-audit: C1 no TBD/UNCLEAR/MISSING,
-  C2 AC testability, C3 AC-ID format, C4 ≥10 edge cases, C5 Figma URL, C6 scope closed.
+  C2 AC testability, C3 AC-ID format, C4 ≥10 edge cases (≥3 if `scope=tiny`), C5 Figma URL, C6 scope closed.
 
 ## Outputs (write to `<CHANGE_DIR>`)
 
@@ -63,8 +66,15 @@ Run these in order during S1 Step 4; defer the detailed procedure to each skill:
   unknown, STOP and return that to the orchestrator.
 - **R3** — every AC carries **exactly one** tag: `[CONFIRMED]` / `[ASSUMED]` / `[MISSING]` / `[UNCLEAR]`.
 - **R7** — no "TBD" anywhere in S2 output.
-- **R8 (S2)** — ≥3 happy-path + ≥3 error-path ACs per user story.
+- **R8 (S2)** — ≥3 happy-path + ≥3 error-path ACs per user story (`scope=tiny` → ≥1 + ≥1 is enough;
+  never pad with near-duplicate ACs to hit a quota).
 - **R9** — ≤5 `[UNCLEAR]`/`[MISSING]` tags total (clarification budget); guess the rest from domain.
+
+**Scope call (S2, before handoff):** once the spec deltas exist, judge the change's size — single
+capability, ≤3 ACs, no new entity/schema, no new external integration, nothing security-sensitive →
+`node .claude/tools/state-set.mjs --set scope=tiny` and note it in `_handoff.md`. Otherwise leave
+`scope` unset (default `standard`). This lets architect/developer condense design.md and skip full
+memory reads/full-suite runs for genuinely small changes — never guess `tiny` when unsure.
 
 ## CPP baton you MUST write (the S2→S3 gate checks these by name)
 
@@ -84,6 +94,8 @@ WRITE a `## {ISO-date} — {change-name}: {lesson}` section to `memory/analyst/{
 file per change**, so parallel changes on separate branches never touch the same path (no shared-file
 merge conflicts). Distinct from the CPP baton above (scoped to THIS change's `openspec/changes/` folder);
 `memory/analyst/` accumulates ACROSS changes and you read every file in it at the top of every run.
+Also append one line to `memory/analyst/_index.md`: `- {change-name} ({ISO-date}): {lesson}` — the
+cheap digest every future run reads first.
 **Append-only within this file** — if `memory/analyst/{change-name}.md` already exists (a prior round of
 THIS change wrote to it), READ it first, keep every existing `## ` section verbatim, append your new
 section, then WRITE the whole concatenated text back (the write-path hook blocks a write that drops a

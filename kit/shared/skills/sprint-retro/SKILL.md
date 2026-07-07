@@ -164,7 +164,9 @@ role most likely to re-encounter it and **WRITE** a new section to that role's f
 | requirement-ambiguity pattern · domain edge case easy to miss · clarification trap | `memory/analyst/{change-name}.md` |
 
 Section format: `## {ISO-date} — {change-name}: {one-line lesson}` followed by 1–4 bullets (the pattern +
-how to avoid it next time). Rules:
+how to avoid it next time). Also append one line to that role's `memory/<role>/_index.md`:
+`- {change-name} ({ISO-date}): {one-line lesson}` — the cheap digest every future run reads first
+before opening individual change files. Rules:
 
 - **Append-only within the file.** If that role already wrote to `memory/<role>/{change-name}.md` earlier
   in THIS change's pipeline, READ it first — never delete or overwrite an existing `## ` section (the

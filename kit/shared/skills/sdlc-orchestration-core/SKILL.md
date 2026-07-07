@@ -40,6 +40,8 @@ phase to its role agent** and own only the gates and the baton.
 > S4→S6, `cr` may skip S3 — it **never** lets you do S4 yourself, skip the OpenSpec change, or
 > skip artifacts/QA/archive. There is **no** "just edit the code" path. If a change feels too
 > small for a change folder, it is still a `bugfix`/`cr`: route S4 to the developer agent.
+> (A DIFFERENT axis, `scope`, lets a phase that DOES run write LESS — see §Scope below. Never
+> confuse the two: `scope=tiny` shrinks a design.md, not the pipeline.)
 >
 > This is enforced deterministically: `check-shell-command.py` (preToolUse `execute_bash`) blocks
 > filesystem-mutating shell, and the `stop` hook flags any file changes outside `openspec/`.
@@ -87,6 +89,86 @@ fixes. Two outcomes: **`full`** (convergence loop on the spec/design gates + `.x
 
 Persist the result to `_state.json` as `"rigor":"full"|"lite"` so later sessions never re-ask.
 When `rigor=lite`, every gate is single-pass (legacy behavior); skip the convergence loop entirely.
+
+## Test scope (how wide the final regression run reaches)
+
+> ⚠️ **Test scope ≠ scope.** `scope=tiny` (below) shrinks intermediate writes but explicitly never
+> shrinks the final-checkpoint safety net. `test_scope` is the knob that actually controls that net's
+> width — kept separate so scope's "never shrinks" guarantee stays literally true while still letting
+> a small, low-risk change skip a whole-app test run it has no reason to touch.
+
+`_state.json.test_scope` ∈ `module` | `full` — governs BOTH the developer's S4 FINAL checkpoint and
+the QA S5 independent re-run; they MUST use the same value, or QA's "test count must match the report"
+check becomes meaningless. Resolve ONCE per change, in this order:
+
+1. **Runtime flag** — `--test-scope=module` or `--test-scope=full` on the `sdlc …` command. No question asked.
+2. **Config `tests.final_scope`** (`sdlc.config.json`): `module`/`full` → pinned. `auto` (default) →
+   derive by rigor: `full` rigor → `full` (whole-app suite); `lite` rigor → `module`.
+3. A human/orchestrator MAY override mid-pipeline for one change (e.g. a cross-module refactor at lite
+   rigor still wants a full-app run) — `state-set --set test_scope=full`, record why in `_handoff.md`.
+
+Persist the result to `_state.json.test_scope`. **`module`** means: the test command AND any
+lint/static-analysis command run restricted to the module/directory containing every file this change
+touched (siblings included — still catches a regression next to the edit, just not across the whole
+app/repo). It is a floor, not a ceiling: developer/QA MAY still narrow further per their own
+checkpoint rules (intermediate checkpoints stay affected-tests-only regardless). QA must never
+unilaterally run wider than `test_scope` says — wanting a wider net is an escalation to the
+orchestrator (`state-set test_scope=full` + a note), not a silent QA-side decision.
+
+## Scope (how much a running phase writes)
+
+> ⚠️ **Scope ≠ type/rigor.** `type` picks *which phases run* (`pipelines.json`); `rigor` picks *how
+> hard the quality gates squeeze* (convergence loop, `.xlsx` test cases). `scope` picks *how much a
+> phase that DOES run produces* — a condensed design.md, index-first memory reads, affected-tests-only
+> at intermediate checkpoints. It never skips a phase, a gate, or a mandatory artifact.
+
+`_state.json.scope` ∈ `tiny` | `standard` — default **`standard`** when unset (never assume tiny; an
+agent that finds no `scope` key proceeds at full depth). Resolved progressively, **no kickoff
+question** — whichever role first has real evidence of the change's size sets it:
+
+- **Analyst, at S2** (once the spec deltas exist): single capability, ≤3 ACs, no new entity/schema,
+  no new external integration, nothing security-sensitive → `node {{PLATFORM_DIR}}/tools/state-set.mjs
+  --set scope=tiny` and note it in `_handoff.md`. Otherwise leave it unset (`standard`).
+- **Developer, at S4 start**, for `bugfix`/`hotfix` (no S1/S2 to size it): same evidence bar — a clear
+  root cause, ~1 file / ≤30 LOC, no design change → `scope=tiny`.
+- **Architect, at S3**, MAY escalate `tiny`→`standard` (never the reverse) if the sketch reveals real
+  design complexity the analyst missed — record why in the handoff.
+- A human overrides anytime: `--scope=tiny|standard` on the `sdlc …` command, or a direct
+  `state-set --set scope=standard` mid-pipeline (e.g. after an architect escalation).
+
+`scope=tiny` changes, per role (each role's own prompt carries the exact rule):
+- **architect** — condense design.md sections the change doesn't touch to one line
+  (`_(unchanged — <why>)_`); an ADR MAY skip the options table when only one approach is genuinely
+  reasonable (Decision + one-line rationale instead) — never drop a section header outright.
+- **developer** — intermediate checkpoints run only tests affected by files touched since the last
+  checkpoint, never a broader run; the FINAL checkpoint always runs with coverage, regardless of
+  `scope` (that part of the safety net never shrinks) — its WIDTH (module vs whole-app) is a separate
+  knob, see §Test scope above, not something `scope=tiny` controls.
+- **all four roles** — role-memory reads may stop at the `_index.md` digest (§Role-memory index
+  below) instead of opening every past-change file, when nothing in it looks relevant.
+- **every artifact, every role, UNIVERSALLY** — when `scope=tiny`, every MANDATORY section/artifact
+  still gets produced (never omit a required section or file — that is `type`'s job, not `scope`'s),
+  but content is the MINIMUM that satisfies it: state the fact in 1 line/bullet, never restate context
+  already in the CPP baton, never pad a "None"/"N/A" answer into a paragraph, never elaborate beyond
+  what the next reader needs to act. This applies to `proposal.md`, `design.md`, `tasks.md`,
+  `_handoff.md`, `dev-test-report.md`, `qa-report.md` — every deliverable, not just design.md. A
+  golden example under `agents/examples/` shows the required STRUCTURE, never a length target — it is
+  a fully-worked reference for a substantial change; a `scope=tiny` change's own artifact should be a
+  fraction of the example's length while still hitting every required section. Numeric floors that
+  would otherwise force padding (edge-case counts, ACs-per-story, checkpoint counts) are relaxed at
+  `scope=tiny` in each role's Hard Rules — never relaxed at `standard` or when scope is unset.
+
+## Role-memory index (keeps read cost flat as history grows)
+
+Every write to `memory/<role>/{change-name}.md` ALSO appends one line to `memory/<role>/_index.md`:
+`- {change-name} ({ISO-date}): {one-line lesson}`. Roles read `_index.md` FIRST — one line per past
+change, cheap regardless of how many changes have shipped — and open individual
+`memory/<role>/{change-name}.md` files only for entries that look relevant to the current task's area;
+on unfamiliar territory, or any `standard`-or-larger change, open liberally rather than guess wrong.
+This is what keeps memory-read cost from growing without bound as a project accumulates hundreds of
+changes — `_index.md` is the one file every role can always afford to read in full. It is a derived
+digest (regenerable from the `{change-name}.md` files' own `## ` headers), carries no gate, and is
+NOT part of the CPP baton.
 
 ### Test-case artifact (chosen PER pipeline)
 
@@ -358,6 +440,8 @@ Any check fails → block the gate, name the agent that must complete the artifa
      rigor-eligible type with `gates.convergence=auto`, ASK the one kickoff question before writing state.
    - **Resolve `testcase_export` now** (see §Test-case artifact): runtime flag → config seed → ASK
      (unless a flag pinned it). Persist alongside `rigor`.
+   - **Resolve `test_scope` now** (see §Test scope): runtime flag → config `tests.final_scope` → derive
+     by rigor. No question asked — this one never interrupts kickoff.
 2. **Isolate the pipeline (MANDATORY when `git.isolation` ≠ `off`).** Read `git.isolation` +
    `git.default_method` + `git.branch_naming` + `git.worktree_path` + `git.protected_branches` from
    `sdlc.config.json`. Every NEW pipeline gets its own branch/worktree — NEVER code on a protected
@@ -381,7 +465,7 @@ Any check fails → block the gate, name the agent that must complete the artifa
    pipeline runs, how hard the gates run, and which branch/worktree it lives on — never re-derive these
    from conversation, read them here.
    ```json
-   {"ticket_id":"{id}","feature_slug":"{slug}","change_name":"{change-name}","type":"{type}","rigor":"{rigor}","testcase_export":"{xlsx|md|none}","phases":{phases_array},"isolation":{"method":"{branch|worktree}","branch":"{branch-name}","worktree_path":"{path|null}","base_branch":"{base}"},"current_phase":"NEW","gates":{},"convergence":{},"last_updated":"{date}","last_agent":"orchestrator","phase_history":[],"active_concerns":[],"terminology":{},"next_action":{"agent":"{first_phase_agent}","command":"{first_phase_command}","prerequisite":null,"blocker":null,"priority_reading":[],"watch_items":[]}}
+   {"ticket_id":"{id}","feature_slug":"{slug}","change_name":"{change-name}","type":"{type}","rigor":"{rigor}","testcase_export":"{xlsx|md|none}","test_scope":"{module|full}","phases":{phases_array},"isolation":{"method":"{branch|worktree}","branch":"{branch-name}","worktree_path":"{path|null}","base_branch":"{base}"},"current_phase":"NEW","gates":{},"convergence":{},"last_updated":"{date}","last_agent":"orchestrator","phase_history":[],"active_concerns":[],"terminology":{},"next_action":{"agent":"{first_phase_agent}","command":"{first_phase_command}","prerequisite":null,"blocker":null,"priority_reading":[],"watch_items":[]}}
    ```
    - `{phases_array}` = `types[<type>].phases`. `{first_phase_agent}`/`{first_phase_command}` =
      first phase via `phaseCatalog` (feature/cr/rebuild → `analyst`,`/s1 {id} {slug}`;

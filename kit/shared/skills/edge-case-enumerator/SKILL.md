@@ -45,7 +45,8 @@ For each category, generate edge cases specific to the feature:
 ```
 
 ## Rules
-- Minimum 10 edge cases total (R8 requirement)
+- Minimum 10 edge cases total (R8 requirement). Exception: `_state.json.scope == "tiny"` → 3 is
+  enough, the categories that genuinely apply to this change — never pad to 10 with filler.
 - Each edge case: description + expected behavior
 - Prioritize by likelihood × impact
 - Reference existing patterns from cross-spec reuse if available

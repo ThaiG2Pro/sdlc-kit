@@ -398,6 +398,40 @@ function migrateSharedMemoryAndCrossSpecToPerChange() {
   );
 }
 
+// Backfill memory/<role>/_index.md (the one-line-per-change digest roles read before opening any
+// full fragment file — see sdlc-orchestration-core SKILL.md §Role-memory index) from EXISTING
+// per-change fragment files, for projects upgrading from before this feature existed. Idempotent:
+// only appends digest lines not already present, so re-running --force never duplicates entries.
+// One line per `## ` section found (one per write-back round) — agents write new lines themselves
+// going forward; this only seeds history that predates the feature.
+function backfillMemoryIndex() {
+  const headerRe = /^##\s+(\S+)\s+—\s+[^:]+:\s*(.+?)\s*$/;
+  for (const role of ['analyst', 'architect', 'developer', 'qa']) {
+    const dir = join(TARGET, 'memory', role);
+    if (!existsSync(dir) || !statSync(dir).isDirectory()) continue;
+    const indexPath = join(dir, '_index.md');
+    const existing = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';
+    const seen = new Set(existing.split('\n').map((l) => l.trim()).filter(Boolean));
+    const newLines = [];
+    for (const f of readdirSync(dir)) {
+      if (f === '_index.md' || !f.endsWith('.md')) continue;
+      const changeName = f.slice(0, -3);
+      for (const line of readFileSync(join(dir, f), 'utf8').split('\n')) {
+        const m = line.match(headerRe);
+        if (!m) continue;
+        const entry = `- ${changeName} (${m[1]}): ${m[2]}`;
+        if (!seen.has(entry)) { newLines.push(entry); seen.add(entry); }
+      }
+    }
+    if (!newLines.length) continue;
+    const finalText = existing.trim()
+      ? existing.replace(/\n+$/, '') + '\n' + newLines.join('\n') + '\n'
+      : newLines.join('\n') + '\n';
+    writeFileSync(indexPath, finalText);
+    log(`  ✓ backfilled ${relative(TARGET, indexPath)} · ${newLines.length} entr${newLines.length === 1 ? 'y' : 'ies'}`);
+  }
+}
+
 // Establish the single project-root ./context/ workspace (canonical, root-only — both platforms read
 // it root-relative, no symlink). Migrates a prior install's filled per-platform context into root
 // first, then scaffolds templates (preserving any already-filled file). Runs once for all targets.
@@ -611,6 +645,9 @@ async function main() {
   // file every change appended to — a merge-conflict magnet across isolated change branches) into
   // one file per change. No-op once already migrated or on a fresh install.
   migrateSharedMemoryAndCrossSpecToPerChange();
+  // Seed/refresh the per-role digest (_index.md) from whatever per-change fragments exist now —
+  // covers both the split above and fragments from a prior install that predates the digest feature.
+  backfillMemoryIndex();
 
   // Apply each target.
   for (const c of ctxs) applyTarget(c, vals);
@@ -632,16 +669,35 @@ async function main() {
     // Install the kit's per-artifact rules into openspec/config.yaml so `openspec instructions`
     // emits them in its <rules> block. The role agents carry NO inline format for
     // proposal/spec/design/tasks — the conventions live here, deterministically installed.
+    // Marker-bounded (same pattern as the kit .gitignore block) so `--force` REFRESHES the kit-owned
+    // rules whenever openspec-rules.yaml changes upstream, without clobbering any project-specific
+    // rules a user hand-added outside the markers. Previously this checked "does `rules:` exist at
+    // all" and left it untouched forever once installed — a kit-side rule fix (e.g. a new scope=tiny
+    // exception) then silently never reached an already-onboarded project even after `--force`.
     try {
       const cfgPath = join(TARGET, 'openspec', 'config.yaml');
       const rulesSrc = join(SHARED_SRC, 'ai', 'openspec-rules.yaml');
+      const RULES_START = '# --- kiro-sdlc-kit rules (managed by `init --force` — add project-specific rules OUTSIDE these markers) ---';
+      const RULES_END = '# --- end kiro-sdlc-kit rules ---';
       if (existsSync(cfgPath) && existsSync(rulesSrc)) {
         const cfg = readFileSync(cfgPath, 'utf8');
-        if (/^rules:/m.test(cfg)) {
-          log('  ✓ openspec/config.yaml already has rules: — left untouched');
+        const rulesBlock = readFileSync(rulesSrc, 'utf8').replace(/\s*$/, '');
+        const managedBlock = `${RULES_START}\n${rulesBlock}\n${RULES_END}\n`;
+        const si = cfg.indexOf(RULES_START), ei = cfg.indexOf(RULES_END);
+        if (si !== -1 && ei !== -1) {
+          writeFileSync(cfgPath, cfg.slice(0, si) + managedBlock + cfg.slice(ei + RULES_END.length).replace(/^\n/, ''));
+          log('  ✓ refreshed kit-managed rules: block in openspec/config.yaml');
+        } else if (/^rules:/m.test(cfg)) {
+          // Legacy unmarked install (pre-dates the marker fix). `rules:` was always appended LAST,
+          // so everything from that line to EOF is the kit's old block — replace it with the fresh
+          // marked one. If you had hand-customized it, check `git diff` and re-add your rules OUTSIDE
+          // the new markers.
+          const idx = cfg.search(/^rules:/m);
+          writeFileSync(cfgPath, cfg.slice(0, idx).replace(/\s*$/, '') + '\n\n' + managedBlock);
+          log('  ✓ migrated unmarked rules: block in openspec/config.yaml to the managed, refreshable form');
+          log('    (hand-customized it before? check `git diff` and re-add your rules OUTSIDE the markers)');
         } else {
-          const rulesBlock = readFileSync(rulesSrc, 'utf8');
-          writeFileSync(cfgPath, cfg.replace(/\s*$/, '') + '\n\n' + rulesBlock);
+          writeFileSync(cfgPath, cfg.replace(/\s*$/, '') + '\n\n' + managedBlock);
           log('  ✓ installed kit per-artifact rules into openspec/config.yaml');
         }
       }

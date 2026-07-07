@@ -126,6 +126,16 @@ convergence loop at `rigor=full`) are verified at the next gate. `sprint-retro` 
 safety net — it harvests any skipped inline memory write-back into `memory/<role>/<change-name>.md`
 (one file per change, so parallel branches never conflict on a shared memory file).
 
+Every write-back also appends one line to `memory/<role>/_index.md` — a per-role digest roles read
+FIRST (cheap, flat cost no matter how much history has accumulated), opening individual
+`{change-name}.md` files only for entries that look relevant. And a `scope` axis (`tiny`/`standard`,
+independent of `type`/`rigor`) scales how much a phase that DOES run produces — condensed design.md
+sections, affected-tests-only at intermediate checkpoints — never which phases/gates run. A separate
+`test_scope` axis (`module`/`full`, derived from `rigor`) bounds how WIDE the developer's final
+checkpoint and QA's independent re-run reach — `module` by default, restricting the test suite to the
+module/directory touched instead of the whole app. See `sdlc-orchestration-core` SKILL.md §Scope /
+§Test scope / §Role-memory index for the full resolution rules.
+
 ## How context maps to each agent (Kiro only)
 
 > Claude does not use a context map — `CLAUDE.md` `@import`s the context files directly and

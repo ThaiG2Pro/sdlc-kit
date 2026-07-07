@@ -38,9 +38,13 @@ next checkpoint, self-verify, then return (do NOT implement every task in one ru
   ACTUAL build/test/lint/coverage commands from `stack.md` (never assume them).
 - **Quality policy**: `.claude/ai/sonar-policy.md` (the AI-friendly bug/quality rules you must
   code to; `.claude/ai/sonar-rules.md` is the fuller reference). Read before R3/R4 self-review.
-- **Role memory** (cross-spec lessons): `memory/developer/*.md` — one file per past change; read every
-  file FIRST for recurring bug patterns, validation/sync traps, framework gotchas. Distinct from the CPP
-  baton (scoped to THIS change) — this accumulates across changes. Skipping it = repeating known bugs.
+- **Role memory** (cross-spec lessons): read `memory/developer/_index.md` FIRST (one line per past
+  change — cheap regardless of history size); open individual `memory/developer/{change-name}.md`
+  files only for entries that look relevant to this build's area (unfamiliar territory, or
+  `_state.json.scope` unset/`standard` → open liberally rather than guess wrong). Distinct from the CPP
+  baton (scoped to THIS change) — this accumulates across changes. Skipping the index = repeating
+  known bugs. **`scope` unset at S4 start** (bugfix/hotfix skip S1/S2, so nobody sized it yet): a clear
+  root cause, ~1 file / ≤30 LOC, no design change → `state-set --set scope=tiny` yourself.
 
 ## Skills (`.claude/skills/`)
 
@@ -53,10 +57,18 @@ next checkpoint, self-verify, then return (do NOT implement every task in one ru
 
 1. Read next unchecked task → AC-IDs + file path. Find 1 similar existing file → follow its pattern
    (reuse > reinvent). 2. Write code (TDD for logic). 3. Mark `[x]` in tasks.md. 4. At a checkpoint
-task → **self-verify before reporting**: run type-check, lint, format-check, tests (and coverage at
-the final checkpoint) yourself, capture real output. Integration smoke checkpoints: boot the local
-stack, hit endpoints, check logs/data-store/cache round-trip, then teardown — mark `[x]` only if all
-pass.
+task → **self-verify before reporting**: run type-check, lint, format-check, and tests yourself,
+capture real output — **intermediate checkpoints**: tests scoped to files touched since the last
+checkpoint (affected-tests-only: the test framework's changed/related-file flag, or map touched paths
+to test files by naming convention), never a broader run; **final checkpoint**: run WITH coverage,
+always, regardless of `scope` (the safety net never shrinks) — its width comes from
+`_state.json.test_scope`: `module` (default at `rigor=lite`) restricts the test + lint/static-analysis
+commands to the module/directory containing every file this change touched (siblings included); `full`
+(default at `rigor=full`) runs the whole-app suite. Never widen past `test_scope` yourself — if you
+believe this change needs a wider net, say so in `_handoff.md` and let the orchestrator escalate it.
+Integration smoke checkpoints:
+boot the local stack, hit endpoints, check logs/data-store/cache round-trip, then teardown — mark `[x]`
+only if all pass.
 
 ## Hard rules (carry verbatim)
 
@@ -82,9 +94,10 @@ dev-test-report.md → complex services → tests → skip boilerplate); `_gloss
 lesson (a recurring bug pattern, a validation/sync trap, a framework gotcha future builds should avoid),
 WRITE a `## {ISO-date} — {change-name}: {lesson}` section to `memory/developer/{change-name}.md` — **one
 file per change**, so parallel changes on separate branches never touch the same path (no shared-file
-merge conflicts). This is distinct from the CPP baton above (scoped to THIS change's `openspec/changes/`
-folder); `memory/developer/` accumulates ACROSS changes and you read every file in it at the top of every
-run. **Append-only within this file** — if `memory/developer/{change-name}.md` already exists (a prior
+merge conflicts). Also append one line to `memory/developer/_index.md`:
+`- {change-name} ({ISO-date}): {lesson}` — the cheap digest every future run reads first. This is
+distinct from the CPP baton above (scoped to THIS change's `openspec/changes/` folder);
+`memory/developer/` accumulates ACROSS changes. **Append-only within this file** — if `memory/developer/{change-name}.md` already exists (a prior
 round of THIS change wrote to it), READ it first, keep every existing `## ` section verbatim, append your
 new section, then WRITE the whole concatenated text back (the write-path hook blocks a write that drops a
 section). Nothing reusable came up → skip it; never invent filler.

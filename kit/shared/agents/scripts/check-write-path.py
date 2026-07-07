@@ -296,6 +296,17 @@ def lost_sections(old, new):
     return sorted(section_headers(old) - section_headers(new))
 
 
+def index_entries(text):
+    """'- ' digest lines in a memory/<role>/_index.md file (one per past change write-back)."""
+    return set(l.rstrip() for l in (text or "").splitlines() if l.lstrip().startswith("- "))
+
+
+def lost_index_entries(old, new):
+    """Digest lines present in `old` but missing from `new` — same append-only discipline as
+    lost_sections(), but for the flat '- ' digest format (_index.md has no '## ' headers)."""
+    return sorted(index_entries(old) - index_entries(new))
+
+
 def read_text(path):
     try:
         with open(path, "r", encoding="utf-8") as fh:
@@ -331,16 +342,25 @@ def preserve(norm, tool_input):
     crel = canonical_rel(norm)
     new_content = tool_input.get("content")
     if crel.startswith("memory/") and crel.endswith(".md") and isinstance(new_content, str):
-        lost = lost_sections(read_text(norm), new_content)
-        if lost:
-            return (f"BLOCKED: write to {norm} would delete memory section(s): {', '.join(lost)}.\n"
-                    f"  memory/ is APPEND-ONLY — a full Write must re-include every existing '## '\n"
-                    f"  section. To add a lesson the right way:\n"
-                    f"    1. READ {norm} first (get its current full text),\n"
-                    f"    2. KEEP every existing '## ' section verbatim,\n"
-                    f"    3. APPEND your new '## <date> — <change>: <lesson>' section at the end,\n"
-                    f"    4. WRITE the whole concatenated content back.\n"
-                    f"  (You may edit a section's BODY in place — just never drop a '## ' header.)\n")
+        if os.path.basename(crel) == "_index.md":
+            lost = lost_index_entries(read_text(norm), new_content)
+            if lost:
+                return (f"BLOCKED: write to {norm} would delete digest entr{'y' if len(lost) == 1 else 'ies'}: "
+                        f"{', '.join(lost[:3])}{' …' if len(lost) > 3 else ''}.\n"
+                        f"  _index.md is APPEND-ONLY — a full Write must re-include every existing '- ' line.\n"
+                        f"  READ it first, keep every line, APPEND your new '- {{change}} ({{date}}): {{lesson}}'\n"
+                        f"  line, then WRITE the whole text back.\n")
+        else:
+            lost = lost_sections(read_text(norm), new_content)
+            if lost:
+                return (f"BLOCKED: write to {norm} would delete memory section(s): {', '.join(lost)}.\n"
+                        f"  memory/ is APPEND-ONLY — a full Write must re-include every existing '## '\n"
+                        f"  section. To add a lesson the right way:\n"
+                        f"    1. READ {norm} first (get its current full text),\n"
+                        f"    2. KEEP every existing '## ' section verbatim,\n"
+                        f"    3. APPEND your new '## <date> — <change>: <lesson>' section at the end,\n"
+                        f"    4. WRITE the whole concatenated content back.\n"
+                        f"  (You may edit a section's BODY in place — just never drop a '## ' header.)\n")
     snapshot_existing(norm)
     return None
 
@@ -504,6 +524,7 @@ def _self_test():
         ("developer", None, "random/elsewhere.txt",             BLOCK),
         ("developer", None, "memory/developer.md",              BLOCK),  # legacy shared path — hard-blocked
         ("developer", None, "memory/developer/fix-login-401.md", ALLOW),  # per-change memory fragment
+        ("developer", None, "memory/developer/_index.md",        ALLOW),  # role-memory digest, not legacy shared path
         ("developer", None, "pkg/service.go",                   ALLOW),  # Go layout
         ("developer", None, "internal/util.go",                ALLOW),
         ("developer", None, "cmd/app/main.go",                  ALLOW),
@@ -546,6 +567,7 @@ def _self_test():
         (None, "developer", "secrets.txt",                      BLOCK),
         (None, "developer", "memory/developer.md",              BLOCK),  # legacy shared path — hard-blocked
         (None, "developer", "memory/developer/fix-login-401.md", ALLOW),  # per-change memory fragment
+        (None, "developer", "memory/developer/_index.md",        ALLOW),  # role-memory digest, not legacy shared path
         (None, "developer", ".claude/memory/developer.md",      BLOCK),  # platform dir is NOT a write target
         (None, "developer", ".kiro/memory/developer.md",        BLOCK),  # foreign platform dir — also not a target
         (None, None,        "openspec/changes/x/proposal.md",   ALLOW),  # default session — unrestricted
@@ -631,6 +653,20 @@ def _self_test():
         fails += not ok
         total += 1
         sys.stdout.write(f"  [{'PASS' if ok else 'FAIL'}] mem-guard {label:18} lost={got}\n")
+
+    # --- preservation: _index.md digest append-only guard (flat '- ' lines, no '## ' headers) ---
+    idx_old = "- fix-login-401 (2026-07-01): session token not invalidated on logout\n- add-cart-limit (2026-07-03): qty cap off-by-one\n"
+    idx_checks = [
+        ("keep all + append", idx_old + "- new-change (2026-07-06): lesson\n", []),
+        ("wipe everything",   "",                                            ["- add-cart-limit (2026-07-03): qty cap off-by-one", "- fix-login-401 (2026-07-01): session token not invalidated on logout"]),
+        ("drop one entry",    "- fix-login-401 (2026-07-01): session token not invalidated on logout\n", ["- add-cart-limit (2026-07-03): qty cap off-by-one"]),
+    ]
+    for label, new, expect in idx_checks:
+        got = lost_index_entries(idx_old, new)
+        ok = got == expect
+        fails += not ok
+        total += 1
+        sys.stdout.write(f"  [{'PASS' if ok else 'FAIL'}] index-guard {label:18} lost={got}\n")
 
     # --- normalize_path: git-worktree path (sibling dir, cwd-strip doesn't apply) must fall back to
     #     the "openspec/" marker, not the nested "specs/" one, or an openspec/**/specs/** write gets

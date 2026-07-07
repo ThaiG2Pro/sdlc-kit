@@ -40,7 +40,8 @@ All AC-IDs must match: `AC-{ticket_id}-{NNN}` (3-digit zero-padded)
 
 ### C4: Edge cases count (WARNING)
 Count items under "Edge Cases" section
-- < 10 → WARNING (not blocker, but flag)
+- < 10 → WARNING (not blocker, but flag). Exception: `_state.json.scope == "tiny"` → the floor is 3,
+  not 10 — only warn below that.
 
 ### C5: Figma URL (WARNING)
 Check for "Figma Design" section

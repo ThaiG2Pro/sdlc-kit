@@ -108,6 +108,20 @@ export function validateState(state) {
     }
   }
 
+  // scope: "tiny" | "standard" — OPTIONAL, independent of type/rigor. Shrinks how much a phase WRITES
+  // (condensed design.md, index-first memory reads, affected-tests-only at intermediate checkpoints),
+  // never which phases/gates run. Default is "standard" when unset — absence is legal, never inferred as tiny.
+  if (state.scope != null && state.scope !== 'tiny' && state.scope !== 'standard') {
+    problems.push(`\`scope\` must be "tiny" or "standard" (got ${JSON.stringify(state.scope)})`);
+  }
+
+  // test_scope: "module" | "full" — OPTIONAL. Controls how wide the developer S4 FINAL checkpoint
+  // and the QA S5 independent re-run reach (both must match). Default resolves from rigor when unset
+  // (full rigor → full, lite rigor → module) — absence is legal, never inferred as either value.
+  if (state.test_scope != null && state.test_scope !== 'module' && state.test_scope !== 'full') {
+    problems.push(`\`test_scope\` must be "module" or "full" (got ${JSON.stringify(state.test_scope)})`);
+  }
+
   // light type checks on core scalar fields (only when present)
   for (const f of ['type', 'current_phase', 'change_name']) {
     if (state[f] != null && typeof state[f] !== 'string') problems.push(`\`${f}\` must be a string`);

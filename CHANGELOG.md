@@ -40,6 +40,42 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 - **Preservation net in the write hook.** Snapshots `context/**`/`memory/**` to `.snapshots/` (last 5)
   before any overwrite, and append-guards `memory/*.md` (a write dropping a `## ` section is blocked).
 - **`ai/` reachable on Claude** — `developer`/`qa` point to `.claude/ai/sonar-policy.md` (+ `sonar-rules.md`).
+- **A `scope` axis (`tiny`/`standard`) scales HOW MUCH a phase writes, independent of `type`/`rigor`.**
+  `type` still picks which phases run and `rigor` how hard the gates squeeze; `scope=tiny` (set by
+  whichever role first has real size evidence — analyst at S2, or developer at S4 for bugfix/hotfix)
+  lets architect condense design.md sections the change doesn't touch to one line and skip an ADR's
+  options table when only one approach is genuinely reasonable, and lets developer run
+  affected-tests-only at intermediate checkpoints (the final checkpoint's depth — coverage, always —
+  never shrinks; see `test_scope` below for its width). Default `standard` when unset; architect may
+  escalate `tiny`→`standard`, never the reverse. Targets design.md ballooning to hundreds of lines and
+  full test-suite reruns for a handful of changed lines.
+- **A `test_scope` axis (`module`/`full`) controls WIDTH of the developer S4 final checkpoint AND the
+  QA S5 independent re-run — both now read the same value instead of each defaulting to "the full test
+  suite."** Resolved once at kickoff (runtime flag → `sdlc.config.json.tests.final_scope` → derive from
+  `rigor`: full→full, lite→module) and persisted to `_state.json.test_scope`; validated by
+  `state-schema.mjs`. `module` restricts the test AND lint/static-analysis commands to the
+  module/directory containing every touched file (siblings included), instead of the whole app/repo.
+  Fixes a real case: a 1-file, 25-AC Laravel change burned ~500k tokens at QA because `qa.md` said
+  "re-run the full test suite yourself" with no scope awareness — QA re-ran the entire module's test
+  suite AND a module-wide static-analysis pass on top of the developer's already-scoped final
+  checkpoint, in addition to (not instead of) the correctly-scoped feature test. Neither role
+  previously consumed `rigor` for test breadth — only for gate convergence and test-case format.
+- **`memory/<role>/_index.md` — a one-line-per-change digest.** Every role-memory write-back now also
+  appends one line to a per-role index; roles read the index FIRST (cheap, flat cost regardless of how
+  much project history has accumulated) and open individual `memory/<role>/{change-name}.md` files
+  only for entries that look relevant, instead of reading every past-change file on every run. `init`
+  backfills the index from existing fragment files on upgrade (idempotent — safe to re-run). The
+  write-fence append-guards `_index.md` the same way it already append-guards the fragment files
+  (blocks a write that drops an existing digest line).
+- **`scope=tiny` now applies to EVERY artifact, not just design.md.** Numeric floors that otherwise
+  force padding — analyst's ≥10 edge cases and ≥3 happy/error ACs per story (`edge-case-enumerator`,
+  `spec-auditor` C4, `openspec-rules.yaml`), architect's ≥2 tasks.md checkpoints — relax to ≥3, ≥1+1,
+  and 1 (final only) respectively at `scope=tiny`; unset/`standard` keeps the original floors. A new
+  universal rule in `sdlc-orchestration-core` SKILL.md states every golden example under
+  `agents/examples/` shows required STRUCTURE, never a length target, and every role prompt now says
+  so next to its own examples — a `scope=tiny` change's proposal.md/design.md/tasks.md/
+  dev-test-report.md/qa-report.md should each be a fraction of the worked example's length while still
+  hitting every required section.
 
 ### Changed
 
@@ -107,6 +143,21 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   tree, its cwd-relocation landed one directory short of the repo root, so every "Kiro host" vector
   silently fell back to the built-in policy instead of reading the real per-agent JSON; added
   `memory/<role>.md` + the missing developer-path vectors so this class of drift fails loudly.
+- **`openspec/config.yaml`'s kit-installed `rules:` block was write-once, then frozen forever.**
+  `init` checked "does `rules:` exist at all" and skipped re-installing it on every subsequent
+  `--force` — so any upgrade to `kit/shared/ai/openspec-rules.yaml` (including the `scope=tiny`
+  exceptions above) silently never reached an already-onboarded project; `openspec instructions`
+  kept emitting the stale rules text no role prompt could override. Now marker-bounded
+  (`# --- kiro-sdlc-kit rules ... ---`), like the kit's `.gitignore` block: `--force` replaces only
+  the content between the markers, so kit-side rule fixes always propagate, while anything a project
+  hand-added outside the markers survives. A one-time migration replaces an old unmarked block (it
+  was always appended last, so everything from `rules:` to EOF is the kit's own content).
+- **`normalize_path()` tried the `specs/` marker before `openspec/`** — a git-worktree write to
+  `openspec/changes/<name>/specs/<cap>/spec.md` (cwd-strip doesn't apply to a worktree, a sibling
+  dir) truncated at the inner `specs/` marker and never reached `openspec/`, dropping the prefix the
+  allow-list needs and wrongly blocking the analyst's spec-delta write. Marker order is now
+  `openspec/` before `specs/` (specific-before-general, matching every other marker pair); added
+  regression vectors for both worktree shapes.
 
 ### Tooling
 

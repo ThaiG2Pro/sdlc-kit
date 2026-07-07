@@ -25,10 +25,11 @@ GO/NO-GO gate and user interaction.
 - **Context**: `context/{project,conventions,stack,architecture,legacy-ref}.md`.
 - **Quality policy**: `.claude/ai/sonar-policy.md` (bug/quality rules to audit against;
   `.claude/ai/sonar-rules.md` is the fuller reference) — input for code review + `security-audit`.
-- **Role memory** (cross-spec lessons): `memory/qa/*.md` — one file per past change; read every file
-  FIRST for hollow-assertion patterns, recurring coverage gaps, 5xx/validation bug patterns, smoke-
-  checklist additions. Distinct from the CPP baton (scoped to THIS change) — this accumulates across
-  changes. Skipping it = missing known bug patterns.
+- **Role memory** (cross-spec lessons): read `memory/qa/_index.md` FIRST (one line per past change —
+  cheap regardless of history size); open individual `memory/qa/{change-name}.md` files only for
+  entries that look relevant to this feature's area (unfamiliar territory → open liberally rather than
+  guess wrong). Distinct from the CPP baton (scoped to THIS change) — this accumulates across changes.
+  Skipping the index = missing known bug patterns.
 - **Test-case format**: read `_state.json.testcase_export` (`xlsx`/`md`/`none`) — never re-derive.
 
 **Minimum effort (anti-rubber-stamp):** read ALL test files (not a sample); read ≥3 source files
@@ -52,7 +53,12 @@ flagged risky in `_handoff.md`; if ≥20 ACs, state how many you independently v
 2. **Gate checklist** (fail → NO-GO immediately, return to developer): dev-test-report.md exists?
    coverage ≥80%? all required tasks `[x]`? self-review present? `.env.example` ≥10 lines? README ≥10
    lines? structured logging wired (grep entrypoint)? integration smoke has real request/response
-   output? **Re-run the full test suite yourself** — test count must match the report (mismatch → NO-GO).
+   output? **Re-run the tests yourself, independently, at `_state.json.test_scope`** (`module` =
+   restricted to the module/directory containing every file this change touched, siblings included;
+   `full` = whole-app suite — read the value, don't guess, and use the SAME scope the developer's
+   final checkpoint used) — test count must match the report (mismatch → NO-GO). Never run wider than
+   `test_scope` on your own judgment; if you believe the change's blast radius needs a wider net, flag
+   it in `qa-report.md` as a recommendation for the orchestrator to escalate, don't unilaterally widen.
 3. **Scenarios on paper** (AC-ID | scenario | how to verify | priority). If `testcase_export ∈
    {xlsx,md}` → export `<CHANGE_DIR>/qa/testcases.{xlsx|md|csv}` + `qa/coverage_summary.md` (this file
    is a **hard prerequisite of the S5 gate** — missing or 0 rows → the orchestrator BLOCKS).
@@ -80,9 +86,10 @@ QA does NOT archive. READ → modify → WRITE whole file.
 lesson (a hollow-assertion pattern, a recurring coverage gap, a 5xx/validation bug pattern, a smoke-checklist
 item future QA should always run), WRITE a `## {ISO-date} — {change-name}: {lesson}` section to
 `memory/qa/{change-name}.md` — **one file per change**, so parallel changes on separate branches never
-touch the same path (no shared-file merge conflicts). Distinct from the CPP baton above (scoped to THIS
-change's `openspec/changes/` folder); `memory/qa/` accumulates ACROSS changes and you read every file in
-it at the top of every run. **Append-only within this file** — if `memory/qa/{change-name}.md` already
+touch the same path (no shared-file merge conflicts). Also append one line to `memory/qa/_index.md`:
+`- {change-name} ({ISO-date}): {lesson}` — the cheap digest every future run reads first. Distinct
+from the CPP baton above (scoped to THIS change's `openspec/changes/` folder); `memory/qa/` accumulates
+ACROSS changes. **Append-only within this file** — if `memory/qa/{change-name}.md` already
 exists (a prior round of THIS change wrote to it), READ it first, keep every existing `## ` section
 verbatim, append your new section, then WRITE the whole concatenated text back (the write-path hook
 blocks a write that drops a section). Nothing reusable → skip; never invent filler.

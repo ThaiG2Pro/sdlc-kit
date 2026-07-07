@@ -56,7 +56,11 @@ workspace** — the pipeline guards do not touch it.
   dev-test-report, openapi, migration, handoff/state/progress, glossary, …) live under
   `.claude/agents/examples/`. Role subagents should read the matching example before authoring an
   artifact: it shows the *assembled* document shape, which the OpenSpec `<template>`/`<rules>` (skeleton
-  + checklist) do not. They are reference-only — never edited, never part of a change.
+  + checklist) do not. They are reference-only — never edited, never part of a change. **They show
+  STRUCTURE, never a length target** — each is a fully-worked reference for a substantial change; a
+  `_state.json.scope == "tiny"` change's own artifact should be a fraction of the example's length
+  while still hitting every required section (see each role's Hard Rules for the numeric minimums
+  that relax at `scope=tiny`).
 - The OpenSpec workspace (`openspec/`) is the spec backend; `sdlc.config.json` +
   `pipelines.json` (shared-root, at the project root — read root-relative) configure gates, rigor,
   and the phase pipeline.

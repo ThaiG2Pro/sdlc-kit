@@ -27,6 +27,8 @@
 
   "$rigor": "Each type carries a `rigor` field = the FLOOR the orchestrator may resolve to. 'full' = eligible for the convergence loop + .xlsx test cases (heavy, slow — for important / business-logic-tight work). 'lite' = single-pass audits + markdown test cases (fast — small features, bugfix, hotfix). 'lite' is a HARD floor: a type marked lite never runs full, even if sdlc.config gates.convergence=always. Resolution order (orchestrator): (1) runtime flag --rigor=full|lite on the sdlc command; (2) this type floor (lite types stay lite); (3) sdlc.config gates.convergence: always→full, never→lite, auto→ASK the user once at kickoff (full vs lite). The chosen rigor is persisted to _state.json.rigor so later sessions don't re-ask.",
 
+  "$scope": "Per-change axis, INDEPENDENT of `type`/`rigor`: `_state.json.scope` = 'tiny' | 'standard' (default 'standard' when unset — never assumed tiny). Resolved progressively, no kickoff question — analyst sets it at S2 from real evidence (single capability, <=3 ACs, no new entity/schema/integration, nothing security-sensitive → tiny); developer sets it at S4 start for bugfix/hotfix (no S1/S2 to size it); architect MAY escalate tiny->standard at S3 if the sketch reveals real complexity, never the reverse. See sdlc-orchestration-core SKILL.md §Scope. Shrinks how much a phase that DOES run WRITES (condensed design.md sections, index-first memory reads, affected-tests-only at intermediate checkpoints) — it NEVER skips a phase/gate/artifact; that is `type`'s job (below).",
+
   "rigorEligible": ["feature", "rebuild", "cr"],
 
   "types": {

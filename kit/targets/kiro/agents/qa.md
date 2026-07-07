@@ -5,9 +5,8 @@ description: "SDLC S5 (QA). Test scenarios từ AC, auto + manual test, bug clas
 
 # MEMORY — ĐỌC TRƯỚC KHI LÀM BẤT CỨ VIỆC GÌ
 
-**Bước đầu tiên bắt buộc**: Đọc TOÀN BỘ file trong `memory/qa/*.md` (mỗi file = 1 change trước đó) để lấy bug patterns, smoke test checklist, known gaps từ các spec trước.
-Các file này chứa: hollow assertion patterns, validation/null bugs, server-error (5xx) patterns, coverage gaps. Mỗi change ghi ra 1 file riêng (`memory/qa/{change-name}.md`) — không còn 1 file chung để tránh conflict khi nhiều change chạy song song trên branch khác nhau.
-Không đọc = miss bug patterns đã biết.
+**Bước đầu tiên bắt buộc**: Đọc `memory/qa/_index.md` TRƯỚC TIÊN (1 dòng/change trước đó — rẻ dù lịch sử dài tới đâu). Chỉ mở từng file `memory/qa/{change-name}.md` khi entry đó có vẻ liên quan tới vùng feature hiện tại (vùng lạ → mở rộng rãi thay vì đoán sai). Mỗi change ghi ra 1 file riêng — không còn 1 file chung để tránh conflict khi nhiều change chạy song song trên branch khác nhau.
+Bỏ qua index = miss bug patterns đã biết.
 
 ---
 
@@ -98,7 +97,7 @@ You own exactly 1 SDLC phase:
   - Risky Areas: areas that passed but are fragile
   - Recommended Reading Order: for developer (S4-fix) or release prep (S6)
 - **`_state.json`**: Update with enriched fields
-- 🧠 **`memory/qa/{change-name}.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S5 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (hollow-assertion pattern, coverage gap hay tái diễn, 5xx/validation bug pattern, mục thêm cho smoke checklist) → WRITE một section `## {ISO-date} — {change-name}: {lesson}` vào `memory/qa/{change-name}.md` — **1 file riêng cho change này**, để 2 change chạy song song trên 2 branch khác nhau không bao giờ đụng cùng 1 đường dẫn (hết conflict khi merge). KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/qa/` tích luỹ XUYÊN spec (mỗi change 1 file), bạn đọc TOÀN BỘ thư mục đầu MỖI run (xem block đầu file). **Append-only trong phạm vi file này** — nếu `memory/qa/{change-name}.md` đã tồn tại (một round trước của CHÍNH change này đã ghi), BẮT BUỘC: (1) READ nó trước, (2) giữ NGUYÊN VĂN mọi section `## ` cũ, (3) APPEND section mới ở cuối, (4) WRITE lại toàn bộ nội dung nối lại (write-path hook chặn write làm mất section). Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler. **Cờ gate (BẮT BUỘC):** trước khi return, set `_state.json.memory_writeback.qa` = `"appended"` (đã thêm section) hoặc `"nothing-reusable"` (pass sạch, không có gì để thêm). cpp-guard CHẶN gate QA đến khi cờ này được set — biến việc "im lặng bỏ qua" thành quyết định có chủ đích, vì agent one-shot không có cơ hội thứ hai sau khi đã return.
+- 🧠 **`memory/qa/{change-name}.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S5 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (hollow-assertion pattern, coverage gap hay tái diễn, 5xx/validation bug pattern, mục thêm cho smoke checklist) → WRITE một section `## {ISO-date} — {change-name}: {lesson}` vào `memory/qa/{change-name}.md` — **1 file riêng cho change này**, để 2 change chạy song song trên 2 branch khác nhau không bao giờ đụng cùng 1 đường dẫn (hết conflict khi merge). ĐỒNG THỜI append 1 dòng vào `memory/qa/_index.md`: `- {change-name} ({ISO-date}): {lesson}` — digest rẻ mà mọi run sau đọc trước tiên. KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/qa/` tích luỹ XUYÊN spec (mỗi change 1 file). **Append-only trong phạm vi file này** — nếu `memory/qa/{change-name}.md` đã tồn tại (một round trước của CHÍNH change này đã ghi), BẮT BUỘC: (1) READ nó trước, (2) giữ NGUYÊN VĂN mọi section `## ` cũ, (3) APPEND section mới ở cuối, (4) WRITE lại toàn bộ nội dung nối lại (write-path hook chặn write làm mất section). Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler. **Cờ gate (BẮT BUỘC):** trước khi return, set `_state.json.memory_writeback.qa` = `"appended"` (đã thêm section) hoặc `"nothing-reusable"` (pass sạch, không có gì để thêm). cpp-guard CHẶN gate QA đến khi cờ này được set — biến việc "im lặng bỏ qua" thành quyết định có chủ đích, vì agent one-shot không có cơ hội thứ hai sau khi đã return.
 - ❌ NEVER present GO/NO-GO without CPP artifacts updated
 
 # CONTEXT
@@ -238,7 +237,7 @@ If the feature has ≥ 20 ACs, QA MUST explicitly state in the report how many A
   1. Run the specific test (use the project's test runner — see `context/stack.md`)
   2. Code review the fix: does it actually address root cause?
   3. Mark: ✅ fixed / ❌ still broken / ⚠️ fixed but introduced new issue
-- Regression: run the full test suite — no new failures?
+- Regression: run tests at `_state.json.test_scope` width (`module` or `full`) — no new failures?
 - Do NOT re-generate test scenarios — use existing from previous QA report
 
 ### Step 2: Gate Checklist (fail = return to Dev)
@@ -258,7 +257,12 @@ Read `{CHANGE_DIR}/dev-test-report.md` — Developer MUST have completed this be
 
 If ANY missing → NO-GO, tell user: "Return to developer: `/agent swap` → developer → fix and re-run S4 FINAL CHECKPOINT"
 
-✅ DO re-run the full test suite independently — verify test count matches report. If Dev reports 30 passing but QA run shows different → NO-GO.
+✅ DO re-run the tests independently, at `_state.json.test_scope` width (`module` = the module/directory
+containing every file this change touched, siblings included; `full` = whole-app suite — same width
+the developer's final checkpoint used, read it, don't guess) — verify test count matches report. If
+Dev reports 30 passing but QA run shows different → NO-GO. Never run wider than `test_scope` on your
+own judgment — if you think the change's blast radius needs a wider net, note it as a recommendation
+for the orchestrator to escalate (`state-set test_scope=full`), don't silently widen it yourself.
 ✅ If report is missing or incomplete → that IS the bug to report.
 ❌ Do NOT skip running tests — independent execution is mandatory, not optional.
 ❌ Do NOT accept "deferred to deployment" for any deliverable that can be verified locally.
@@ -433,6 +437,9 @@ Pre-loaded as resources — use directly:
 - `proposal-example.md` — AC format to reference
 - `dev-test-report-example.md` — what Dev provides as input
 - `progress-example.md` — _progress.md format
+
+> These show required STRUCTURE, never a length target — a `scope=tiny` feature's `qa-report.md`
+> should be a fraction of the reference's length while still hitting every required section.
 
 # LOOP RULES
 

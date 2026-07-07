@@ -28,9 +28,11 @@ already exist on disk — check, and continue from the next sub-phase rather tha
 
 - **CPP baton**: `_glossary.md`, `_handoff.md`, `_decisions.jsonl`, `_state.json` — follow
   `priority_reading`/`watch_items`.
-- **Role memory** (cross-spec lessons): `memory/architect/*.md` — one file per past change; read every
-  file FIRST for recurring ADR trade-offs, cross-feature architecture constraints, design anti-patterns
-  to avoid. Distinct from the CPP baton (scoped to THIS change) — this accumulates across changes.
+- **Role memory** (cross-spec lessons): read `memory/architect/_index.md` FIRST (one line per past
+  change — cheap regardless of history size); open individual `memory/architect/{change-name}.md`
+  files only for entries that look relevant to this design's area (unfamiliar territory, or
+  `_state.json.scope` unset/`standard` → open liberally rather than guess wrong). Distinct from the
+  CPP baton (scoped to THIS change) — this accumulates across changes.
 - **Change workspace**: `proposal.md`, `specs/<capability>/spec.md` (ACs/BRs/INTs), `_progress.md`.
   Verify S2 is done + SPEC LOCK passed (`openspec status --change "<name>" --json`).
 - **Context**: `context/{project,conventions,stack,architecture,legacy-ref}.md` +
@@ -53,12 +55,17 @@ already exist on disk — check, and continue from the next sub-phase rather tha
 
 1. `design.md` — run `openspec instructions design --change "<name>"` for the exact template; fill
    every section. **R6**: it MUST start with `## Sketch — Gap Analysis`; **R4**: it MUST end with
-   `## Implementation Guide`.
+   `## Implementation Guide`. **When `_state.json.scope == "tiny"`**: condense sections this change
+   doesn't touch to one line (`_(unchanged — <why>)_`), and an ADR MAY skip the options table when
+   only one approach is genuinely reasonable (Decision + one-line rationale instead) — never drop a
+   section header outright. You MAY escalate `scope` `tiny`→`standard` (never the reverse) if the
+   sketch reveals real complexity the analyst missed — `state-set --set scope=standard` + note why.
 2. `openapi.yaml` — OpenAPI 3.0.x, separate file, per project API conventions. **Consistency
    (mandatory):** endpoint count in design.md == paths in openapi.yaml; schemas match the DB schema.
 3. `tasks.md` — run `openspec instructions tasks --change "<name>"` for format. **R2**: every subtask
    has `` File: `{path}` `` + `_Requirements: AC-{ticket}-{NNN}_`. **R3**: ≥2 checkpoints (mid-build +
-   final), last task = checkpoint. Order tasks by the project's architecture layering
+   final), last task = checkpoint (`scope=tiny` → a single final checkpoint is enough if there's no
+   meaningful mid-build milestone). Order tasks by the project's architecture layering
    (foundational/shared → domain → application → interface → middleware → tests).
 
 ## Hard rules (carry verbatim)
@@ -86,9 +93,10 @@ already exist on disk — check, and continue from the next sub-phase rather tha
 lesson (a recurring ADR trade-off, a cross-feature constraint, a design anti-pattern future work should
 avoid), WRITE a `## {ISO-date} — {change-name}: {lesson}` section to `memory/architect/{change-name}.md`
 — **one file per change**, so parallel changes on separate branches never touch the same path (no
-shared-file merge conflicts). Distinct from the CPP baton above (scoped to THIS change's
-`openspec/changes/` folder); `memory/architect/` accumulates ACROSS changes and you read every file in
-it at the top of every run. **Append-only within this file** — if `memory/architect/{change-name}.md`
+shared-file merge conflicts). Also append one line to `memory/architect/_index.md`:
+`- {change-name} ({ISO-date}): {lesson}` — the cheap digest every future run reads first. Distinct
+from the CPP baton above (scoped to THIS change's `openspec/changes/` folder); `memory/architect/`
+accumulates ACROSS changes. **Append-only within this file** — if `memory/architect/{change-name}.md`
 already exists (a prior round of THIS change wrote to it), READ it first, keep every existing `## `
 section verbatim, append your new section, then WRITE the whole concatenated text back (the write-path
 hook blocks a write that drops a section). Nothing reusable → skip; never invent filler.
