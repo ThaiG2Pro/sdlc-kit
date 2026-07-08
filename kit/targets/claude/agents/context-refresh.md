@@ -42,9 +42,13 @@ what demonstrably changed, never invent.
    opposite of the digest files under `memory/<role>/_index.md`, which are gitignored precisely
    because they're derived/regenerable — `context/*.md` is hand-curated and can't be regenerated the
    same way). Check first: `git branch --show-current`, compare against `sdlc.config.json →
-   git.protected_branches`. Not on one of them → tell the user plainly ("you're on `<branch>`, a
-   per-change branch — refreshing context here will diverge from `<protected_branches[0]>` and can
-   conflict on merge; recommend switching there first") and ask before proceeding anyway.
+   git.protected_branches`. Not on one of them → this is a feature/pipeline branch; do NOT edit
+   `context/` here — it will diverge from other in-flight branches. Tell the user: **create a fresh,
+   dedicated branch off the latest protected branch just for this update** (`git fetch && git
+   checkout -b chore/context-refresh origin/<protected_branches[0]>`), re-run this agent there, and
+   merge that small branch back via its own PR — independent of any feature branch, never bundled with
+   one (most repos disallow committing straight to `<protected_branches[0]>` anyway, same as feature
+   work). Ask before proceeding on the current branch anyway (e.g. a genuinely solo/no-PR project).
 
 ## Procedure
 

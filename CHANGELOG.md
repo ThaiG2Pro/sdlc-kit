@@ -274,8 +274,14 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   git.protected_branches` as their first step and warn + ask for confirmation before touching
   `context/` from a branch that isn't the shared base — the fix is procedural (don't diverge it in the
   first place), not file-exclusion (there's nothing to regenerate it from).
-
-### Tooling
+- **Corrected the above fix's recommendation**: "switch to the protected branch and do it there" is
+  wrong advice for a repo where the protected branch (`main`/`master`) never takes direct commits at
+  all (every change goes through a PR — a common, deliberate branch-protection policy, not a
+  workflow gap). All four prompts now recommend **a fresh, dedicated branch cut from the latest
+  protected branch, just for the context update** (`git checkout -b chore/context-refresh
+  origin/<protected_branches[0]>`), merged back via its own small PR, independent of any feature
+  branch — this respects "no direct commits to the protected branch" while still preventing the
+  context update from tangling with (and diverging alongside) a long-lived feature branch.
 
 - **`doctor-claude.mjs`** — structural health check for the Claude target: `CLAUDE.md` `@import`s
   resolve, all commands + subagents exist, the "only `developer` has `Edit`" invariant holds, and
