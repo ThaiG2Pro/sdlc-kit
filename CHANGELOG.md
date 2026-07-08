@@ -76,6 +76,20 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   so next to its own examples — a `scope=tiny` change's proposal.md/design.md/tasks.md/
   dev-test-report.md/qa-report.md should each be a fraction of the worked example's length while still
   hitting every required section.
+- **CPP baton writes are batched, not per-decision** — the Kiro role prompts (analyst/architect/
+  developer/qa) each had an "APPEND-AS-YOU-GO" rule instructing an immediate `_decisions.jsonl` write
+  the moment any single AC/ADR/deviation/bug was finalized — a 25-decision phase meant 25 separate
+  Write calls. Real cost: this is the literal Kiro-side mechanism behind a QA run that logged its bugs
+  one Write at a time. Now each role accumulates decisions in-session and writes them in ONE batched
+  pass (developer: per checkpoint segment, matching its existing multi-run structure; the other three:
+  once per phase) — the CPP-completeness gate and stop-hook reminder already catch a genuinely missed
+  entry, so immediate per-decision writes bought no real safety, only tool-call overhead. Claude target
+  never had the AS-YOU-GO instruction, but batching wasn't explicit there either — both targets now
+  explicitly say "accumulate, one batched Write" in all 4 role prompts, plus a terse-fields reminder
+  (`decision`/`reasoning`: keyword/fragment, not full prose) right where each writes `_decisions.jsonl`.
+  Also added a universal style rule in `sdlc-orchestration-core` SKILL.md restating this for the
+  orchestrator's own awareness: CPP baton text fields are keyword/telegraphic by default at every
+  scope — same information, fewer words — not just at `scope=tiny`.
 
 ### Changed
 

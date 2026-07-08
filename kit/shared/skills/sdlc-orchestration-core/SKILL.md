@@ -154,9 +154,22 @@ question** — whichever role first has real evidence of the change's size sets 
   `_handoff.md`, `dev-test-report.md`, `qa-report.md` — every deliverable, not just design.md. A
   golden example under `agents/examples/` shows the required STRUCTURE, never a length target — it is
   a fully-worked reference for a substantial change; a `scope=tiny` change's own artifact should be a
-  fraction of the example's length while still hitting every required section. Numeric floors that
-  would otherwise force padding (edge-case counts, ACs-per-story, checkpoint counts) are relaxed at
-  `scope=tiny` in each role's Hard Rules — never relaxed at `standard` or when scope is unset.
+  fraction of the example's length while still hitting every required section — concretely, a small
+  bugfix/CR's CPP baton (`_handoff.md` + `_decisions.jsonl` + `_glossary.md` combined) should read as a
+  handful of lines, not pages. Numeric floors that would otherwise force padding (edge-case counts,
+  ACs-per-story, checkpoint counts) are relaxed at `scope=tiny` in each role's Hard Rules — never
+  relaxed at `standard` or when scope is unset.
+- **CPP baton TEXT FIELDS are keyword/telegraphic by default, at every scope** — `_decisions.jsonl`'s
+  `decision`/`reasoning`, `_handoff.md` bullets, `_glossary.md` definitions: write fragments, not
+  sentences (`"AC-204: reversed — pure-alpha now visible"`, not `"We decided to reverse AC-204 because
+  we determined that pure-alpha content should now be considered visible"`). Same information, fewer
+  words — this is a style rule, not a content cut, and applies regardless of `scope`/`rigor`/`type`.
+- **Batch writes to `_decisions.jsonl`/`_glossary.md` — do not append per-decision.** Accumulate
+  entries in-session and write them in ONE pass at natural checkpoints (end of a sub-phase, or phase
+  end at minimum), not one Write/Bash call per individual decision. A 25-line `_decisions.jsonl` is the
+  same file whether it took 1 write or 25 — the CPP-completeness gate at phase end (and the stop-hook
+  reminder if you forget) already catches a genuinely missed entry, so per-decision immediate writes
+  buy no real safety, only tool-call overhead.
 
 ## Role-memory index (keeps read cost flat as history grows)
 

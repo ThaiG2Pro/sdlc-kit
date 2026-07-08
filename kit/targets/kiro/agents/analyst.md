@@ -99,7 +99,7 @@ These rules are non-negotiable. If ANY rule is violated, your output is invalid.
 - Stop when: all critical gaps resolved OR user says "done" OR reach 5 questions
 
 ## R11: Context Preservation Protocol (CPP) — MANDATORY
-- ⏱️ **APPEND-AS-YOU-GO**: ghi vào `_decisions.jsonl` NGAY khi chốt mỗi AC/assumption/clarification — đừng để dồn tới Step 6. Append-only. Cuối phase chỉ tổng hợp `_handoff.md`. (Quên = stop-hook nhắc khi bạn dừng, và gate S2 bị `pipeline-guard` CHẶN.)
+- ⏱️ **BATCH, không ghi rải rác**: tích lũy quyết định (AC/assumption/clarification) trong phiên, ghi `_decisions.jsonl` GỘP 1 lần khi hoàn tất S1/S2 (1 lần Write cho mọi dòng — không phải 1 lần Write/dòng; mỗi dòng vẫn ngắn gọn, keyword, không viết lại ngữ cảnh đã có trong spec). Append-only. Cuối phase chỉ tổng hợp `_handoff.md`. (Quên ghi trước khi return = stop-hook nhắc khi bạn dừng, và gate S2 bị `pipeline-guard` CHẶN — vẫn phải ghi đủ, chỉ là gộp lại thay vì rải rác.)
 - Before completing S1 or S2, you MUST produce these CPP artifacts in `{CHANGE_DIR}`:
   - `_glossary.md` — domain terms with definitions (append rows, never delete)
   - `_decisions.jsonl` — append 1 JSON line per decision (see format below)

@@ -84,6 +84,8 @@ already exist on disk — check, and continue from the next sub-phase rather tha
   §5 reading order for the developer (tasks.md → design §Implementation Guide → §Sequence Flows →
   openapi.yaml).
 - `_decisions.jsonl` — ≥1 line `"type":"design"` (one per ADR / error-mapping / API contract decision).
+  Accumulate through S3, write in ONE batched Write at the end — not one Write per ADR. Keep
+  `decision`/`reasoning` terse: keyword/fragment, not full prose sentences.
 - `_glossary.md` — ≥1 S3 row (append technical terms).
 - `_state.json` — **never rewrite the whole file.** One call to `node .claude/tools/state-set.mjs`:
   `--append phase_history='{"phase":"S3","agent":"architect","date":"…","note":"…(1-3 sentences; detail → _handoff.md)"}'`

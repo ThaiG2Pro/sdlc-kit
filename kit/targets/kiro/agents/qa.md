@@ -95,7 +95,7 @@ token của lần chạy trước cho không.
 - ✅ Use _decisions.jsonl for RCA — trace bugs back to which decision caused them
 
 ### On Completion (WRITE — before presenting GO/NO-GO)
-- ⏱️ **APPEND-AS-YOU-GO**: ghi vào `_decisions.jsonl` NGAY khi phát hiện mỗi bug (kèm RCA) — đừng để dồn tới cuối S5. Append-only. Cuối phase chỉ tổng hợp `_handoff.md`. (Quên = stop-hook nhắc khi bạn dừng, và gate S5 bị `pipeline-guard` CHẶN.)
+- ⏱️ **BATCH, không ghi rải rác**: tích lũy bug + RCA trong phiên, ghi `_decisions.jsonl` GỘP 1 lần khi hoàn tất S5 (1 lần Write cho mọi dòng — không phải 1 lần Write/bug; mỗi dòng vẫn ngắn gọn, keyword). Append-only. Cuối phase chỉ tổng hợp `_handoff.md`. (Quên ghi trước khi return = stop-hook nhắc khi bạn dừng, và gate S5 bị `pipeline-guard` CHẶN — vẫn phải ghi đủ, chỉ là gộp lại thay vì rải rác. Nếu resume sau khi bị kill — §Resume check ở trên — GHI THÊM phần còn thiếu, không ghi lại từ đầu.)
 - **`_decisions.jsonl`**: APPEND entries for every bug found:
   Format: `{"ts":"{ISO}","phase":"S5","agent":"qa","type":"bug_finding","id":"BUG-{N}","decision":"{bug description}","reasoning":"{RCA — which phase caused this}","rejected":[],"confidence":"high|medium|low"}`
 - **`_handoff.md`**: OVERWRITE with S5→S6 (if GO) or S5→S4-fix (if NO-GO):

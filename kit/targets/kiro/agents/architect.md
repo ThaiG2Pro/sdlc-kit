@@ -113,7 +113,7 @@ This project drives the lifecycle through the **OpenSpec** CLI. Artifacts live i
 - ✅ Use glossary definitions as canonical — if the spec deltas use a term, check glossary for precise meaning
 
 ### On Completion (WRITE — before presenting DESIGN REVIEW gate)
-- ⏱️ **APPEND-AS-YOU-GO**: ghi vào `_decisions.jsonl` NGAY khi chốt mỗi ADR trong Sub-phase B — đừng để dồn tới Step 5. Append-only. Cuối phase chỉ tổng hợp `_handoff.md`. (Quên = stop-hook nhắc khi bạn dừng, và gate S3 bị `pipeline-guard` CHẶN.)
+- ⏱️ **BATCH, không ghi rải rác**: tích lũy quyết định (mỗi ADR trong Sub-phase B) trong phiên, ghi `_decisions.jsonl` GỘP 1 lần khi hoàn tất S3 (1 lần Write cho mọi dòng — không phải 1 lần Write/ADR; mỗi dòng vẫn ngắn gọn, keyword). Append-only. Cuối phase chỉ tổng hợp `_handoff.md`. (Quên ghi trước khi return = stop-hook nhắc khi bạn dừng, và gate S3 bị `pipeline-guard` CHẶN — vẫn phải ghi đủ, chỉ là gộp lại thay vì rải rác.)
 - **`_glossary.md`**: APPEND rows for technical terms you define (e.g., architecture patterns, service names, lock/concurrency strategies)
 - **`_decisions.jsonl`**: APPEND entries for every ADR, every error code mapping, every API contract decision
   Format: `{"ts":"{ISO}","phase":"S3","agent":"architect","type":"design","id":"ADR-{NNN}","decision":"{what}","reasoning":"{why}","rejected":["{alt}"],"confidence":"high|medium|low"}`

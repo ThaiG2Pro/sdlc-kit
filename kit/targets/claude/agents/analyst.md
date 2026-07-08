@@ -82,7 +82,8 @@ memory reads/full-suite runs for genuinely small changes — never guess `tiny` 
   §2 Contentious Points (AC-ID → FINAL + WATCH), §3 Implicit Assumptions (+source), §4 Risky Areas,
   §5 Recommended Reading Order for the architect.
 - `_decisions.jsonl` — ≥1 line `"type":"requirement"` (every `[CONFIRMED]` AC, every `[ASSUMED]`,
-  every BR).
+  every BR). Accumulate through S1/S2, write in ONE batched Write at the end — not one Write per
+  decision. Keep `decision`/`reasoning` terse: keyword/fragment, not full prose sentences.
 - `_glossary.md` — ≥1 data row; every domain term defined during S1/S2.
 - `_state.json` — **never rewrite the whole file.** Append your `phase_history` entry (1-3 sentences —
   detail goes in `_handoff.md`, not here) via
