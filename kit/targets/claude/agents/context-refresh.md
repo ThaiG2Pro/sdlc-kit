@@ -35,25 +35,30 @@ what demonstrably changed, never invent.
 2. **Diff before write** — produce the Drift Report first; only then edit, and edit the minimum.
 3. **Never invent** — every change cites an evidence file; undetectable → leave as-is or mark
    `UNKNOWN — needs owner input` and surface it.
-4. **Run this on a shared/base branch, not inside a per-change isolated branch/worktree.**
-   `context/*.md` is committed, shared project knowledge every in-flight SDLC pipeline reads — it is
-   NOT per-change data. Two isolated branches that each run context-refresh independently will each
-   drift `context/*.md` a different way; merging either one back is a REAL content conflict (the
-   opposite of the digest files under `memory/<role>/_index.md`, which are gitignored precisely
-   because they're derived/regenerable — `context/*.md` is hand-curated and can't be regenerated the
-   same way). Check first: `git branch --show-current`, compare against `sdlc.config.json →
-   git.protected_branches`. Not on one of them → this is a feature/pipeline branch; do NOT edit
-   `context/` here — it will diverge from other in-flight branches. Tell the user: **create a fresh,
-   dedicated branch off the latest protected branch just for this update** (`git fetch && git
-   checkout -b chore/context-refresh origin/<protected_branches[0]>`), re-run this agent there, and
-   merge that small branch back via its own PR — independent of any feature branch, never bundled with
-   one (most repos disallow committing straight to `<protected_branches[0]>` anyway, same as feature
-   work). Ask before proceeding on the current branch anyway (e.g. a genuinely solo/no-PR project).
+4. **Check whether `context/` is actually git-tracked in THIS project first** — `git check-ignore -q
+   context/ && echo ignored || echo tracked`. This kit's default is tracked (shared, committed
+   knowledge); some projects deliberately gitignore it instead (trades git history for zero merge
+   conflicts — a real, explicit project choice, not a kit default).
+   - **Tracked**: `context/*.md` is committed knowledge every in-flight SDLC pipeline reads — NOT
+     per-change data. Two isolated branches that each run context-refresh independently will each
+     drift it a different way; merging either back is a REAL content conflict. Check `git branch
+     --show-current` against `sdlc.config.json → git.protected_branches`; not on one of them → do NOT
+     edit `context/` here. Tell the user: **create a fresh, dedicated branch off the latest protected
+     branch just for this update** (`git fetch && git checkout -b chore/context-refresh
+     origin/<protected_branches[0]>`), re-run this agent there, merge via its own small PR —
+     independent of any feature branch (most repos disallow committing straight to
+     `<protected_branches[0]>` anyway). Ask before proceeding on the current branch anyway (e.g. a
+     genuinely solo/no-PR project).
+   - **Ignored**: there is nothing to branch/merge — you are editing the ONE shared copy directly
+     (every worktree symlinks to it, so this update is visible everywhere immediately, no git history
+     for it). Skip the branch check; still confirm no other in-flight session depends on the exact
+     field you're about to change before overwriting it.
 
 ## Procedure
 
-0. **Branch check** (Hard rule 4) — `git branch --show-current` vs `sdlc.config.json →
-   git.protected_branches`; warn + confirm if not on a listed branch.
+0. **Tracking + branch check** (Hard rule 4) — `git check-ignore -q context/`; if tracked, also
+   check `git branch --show-current` vs `sdlc.config.json → git.protected_branches` and warn/confirm
+   if not on a listed branch. If ignored, skip straight to Step 1.
 1. **Re-detect today's reality** (same probes as the onboarder, looking for *changes*):
    - manifests/deps (package.json, composer.json, go.mod, pyproject.toml, …) → new/changed
      framework, test/coverage tooling since `stack.md`;

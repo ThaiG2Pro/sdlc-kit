@@ -476,7 +476,11 @@ Any check fails → block the gate, name the agent that must complete the artifa
    - **worktree**: `git worktree add <path> -b <branch>` where `<path>` = filled `git.worktree_path`.
      Then tell the user to open Kiro in `<path>` and continue the pipeline THERE. Note: the worktree
      gets its own `openspec/` checkout; `memory/` (lessons) is not carried in — `mkdir <path>/memory`
-     or symlink it to the main repo if you want shared lessons.
+     or symlink it to the main repo if you want shared lessons. **If `/context/` is gitignored in this
+     project** (project choice, not the kit default — see `sdlc.config.json`/`.gitignore`), it is
+     UNTRACKED, so a fresh worktree gets NO `context/` at all (unlike `openspec/`, worktrees only
+     populate git-tracked content) — `ln -s "$(pwd)/context" <path>/context` so the new worktree reads
+     the SAME live copy every other worktree does, instead of silently running with zero context.
    - You MAY run ONLY these git commands (`git checkout -b` / `git switch -c` / `git worktree add`,
      plus read-only `git status` / `git rev-parse` / `git branch --list`); the shell guard blocks any
      other git. **If the command fails (branch exists, detached HEAD, dirty tree) → STOP, surface the

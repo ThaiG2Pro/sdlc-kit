@@ -282,6 +282,19 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   origin/<protected_branches[0]>`), merged back via its own small PR, independent of any feature
   branch — this respects "no direct commits to the protected branch" while still preventing the
   context update from tangling with (and diverging alongside) a long-lived feature branch.
+- **`/context/` is now an opt-in gitignore exception (project choice, not a kit default).** After
+  weighing it, the user judged the branch-discipline fix above too fragile (relies on every session
+  remembering to check/ask) versus the certainty of just not tracking `context/*.md` in git at all.
+  Since that content is hand-curated and NOT regenerable — unlike `memory/*/_index.md` — this is a
+  real trade: zero merge conflicts, but no git history/shared source of truth for it either. Wired
+  through: `init.mjs`'s `GITIGNORE_PATTERNS` gains `/context/`; a fresh `git worktree add` no longer
+  populates it at all (untracked directories aren't checked out), so §New Change Setup in
+  `sdlc-orchestration-core` now also symlinks `context/` into new worktrees alongside the existing
+  `memory/` note; and `onboarder`/`context-refresh` (both targets) now probe `git check-ignore -q
+  context/` FIRST and branch their Hard Rule accordingly — tracked project → the branch/PR discipline
+  from the previous fix; ignored project → skip straight to editing the one shared (symlinked) copy,
+  since there's nothing left to merge-conflict on. The same kit prompt now correctly serves both a
+  default (tracked) project and one that opted into this trade.
 
 - **`doctor-claude.mjs`** — structural health check for the Claude target: `CLAUDE.md` `@import`s
   resolve, all commands + subagents exist, the "only `developer` has `Edit`" invariant holds, and

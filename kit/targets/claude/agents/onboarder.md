@@ -23,15 +23,20 @@ draft, self-check) and **return a "Facts to commit" table + an UNKNOWN list** fo
 
 ## Phase 0 — Mode (state it in your return)
 
-- **Branch check** (skip only for a true GREENFIELD/empty repo): `git branch --show-current` vs
-  `sdlc.config.json → git.protected_branches`. Not on one of them → this is a per-change isolated
-  branch/worktree, not the shared base — `context/*.md` is committed knowledge every pipeline reads,
-  not per-change data; onboarding/updating it here will diverge from other in-flight branches. Tell
-  the user: **create a fresh, dedicated branch off the latest protected branch just for this update**
-  (`git fetch && git checkout -b chore/onboard-context origin/<protected_branches[0]>`), re-run this
-  agent there, and merge that small branch back via its own PR — independent of any feature branch
-  (most repos disallow committing straight to `<protected_branches[0]>` anyway, same as feature work).
-  Ask before proceeding on the current branch anyway (e.g. a genuinely solo/no-PR project).
+- **Tracking + branch check** (skip only for a true GREENFIELD/empty repo): `git check-ignore -q
+  context/ && echo ignored || echo tracked`. This kit's default is tracked; some projects deliberately
+  gitignore `context/` instead (trades git history for zero merge conflicts — an explicit project
+  choice, not a kit default).
+  - **Tracked**: compare `git branch --show-current` against `sdlc.config.json →
+    git.protected_branches`. Not on one of them → this is a per-change isolated branch/worktree, not
+    the shared base — onboarding here will diverge from other in-flight branches. Tell the user:
+    **create a fresh, dedicated branch off the latest protected branch just for this update** (`git
+    fetch && git checkout -b chore/onboard-context origin/<protected_branches[0]>`), re-run this agent
+    there, merge via its own small PR — independent of any feature branch. Ask before proceeding on
+    the current branch anyway (e.g. a genuinely solo/no-PR project).
+  - **Ignored**: nothing to branch/merge — you are editing the ONE shared copy directly (every
+    worktree symlinks to it). Skip the branch check; still confirm no other in-flight session depends
+    on the field you're about to change.
 - `grep -rln '<!-- TODO' context/` → if some files have no markers → **UPDATE** (preserve
   human-written fields; flag anything you'd overwrite). Else:
 - Probe for manifests + real source → **EXISTING** (extract facts from code) vs **GREENFIELD**
