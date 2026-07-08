@@ -202,6 +202,25 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   passed tests from scratch, re-spending the whole prior run's tokens. QA (both targets) now checks for
   an existing partial `qa-report.md`/`qa/testcases.*` first and continues from what's missing instead
   of restarting.
+- **`_progress.md` was written TWICE per gate — once by the role, once by the orchestrator — using
+  two INCOMPATIBLE formats.** Every role already writes its own table row (the shape in
+  `agents/examples/progress-example.md`) when finishing a phase. Separately, the orchestrator's
+  "Progress Marking (MANDATORY on gate approval)" step had it hunt for a `## Overall Progress`
+  checkbox-list heading and flip `- [ ] {phase}` → `- [x]` — a format NO role's actual output has ever
+  produced (grep confirms it appears nowhere else in the kit); this dead pattern-match forced the
+  orchestrator into an ad-hoc full-file rewrite every approval, duplicating information the role had
+  already written, in a shape that never matched. `cpp-guard`'s actual check is a loose count
+  (`[x]`/`✅` occurrences ≥ passed-gate count) that the role's own row already satisfies, so the
+  orchestrator's second write bought nothing. Removed it — `_progress.md` is now the role's artifact
+  only, everywhere the orchestrator prompts (both targets' `sdlc-full`/`sdlc-fast` +
+  `sdlc-orchestration-core` SKILL.md) previously said otherwise. Also closed a real gap this surfaced:
+  the Claude-target role prompts listed `_progress.md` as a required CPP artifact but never actually
+  said how/when to write it (Kiro's did) — all four now carry the same row-format instruction Kiro
+  already had.
+- **A stale Hard Rule still told the orchestrator to hand-rewrite `_state.json`** (`"NEVER create
+  duplicate JSON keys — READ → parse → modify in-memory → WRITE whole file"`), left over from before
+  `state-set.mjs` existed and directly contradicting the "never hand-rewrite" rule earlier in the same
+  file. Now says to always use `state-set.mjs`.
 
 ### Tooling
 

@@ -282,9 +282,10 @@ IF active change AND action = approve:
      shell, so NEVER hand-rewrite the whole file): clear the blocker, mark the gate passed, advance
      the phase in ONE call —
      `node {{PLATFORM_DIR}}/tools/state-set.mjs --set gates.<current_phase>=passed --set current_phase=<next> --unset blocker`
-     (it read-modify-writes, preserving every other field). Then mark _progress.md and DELEGATE the
-     next phase to its role agent (Claude: Task spawn · Kiro CLI: "use the {role} agent") — never
-     produce its artifact yourself (the guard printed the next phase).
+     (it read-modify-writes, preserving every other field). Then DELEGATE the next phase to its role
+     agent (Claude: Task spawn · Kiro CLI: "use the {role} agent") — never produce its artifact
+     yourself (the guard printed the next phase). `_progress.md` is the ROLE's own artifact (see
+     §Progress Marking below) — you do not also write it.
 
 > **`_state.json` shape contract (deterministically enforced).** `gates` is keyed by **phase ID**
 > (`S2`/`S3`/…) with a **string** value (`"passed"`) — that's exactly what `--set gates.<phase>=passed`
@@ -334,8 +335,8 @@ If `testcase_export = none` → skip this check entirely (artifact is intentiona
 prior-gate check — STOP on exit 1) → load the audit skill (S2/S3) or read the report (S4/S5) →
 at S2/S3 run `openspec change validate "<name>"` → run CPP Contract Validation → if ANY fails,
 present ALL blockers, do NOT update `_state.json`, do NOT proceed → if all pass, clear blocker,
-set `gates["<phase>"]="passed"` + next_action, mark `_progress.md`, and (S3 only) append the
-Cross-Spec Context block.
+set `gates["<phase>"]="passed"` + next_action, and (S3 only) append the Cross-Spec Context block.
+`_progress.md` is the role's own artifact — you do not mark it (see §Progress Marking below).
 
 #### Convergence loop (only when `rigor=full` AND this gate ∈ `gates.convergence_gates`)
 
@@ -371,27 +372,25 @@ oscillating items to the human — do not loop forever.
 **Per-phase gate overrides** come from `types[<type>].gateOverrides` in `pipelines.json` (e.g.
 bugfix S5 = regression-only; hotfix S4 = minimal fix + one regression test). Apply them.
 
-### Progress Marking (MANDATORY on gate approval)
+### Progress Marking (the ROLE's own artifact — you do not also write it)
 
-On approval, update `<CHANGE_DIR>/_progress.md` to mark the completed phase(s) `[x]` — the
-orchestrator is the only agent that sees all gates, so it owns the authoritative checkbox.
+Each role marks ITS OWN row `✅ Done` in `<CHANGE_DIR>/_progress.md` when finishing its phase (see
+each role's own "Update Progress" step) — the table shape in `agents/examples/progress-example.md` is
+canonical. The orchestrator does **not** maintain a second copy of this. `cpp-guard`'s progress check
+is a loose count (`[x]`/`✅` occurrences ≥ number of passed gates — catches "forgot entirely," not a
+per-gate proof), which the role's own per-phase mark already satisfies. A prior version of this rule
+had the orchestrator ALSO rewrite the whole file on every approval, hunting for a `## Overall Progress`
+checkbox-list heading that no role's actual output ever produced (stale text from before the table
+format existed — it never matched real file content, so it was a second full-file Write reproducing
+information the role had already written, chasing a pattern that didn't exist).
 
-| Gate approved | Mark |
-|--------------|------|
-| approve S2 | `S1 Requirements Intake` + `S2 Functional Specification` |
-| approve S3 | `S3 Technical Design` |
-| approve S4 | `S4 Implementation` |
-| approve S5 | `S5 Testing & Review` |
-
-Read `_progress.md`, find `## Overall Progress`, replace `- [ ] {phase}` → `- [x] {phase}`.
-
-> **Trailing enforcement:** progress marking, cross-spec write, and (at `rigor=full`) the
-> convergence loop are orchestrator side-effects recorded *during* an approval (after STEP 0).
-> `pipeline-guard` therefore verifies them at the NEXT gate (via `cpp-guard` checkTrailing): a later
-> gate fails with "MISSING RECORDS" if `openspec/_cross-spec-context/<change-name>.md` is missing,
-> if `_progress.md` wasn't marked, or if a passed convergence gate never stabilized
-> (`convergence[<PHASE>].stable < stable_rounds`). (The final S5→S6/archive transition has no later
-> gate, so confirm it manually.)
+> **Trailing enforcement:** cross-spec write and (at `rigor=full`) the convergence loop are orchestrator
+> side-effects recorded *during* an approval (after STEP 0); `pipeline-guard` verifies them at the NEXT
+> gate (via `cpp-guard` checkTrailing). `_progress.md`'s check is independent of that — it verifies the
+> ROLE marked its own row, not an orchestrator side-effect. A later gate fails with "MISSING RECORDS" if
+> `openspec/_cross-spec-context/<change-name>.md` is missing, `_progress.md` shows fewer done-marks
+> than passed gates, or a passed convergence gate never stabilized (`convergence[<PHASE>].stable <
+> stable_rounds`). (The final S5→S6/archive transition has no later gate, so confirm it manually.)
 
 ### Cross-Spec Context (MANDATORY on S3 approval)
 
@@ -497,14 +496,16 @@ Any check fails → block the gate, name the agent that must complete the artifa
 
 - ❌ NEVER do analysis, design, coding, or testing yourself.
 - ❌ NEVER approve a gate without an explicit `approve`/`ok`/`LGTM` (unless `gates.auto_pass` + 0 blockers).
-- ❌ NEVER create duplicate JSON keys in `_state.json` — READ → parse → modify in-memory → WRITE whole file.
+- ❌ NEVER hand-rewrite `_state.json` (no Edit, read-only shell) — always `state-set.mjs`
+  (`--set`/`--append`/`--unset`); it read-modify-writes and refuses a duplicate-key/non-canonical result.
 - ❌ Orchestrator does NOT run build/test/lint and does NOT write code via the shell. It MAY run
   read-only OpenSpec CLI (`list`/`status`/`change validate`). Mutating commands (`new change`,
   `archive`) and `/opsx:apply` run at setup/S6 or by the developer agent.
 - ✅ The ONLY shell-mutation the orchestrator may run is creating a NEW pipeline's isolation
   branch/worktree (`git checkout -b` / `git switch -c` / `git worktree add`), at §New Change Setup
   step 2. The shell guard blocks every other git (add/commit/checkout-file/reset/merge/branch-delete).
-- ✅ Always show current state + exact next step. Always update `_state.json` + `_progress.md` on gate change.
+- ✅ Always show current state + exact next step. Always update `_state.json` on gate change —
+  `_progress.md` is the role's own artifact (§Progress Marking), not yours to also rewrite.
 
 ## Dispute Resolution Protocol
 

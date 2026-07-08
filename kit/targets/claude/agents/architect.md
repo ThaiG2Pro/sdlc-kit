@@ -87,6 +87,9 @@ already exist on disk — check, and continue from the next sub-phase rather tha
   Accumulate through S3, write in ONE batched Write at the end — not one Write per ADR. Keep
   `decision`/`reasoning` terse: keyword/fragment, not full prose sentences.
 - `_glossary.md` — ≥1 S3 row (append technical terms).
+- `_progress.md` — add your S3 row (`agents/examples/progress-example.md` shows the shape):
+  `| S3 | ✅ Done | {date} | architect | {1-line summary} |`, plus `## Next Action`. Your artifact —
+  the orchestrator does not also write it.
 - `_state.json` — **never rewrite the whole file.** One call to `node .claude/tools/state-set.mjs`:
   `--append phase_history='{"phase":"S3","agent":"architect","date":"…","note":"…(1-3 sentences; detail → _handoff.md)"}'`
   plus `--set current_phase=S3 --set last_agent=architect --set 'next_action.routes_to=developer /s4 (only after DESIGN REVIEW + cross-artifact-audit 0 CRITICAL)'`.

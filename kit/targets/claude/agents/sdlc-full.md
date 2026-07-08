@@ -68,9 +68,10 @@ Per the core skill's Gate Audit Map, in order:
    Run CPP Contract Validation at every gate.
 3. Any failure → present ALL blockers, do NOT update `_state.json`, STOP. On a clean audit, honor
    `gates.auto_pass` (default false ⇒ require explicit `approve`).
-4. On approval: clear the blocker, set `gates["<phase>"]="passed"`, mark `_progress.md`, (S3 only)
-   append the Cross-Spec Context block, run the convergence loop when `rigor=full` and the gate is a
-   convergence gate — all per the core skill. Then spawn the next phase's subagent.
+4. On approval: clear the blocker, set `gates["<phase>"]="passed"`, (S3 only) append the Cross-Spec
+   Context block, run the convergence loop when `rigor=full` and the gate is a convergence gate — all
+   per the core skill (`_progress.md` is the role's own artifact — you don't also mark it, see
+   `sdlc-orchestration-core` §Progress Marking). Then spawn the next phase's subagent.
 
 ## Work types (read `pipelines.json` → `types[<type>]`)
 
