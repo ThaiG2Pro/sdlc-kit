@@ -350,7 +350,10 @@ just pass once — this catches gaps the agent fixes in one round but reopens in
    - **Different** (or any blocker present) → reset the stable counter to 0; if blockers exist, return them to the phase agent to fix, then re-run from step 1. If the set merely *changed* with 0 blockers, re-run once more to confirm.
    - **Identical AND 0 blockers** → increment the stable counter.
 3. PASS only when the counter reaches `gates.stable_rounds` (default 3) — i.e. the gap list is empty and unchanged that many consecutive runs.
-4. Record `convergence` progress in `_state.json` per gate: `"convergence":{"<PHASE>":{"rounds":N,"stable":M}}` where `stable` is the consecutive-identical-rounds counter. Update it on EVERY round.
+4. Record `convergence` progress in `_state.json` per gate, on EVERY round — never hand-rewrite; one
+   call: `node {{PLATFORM_DIR}}/tools/state-set.mjs --set convergence.<PHASE>.rounds=N --set
+   convergence.<PHASE>.stable=M` (dot-path creates the nested object; `stable` is the
+   consecutive-identical-rounds counter).
 
 Bound the loop: if it has not stabilized after `stable_rounds + 3` rounds, STOP and surface the
 oscillating items to the human — do not loop forever.
@@ -442,7 +445,8 @@ Implicit Assumptions, Risky Areas, Recommended Reading Order); `_decisions.jsonl
 found; qa-report has GO; `_state.json.memory_writeback.qa` ∈ {`appended`, `nothing-reusable`}.
 
 > **Role-memory write-back is now gate-enforced (the DECISION, not the content).** The per-phase
-> `memory/<role>.md` write stays advisory in *content* (a clean change legitimately writes nothing),
+> `memory/<role>/{change-name}.md` write stays advisory in *content* (a clean change legitimately
+> writes nothing),
 > but each role MUST record a deliberate call in `_state.json.memory_writeback.<role>`: `appended`
 > (added a cross-spec lesson) or `nothing-reusable` (clean change). cpp-guard fails the gate if the
 > flag is unset — closing the gap where a one-shot agent returned, the orchestrator advanced, and the
@@ -526,5 +530,7 @@ spec (what the AC says); design.md + openapi.yaml; `_decisions.jsonl` (filter AC
 Claim: {claim} · Evidence: {what AC/design says} · Ruling: BUG | DESIGN GAP | SPEC GAP | FEATURE
 Action: BUG → developer /s4-fix (15×) · DESIGN GAP → architect (20×) · SPEC GAP → analyst (25×) · FEATURE → QA closes
 ```
-Record in `_state.json` `disputes[]`. Rules: developer cannot self-classify; ambiguous → default
-SPEC GAP (most conservative); all disputes recorded for `sprint-retro`.
+Record in `_state.json` `disputes[]` — never hand-rewrite; `node {{PLATFORM_DIR}}/tools/state-set.mjs
+--append disputes='{"bug":N,"claim":"…","ruling":"BUG|DESIGN GAP|SPEC GAP|FEATURE","date":"…"}'`
+(creates the array if unset). Rules: developer cannot self-classify; ambiguous → default SPEC GAP
+(most conservative); all disputes recorded for `sprint-retro`.

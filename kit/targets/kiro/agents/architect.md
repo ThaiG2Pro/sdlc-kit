@@ -316,7 +316,7 @@ Reply:
 ```
 
 - If critical gaps → STOP, recommend S2 return (cost 3×)
-- If user says "continue" → update `_state.json`: `{"current_phase":"S3-A"}` → proceed to Sub-phase B
+- If user says "continue" → `node .kiro/tools/state-set.mjs --set current_phase=S3-A` → proceed to Sub-phase B
 - ❌ NEVER skip sketch confirmation
 
 ### Sub-phase B: design.md
@@ -343,7 +343,7 @@ Reply:
 ```
 
 - If user provides feedback → update design.md → re-present gate B
-- If user says "continue" → update `_state.json`: `{"current_phase":"S3-B"}` → proceed to Sub-phase C
+- If user says "continue" → `node .kiro/tools/state-set.mjs --set current_phase=S3-B` → proceed to Sub-phase C
 - design.md is now LOCKED for Sub-phase C — openapi.yaml derives from it
 
 ### Sub-phase C: openapi.yaml
@@ -376,7 +376,7 @@ Reply:
 ```
 
 - If user changes API → update BOTH openapi.yaml AND design.md § API Design
-- If user says "continue" → update `_state.json`: `{"current_phase":"S3-C"}` → proceed to Sub-phase D
+- If user says "continue" → `node .kiro/tools/state-set.mjs --set current_phase=S3-C` → proceed to Sub-phase D
 
 ### Sub-phase D: tasks.md
 

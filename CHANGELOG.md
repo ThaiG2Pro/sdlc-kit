@@ -221,6 +221,43 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   duplicate JSON keys — READ → parse → modify in-memory → WRITE whole file"`), left over from before
   `state-set.mjs` existed and directly contradicting the "never hand-rewrite" rule earlier in the same
   file. Now says to always use `state-set.mjs`.
+- **A systematic 3-agent sweep for the same "leftover from an older design" bug shape found 8 more
+  confirmed instances, each verified with grep evidence before fixing:**
+  - `qa-analysis`/`qa-test-design`/`cross-artifact-audit` all read a `## _Structured Extract` section
+    from `proposal.md` as their FIRST, authoritative input — but only the Kiro-target analyst.md ever
+    had a rule requiring the analyst to write it (`R5: Structured Extract — MANDATORY Section`); the
+    Claude-target analyst.md had zero mention of it. Every Claude-target QA/architect run was hunting
+    for a section the Claude-target analyst was never told to produce. Added the equivalent `R5` to
+    Claude's `analyst.md`.
+  - Kiro `architect.md`'s S3-A/B/C sub-phase transitions hand-wrote `_state.json` as a raw JSON
+    literal 3× per S3 phase, two paragraphs below the file's own `state-set.mjs`-only rule (R12) —
+    now all three use `state-set.mjs --set current_phase=…`.
+  - S6/archive in BOTH targets' `developer.md` hand-wrote `_state.json` with 3 fields at once,
+    *in the same paragraph* whose very next sentence correctly used `state-set.mjs` for a smaller
+    follow-up write — backwards from every other instance in the kit. Both now use `state-set.mjs`.
+  - Kiro `developer.md`'s S4-FIX exit hand-wrote `_state.json` the same way — same fix.
+  - `sdlc-orchestration-core` SKILL.md's Dispute Resolution and Convergence-loop sections described
+    `disputes[]` and `convergence.<PHASE>` as raw JSON shapes with no `state-set.mjs` call given,
+    unlike `phase_history`/`gates`/`deploy_status` which each get a worked example — both now do too
+    (`--append disputes=…`, `--set convergence.<PHASE>.rounds=… --set convergence.<PHASE>.stable=…`).
+  - Claude `architect.md`'s own `_state.json` bullet ended with a dangling `"READ → modify → WRITE
+    whole file."` sentence directly contradicting the `state-set.mjs` command two lines above it — a
+    copy/paste leftover from the boilerplate shared with `_handoff.md`/`_decisions.jsonl` (where that
+    phrase IS correct), never rescoped when reused for `_state.json`. Removed.
+  - `cross-artifact-audit` SKILL.md flagged any `tasks.md` with `< 2 checkpoints` as a gap with no
+    `scope=tiny` exception, while architect's own Hard Rule R3 (both targets) and `openspec-rules.yaml`
+    already carry the exception (1 final checkpoint is enough at `scope=tiny`) — the audit gate would
+    flag a legitimately-tiny change's own correctly-sized `tasks.md` as defective, forcing padding or
+    blocking convergence from ever stabilizing. Added the matching exception to the audit rule.
+  - Kiro `developer.md`'s R13 ("run type-check, lint, format-check, test, AND coverage" at every
+    checkpoint) contradicted the file's own later, `test_scope`-aware checkpoint rules two sections
+    down (intermediate = affected-tests-only, no coverage; final = full `test_scope`-width + coverage)
+    — R13 was never updated when `scope`/`test_scope` shipped. Now points at the detailed rule instead
+    of restating a stale blanket version of it.
+  - `sdlc-orchestration-core` SKILL.md's own CPP Contract Checks section still named the pre-migration
+    flat `memory/<role>.md` path in one blockquote, contradicting the per-change-file path
+    (`memory/<role>/{change-name}.md`) correctly used everywhere else in the same file and by every
+    role prompt. Fixed the reference.
 
 ### Tooling
 

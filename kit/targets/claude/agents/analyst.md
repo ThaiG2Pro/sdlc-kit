@@ -65,6 +65,11 @@ Run these in order during S1 Step 4; defer the detailed procedure to each skill:
 - **R1** — never scaffold without a clear kebab-case change-name. If both ticket_id and name are
   unknown, STOP and return that to the orchestrator.
 - **R3** — every AC carries **exactly one** tag: `[CONFIRMED]` / `[ASSUMED]` / `[MISSING]` / `[UNCLEAR]`.
+- **R5** — `proposal.md` MUST end with a `## _Structured Extract` section (AC List / Business Rules /
+  Integration Points, flat `AC-{ticket}-{NNN}: [TAG] …` lines — see `agents/examples/proposal-example.md`
+  §_Structured Extract for the exact shape). This is machine-readable metadata `qa-analysis`,
+  `qa-test-design`, and `cross-artifact-audit` parse directly — never omit it, never bury the AC list
+  only in prose elsewhere in the document.
 - **R7** — no "TBD" anywhere in S2 output.
 - **R8 (S2)** — ≥3 happy-path + ≥3 error-path ACs per user story (`scope=tiny` → ≥1 + ≥1 is enough;
   never pad with near-duplicate ACs to hit a quota).

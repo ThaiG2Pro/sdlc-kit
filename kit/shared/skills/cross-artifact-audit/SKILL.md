@@ -60,7 +60,8 @@ For each AC-ID from the spec deltas:
 **E. Task Ordering Issues** (MEDIUM)
 - Test task before code task it tests
 - Controller task before service task it depends on
-- Missing checkpoint tasks (< 2 checkpoints)
+- Missing checkpoint tasks (< 2 checkpoints — `_state.json.scope == "tiny"` → 1 final checkpoint is
+  sufficient, not a gap)
 
 ### Step 4: Severity Assignment
 - CRITICAL: AC with zero coverage, API contract mismatch
