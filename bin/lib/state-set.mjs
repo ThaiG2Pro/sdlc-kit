@@ -12,9 +12,16 @@
 // Usage:
 //   node .claude/tools/state-set.mjs [projectDir] --change <name> --set <dotpath>=<value> [--set ...] [--unset <dotpath>]
 //   node .claude/tools/state-set.mjs --set current_phase=S3 --set gates.S2=passed   (active change auto-resolved)
+//   node .claude/tools/state-set.mjs --append phase_history='{"phase":"S4","agent":"developer","date":"2026-07-08","note":"…"}'
 //
 // Each <value> is JSON.parse'd when possible (true/false/null, numbers, JSON arrays/objects), else
 // taken as a literal string ("passed", "S3"). Dot-paths create nested objects as needed.
+//
+// --append <dotpath>=<json-value> pushes one element onto the array at <dotpath> (creating an empty
+// array first if the path is unset) instead of replacing it — this is what every role's own
+// phase_history entry should use: appending one ~1-3-sentence entry costs one small CLI arg, not a
+// re-transcription of every PRIOR entry (which is what a `--set phase_history=[...the whole array...]`
+// or a raw Write of the whole _state.json would require).
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -25,17 +32,18 @@ function readJson(p) { try { return JSON.parse(readFileSync(p, 'utf8')); } catch
 // ---- args ----
 const argv = process.argv.slice(2);
 let projectDir = '.', changeName = null;
-const sets = [], unsets = [];
+const sets = [], unsets = [], appends = [];
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === '--change') changeName = argv[++i];
   else if (a === '--set') sets.push(argv[++i]);
   else if (a === '--unset') unsets.push(argv[++i]);
+  else if (a === '--append') appends.push(argv[++i]);
   else if (!a.startsWith('--')) projectDir = a;
   else die(`unknown flag ${a}`);
 }
 projectDir = resolve(projectDir);
-if (!sets.length && !unsets.length) die('nothing to do: pass at least one --set key=value or --unset key');
+if (!sets.length && !unsets.length && !appends.length) die('nothing to do: pass at least one --set key=value, --append key=value, or --unset key');
 
 // ---- resolve the change dir (explicit --change, else the most-recent _state.json) ----
 const changesBase = join(projectDir, 'openspec', 'changes');
@@ -83,6 +91,39 @@ function unsetPath(obj, path) {
   delete o[last];
   return old;
 }
+function appendPath(obj, path, val) {
+  const ks = path.split('.');
+  let o = obj;
+  for (let i = 0; i < ks.length - 1; i++) {
+    const k = ks[i];
+    if (o[k] == null || typeof o[k] !== 'object') o[k] = {};
+    o = o[k];
+  }
+  const last = ks[ks.length - 1];
+  if (o[last] == null) o[last] = [];
+  if (!Array.isArray(o[last])) die(`--append target "${path}" is not an array (got ${typeof o[last]})`);
+  o[last].push(val);
+  return o[last].length;
+}
+
+// Soft, non-blocking nudge (not a hard validation failure — some phases genuinely need more): an
+// appended entry's note/result/summary field ballooning past a couple sentences is exactly the
+// "phase_history entries are giant paragraphs" pattern that makes every LATER phase's mandatory
+// "read _state.json first" step re-pay the same cost. Detail belongs in _handoff.md / memory/<role>/,
+// which are read selectively — phase_history is read in FULL, every phase, forever.
+const NOTE_SOFT_CAP = 400;
+const warnings = [];
+function checkNoteLength(val, path) {
+  if (!val || typeof val !== 'object') return;
+  for (const k of ['note', 'result', 'summary']) {
+    const v = val[k];
+    if (typeof v === 'string' && v.length > NOTE_SOFT_CAP) {
+      warnings.push(`${path}.${k} is ${v.length} chars (soft guideline: ≤${NOTE_SOFT_CAP} — 1-3 ` +
+        `sentences; push detail into _handoff.md / memory/<role>/, not phase_history — every future ` +
+        `phase reads this array in full).`);
+    }
+  }
+}
 
 const changes = [];
 for (const s of sets) {
@@ -93,6 +134,14 @@ for (const s of sets) {
   changes.push(`${path}: ${JSON.stringify(old)} → ${JSON.stringify(val)}`);
 }
 for (const p of unsets) changes.push(`${p}: ${JSON.stringify(unsetPath(state, p))} → (removed)`);
+for (const s of appends) {
+  const eq = s.indexOf('=');
+  if (eq < 0) die(`--append needs key=value (got "${s}")`);
+  const path = s.slice(0, eq), val = parseVal(s.slice(eq + 1));
+  checkNoteLength(val, path);
+  const len = appendPath(state, path, val);
+  changes.push(`${path}[${len - 1}]: appended ${JSON.stringify(val)}`);
+}
 
 // ── canonical-shape validation: refuse to persist drift (covers BOTH new writes and pre-existing drift
 //    in the file we just read — so the fix is a single state-set that ends in a canonical shape). ──
@@ -115,3 +164,4 @@ try {
 writeFileSync(stateFile, JSON.stringify(state, null, 2) + '\n');
 console.log(`  ✓ state-set · ${stateFile.split(/[\\/]/).slice(-2).join('/')}`);
 for (const c of changes) console.log(`      ${c}`);
+for (const w of warnings) console.log(`  ⚠ ${w}`);

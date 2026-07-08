@@ -85,8 +85,9 @@ already exist on disk — check, and continue from the next sub-phase rather tha
   openapi.yaml).
 - `_decisions.jsonl` — ≥1 line `"type":"design"` (one per ADR / error-mapping / API contract decision).
 - `_glossary.md` — ≥1 S3 row (append technical terms).
-- `_state.json` — enriched; `current_phase:"S3"`, `last_agent:"architect"`,
-  `next_action.routes_to:"developer /s4 (only after DESIGN REVIEW + cross-artifact-audit 0 CRITICAL)"`.
+- `_state.json` — **never rewrite the whole file.** One call to `node .claude/tools/state-set.mjs`:
+  `--append phase_history='{"phase":"S3","agent":"architect","date":"…","note":"…(1-3 sentences; detail → _handoff.md)"}'`
+  plus `--set current_phase=S3 --set last_agent=architect --set 'next_action.routes_to=developer /s4 (only after DESIGN REVIEW + cross-artifact-audit 0 CRITICAL)'`.
   READ → modify → WRITE whole file.
 
 **Role memory write-back (cross-spec, advisory):** if this design surfaced a *reusable, not-spec-specific*

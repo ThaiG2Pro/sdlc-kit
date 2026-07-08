@@ -158,6 +158,36 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   allow-list needs and wrongly blocking the analyst's spec-delta write. Marker order is now
   `openspec/` before `specs/` (specific-before-general, matching every other marker pair); added
   regression vectors for both worktree shapes.
+- **`check-shell-command.py` false-positive-blocked plain reads for restricted roles**, from a real
+  incident (a QA re-run retried repeatedly and burned tokens on retries alone): the guard scanned raw
+  command TEXT with no notion of quoting, so a literal `>` inside a grep/sed pattern (`grep -o
+  '<Tag>.*</Tag>' file.xml`) or a `->` inside a quoted `--execute="Foo::bar()->baz()"` string looked
+  identical to a real shell redirect and got blocked; separately, `phpstan analyse A.php B.php` was
+  misread as "interpreter `php` running script `B.php`" because the script-file regex matched the
+  tail of `A.php`'s OWN extension as if it were the interpreter name. Fixed by (1) blanking the
+  CONTENTS of `'...'`/`"..."` string literals before the `_DENY` scan — quoted text is inert shell-wise,
+  verified empirically that an UNQUOTED `->` really is a redirect (`echo a->b` creates file `b`) so
+  this had to be quote-aware, not a blanket exclusion, or it would have opened a real bypass; (2) a
+  `(?<!\.)` lookbehind on the script-execution rule so an interpreter name glued directly after a `.`
+  (i.e., someone else's file extension) is never treated as a real invocation. 9 new self-test vectors
+  cover both the fixed false positives and that real redirects/mutations still block. `mkdir`/`tee`
+  remain absolute blocks for restricted roles (by design, not a bug) — use the Write tool or let the
+  target command create its own directory.
+- **No way to update `_state.json` without a full-file round-trip for array fields.** `state-set.mjs`
+  only supported `--set`/`--unset` on scalars/objects; appending one `phase_history` entry (the one
+  update every role makes every phase) meant reading the whole array, splicing in one element, and
+  passing the ENTIRE thing back as a `--set` value — or falling back to a raw `Write` of the whole
+  file, the exact per-gate full-rewrite cost `state-set.mjs` was built to eliminate. Added `--append
+  <path>=<json>` (creates the array if unset); all four role prompts (both targets) now append their
+  own `phase_history` entry instead of rewriting `_state.json` wholesale. Also added a non-blocking
+  length nudge: an appended entry's `note`/`result`/`summary` past ~400 chars prints a warning — detail
+  belongs in `_handoff.md`/`memory/<role>/`, which are read selectively; `phase_history` is read in
+  full by every later phase, forever.
+- **QA had no resume path after being killed mid-run.** An interrupted QA pass (another real incident)
+  had no way to signal "partially done" — a re-spawn regenerated test scenarios and re-ran already-
+  passed tests from scratch, re-spending the whole prior run's tokens. QA (both targets) now checks for
+  an existing partial `qa-report.md`/`qa/testcases.*` first and continues from what's missing instead
+  of restarting.
 
 ### Tooling
 

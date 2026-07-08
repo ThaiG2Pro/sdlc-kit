@@ -280,7 +280,13 @@ IF active change AND action = approve:
 > `convergence` is likewise `{ "<PHASE>": { "stable":<int>, "rounds":<int> } }`. Always go through
 > `state-set.mjs` (never hand-rewrite); it **refuses to write** a non-canonical shape, and
 > `pipeline-guard` STEP 0 **blocks every status/gate check** on a drifted `_state.json` until you
-> normalize it (e.g. `--unset gates.SPEC_LOCK --set gates.S2=passed`).
+> normalize it (e.g. `--unset gates.SPEC_LOCK --set gates.S2=passed`). This applies to every role, not
+> just you: `phase_history` is an array, so a role adding its own entry uses
+> `state-set.mjs --append phase_history='{...}'` (creates the array if unset) instead of reading the
+> whole file, splicing in one more element, and writing it all back — the same full-file round-trip
+> `state-set.mjs` exists to avoid. Keep each entry's `note` to 1-3 sentences (a non-blocking length
+> warning fires past ~400 chars) — detail belongs in that phase's `_handoff.md` / `memory/<role>/`,
+> which are read selectively; `phase_history` is read in full, every phase, for the life of the change.
 
 IF active change AND action = dispute:  → see Dispute Resolution Protocol
 IF active change AND action = nogo:     → record reason via `node {{PLATFORM_DIR}}/tools/state-set.mjs --set 'blocker=<reason>'`; return to current agent

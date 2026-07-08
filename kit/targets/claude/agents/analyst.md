@@ -84,9 +84,11 @@ memory reads/full-suite runs for genuinely small changes — never guess `tiny` 
 - `_decisions.jsonl` — ≥1 line `"type":"requirement"` (every `[CONFIRMED]` AC, every `[ASSUMED]`,
   every BR).
 - `_glossary.md` — ≥1 data row; every domain term defined during S1/S2.
-- `_state.json` — enriched: `phase_history`, `active_concerns`, `terminology`,
-  `next_action.priority_reading`, `next_action.watch_items`. Set `current_phase` to `S1` or `S2`,
-  `last_agent:"analyst"`. **READ → modify in-memory → WRITE whole file** (never create duplicate keys).
+- `_state.json` — **never rewrite the whole file.** Append your `phase_history` entry (1-3 sentences —
+  detail goes in `_handoff.md`, not here) via
+  `node .claude/tools/state-set.mjs --append phase_history='{"phase":"S1","agent":"analyst","date":"…","note":"…"}'`;
+  set `active_concerns`/`terminology`/`next_action.*`/`current_phase`/`last_agent:"analyst"` via
+  `--set` in the SAME call (it read-modify-writes, preserving every other field).
 
 **Role memory write-back (cross-spec, advisory):** if S1/S2 surfaced a *reusable, not-spec-specific*
 lesson (a recurring requirement-ambiguity pattern, a domain edge case easy to miss, a clarification trap),

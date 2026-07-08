@@ -55,6 +55,43 @@ IS_CLAUDE_HOST = "/.claude/" in os.path.abspath(__file__).replace("\\", "/")
 _DEVNULL = re.compile(r"""(?:\d*|&)>>?\s*/dev/null""")          # 2>/dev/null, >/dev/null, &>/dev/null
 _FD_DUP = re.compile(r"""\d*>&\d+""")                            # 2>&1, 1>&2
 
+
+def _strip_quoted(command: str) -> str:
+    """Blank out the CONTENTS of '...'/"..." string literals (replaced char-for-char with spaces,
+    so byte offsets used elsewhere still line up) before the _DENY scan runs.
+
+    WHY: a quoted `>`/`rm`/`.php` etc. is inert shell-wise — it is DATA, not a redirect or a command
+    name (`grep -o '<Tag>.*</Tag>' x.xml`, `tinker --execute="Foo::bar()->baz()"`, `grep "rm -rf"
+    log.txt` are all plain reads that the old raw-text scan flagged because it couldn't tell a
+    literal `>`/`->`/keyword inside a string from the real thing). An UNQUOTED `->` is genuinely a
+    redirect in real shell semantics (`echo a->b` really does write file `b` — verified empirically),
+    so this must stay quote-aware rather than special-casing `->` unconditionally, which would open a
+    real bypass. Only `'...'`/`"..."` spans are blanked; `$(...)`/backticks are left alone (real
+    command substitution executes even when it visually sits inside a string) so mutations smuggled
+    that way are still caught.
+    """
+    out = []
+    quote = None  # None | "'" | '"'
+    i, n = 0, len(command)
+    while i < n:
+        c = command[i]
+        if quote is None:
+            out.append(c)
+            if c in ("'", '"'):
+                quote = c
+        elif quote == '"' and c == "\\" and i + 1 < n:
+            out.append("  ")
+            i += 2
+            continue
+        elif c == quote:
+            out.append(c)
+            quote = None
+        else:
+            out.append(" ")
+        i += 1
+    return "".join(out)
+
+
 # Filesystem-mutating constructs. Each (regex, label). Matched against the de-noised command.
 _DENY = [
     (re.compile(r"(?<![0-9&])>>?(?!\s*&)"), "output redirection to a file (`>`/`>>`)"),
@@ -68,7 +105,11 @@ _DENY = [
     # author gen_xlsx.py inside its (path-allowed) openspec/ fence and then EXECUTE it here. Block
     # `python/node/… <some-script.(py|js|mjs|…)>`. The kit's OWN generators (under .kiro//.claude/
     # skills|tools — kit-owned, read-only, not authorable by any role) are whitelisted in classify().
-    (re.compile(r"\b(?:python3?|node|deno|bun|ts-node|ruby|perl|php|bash|sh)\b[^|;&]*?\s[^\s|;&]*\.(?:py|js|mjs|cjs|ts|tsx|jsx|rb|pl|php|sh|bash)\b"),
+    # `(?<!\.)` before the interpreter alternation stops it matching the tail of an unrelated file's
+    # OWN extension (`phpstan analyse A.php B.php` was a false positive: "php" inside "A.php" — right
+    # after a bare `.` — was misread as the php INTERPRETER, with "B.php" then misread as its script
+    # arg; a real interpreter invocation is never glued directly after a `.` with no separator).
+    (re.compile(r"(?<!\.)\b(?:python3?|node|deno|bun|ts-node|ruby|perl|php|bash|sh)\b[^|;&]*?\s[^\s|;&]*\.(?:py|js|mjs|cjs|ts|tsx|jsx|rb|pl|php|sh|bash)\b"),
      "running a script file (→ arbitrary write; use the kit generator, not a one-off script)"),
     (re.compile(r"\b(?:cp|mv|rm|rmdir|touch|mkdir|dd|truncate|ln|chmod|chown)\b"), "filesystem-mutating command"),
     # `(?:\S+\s+)*?` non-greedily consumes any git global options (`-c x`, `-C /repo`,
@@ -162,8 +203,9 @@ def classify(command: str, cls: str = "restricted"):
     # fence. Must be a single command with no chaining/substitution smuggled alongside.
     if not _CMD_SEP.search(command.strip()) and _KIT_SCRIPT.search(command):
         return None
-    # Remove harmless /dev/null + fd-dup redirections so they don't trip the `>` rule.
-    denoised = _FD_DUP.sub(" ", _DEVNULL.sub(" ", command))
+    # Blank quoted string contents (inert data, not real shell syntax), then remove harmless
+    # /dev/null + fd-dup redirections, so neither trips the `>` / keyword rules below.
+    denoised = _FD_DUP.sub(" ", _DEVNULL.sub(" ", _strip_quoted(command)))
     for rx, label in _DENY:
         if rx.search(denoised):
             return label
@@ -235,6 +277,16 @@ def _self_test() -> int:
         (None, "architect", "rm x",                         BLOCK),
         (None, "qa",        "sed -i s/a/b/ f",              BLOCK),
         (None, "onboarder", "echo x > context/p.md",        BLOCK),  # restricted roles: read-only shell
+        # --- quote-aware false-positive fixes (real incident: QA re-run burned retries on these) ---
+        (None, "qa",        "grep -o '<Tag>.*</Tag>' file.xml",              ALLOW),  # quoted `>` in an XML pattern
+        (None, "qa",        'grep -c "rm -rf" CHANGELOG.md',                 ALLOW),  # quoted keyword as search text
+        (None, "qa",        'docker exec c1 php artisan tinker --execute="App\\Foo::bar()->baz()"', ALLOW),  # quoted `->`
+        (None, "qa",        "phpstan analyse A.php B.php C.php",             ALLOW),  # 2+ bare .php args, no real interpreter
+        (None, "qa",        "phpstan analyse Modules/FraudPrevention",       ALLOW),
+        (None, "qa",        "echo test -> outfile.txt",                     BLOCK),  # UNQUOTED `->` really is `-` + redirect
+        (None, "qa",        'echo "a->b.txt" > out.txt',                    BLOCK),  # quoted arrow, but a REAL trailing redirect
+        (None, "qa",        "python3 -c \"import os; os.system('rm -rf /')\"", BLOCK),  # -c flag stays outside quotes
+        (None, "qa",        "rm -rf 'my file with spaces'",                 BLOCK),  # command name stays outside quotes
         # --- script-execution guard: running an authored script == arbitrary write ---
         (None, "qa",        "python3 openspec/changes/x/qa/gen_xlsx.py", BLOCK),  # the exact bypass we are closing
         (None, "qa",        "node openspec/changes/x/qa/gen.mjs",        BLOCK),

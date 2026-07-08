@@ -19,6 +19,14 @@ You own exactly 1 SDLC phase:
 
 > **Routing note**: "sdlc" trong các handoff / `next_action` bên dưới = orchestrator của flow đang chạy — `sdlc-full` (ctrl+0) cho feature/cr/rebuild, `sdlc-fast` (ctrl+5) cho bugfix/hotfix. Không có agent nào tên trống là "sdlc".
 
+## Resume check (ĐẦU TIÊN)
+
+Nếu `qa-report.md` và/hoặc `qa/testcases.*` đã tồn tại trong `{CHANGE_DIR}` (lần chạy QA trước bị
+ngắt/kill trước khi ra GO/NO-GO) → ĐỌC chúng trước, ĐỪNG generate lại test scenarios hay chạy lại test
+đã có kết quả PASS ghi nhận từ lần chạy dở đó. Tiếp tục phần còn thiếu (RCA chưa xong, chưa có
+coverage_summary.md, chưa có verdict GO/NO-GO). Chạy lại từ đầu sau khi bị ngắt = đốt lại toàn bộ
+token của lần chạy trước cho không.
+
 # HARD RULES — VIOLATIONS = REJECTED OUTPUT
 
 ## R1: AC Reference — Use Analyst's IDs, NEVER Invent New Ones
@@ -96,7 +104,9 @@ You own exactly 1 SDLC phase:
   - Implicit Assumptions: test limitations (what couldn't be tested and why)
   - Risky Areas: areas that passed but are fragile
   - Recommended Reading Order: for developer (S4-fix) or release prep (S6)
-- **`_state.json`**: Update with enriched fields
+- **`_state.json`**: **never rewrite the whole file.** Một lệnh:
+  `node .kiro/tools/state-set.mjs --append phase_history='{"phase":"S5","agent":"qa","date":"…","note":"…(1-3 câu; GO/NO-GO + vì sao)"}'`
+  kèm `--set 'next_action.routes_to=<theo kết quả>'`
 - 🧠 **`memory/qa/{change-name}.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S5 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (hollow-assertion pattern, coverage gap hay tái diễn, 5xx/validation bug pattern, mục thêm cho smoke checklist) → WRITE một section `## {ISO-date} — {change-name}: {lesson}` vào `memory/qa/{change-name}.md` — **1 file riêng cho change này**, để 2 change chạy song song trên 2 branch khác nhau không bao giờ đụng cùng 1 đường dẫn (hết conflict khi merge). ĐỒNG THỜI append 1 dòng vào `memory/qa/_index.md`: `- {change-name} ({ISO-date}): {lesson}` — digest rẻ mà mọi run sau đọc trước tiên. KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/qa/` tích luỹ XUYÊN spec (mỗi change 1 file). **Append-only trong phạm vi file này** — nếu `memory/qa/{change-name}.md` đã tồn tại (một round trước của CHÍNH change này đã ghi), BẮT BUỘC: (1) READ nó trước, (2) giữ NGUYÊN VĂN mọi section `## ` cũ, (3) APPEND section mới ở cuối, (4) WRITE lại toàn bộ nội dung nối lại (write-path hook chặn write làm mất section). Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler. **Cờ gate (BẮT BUỘC):** trước khi return, set `_state.json.memory_writeback.qa` = `"appended"` (đã thêm section) hoặc `"nothing-reusable"` (pass sạch, không có gì để thêm). cpp-guard CHẶN gate QA đến khi cờ này được set — biến việc "im lặng bỏ qua" thành quyết định có chủ đích, vì agent one-shot không có cơ hội thứ hai sau khi đã return.
 - ❌ NEVER present GO/NO-GO without CPP artifacts updated
 

@@ -133,7 +133,10 @@ This project is driven by **OpenSpec**. You work inside a per-feature **change w
   - Implicit Assumptions: things inferred from codebase that aren't in design
   - Risky Areas: code that's "thin" (less tested), complex logic, workarounds
   - Recommended Reading Order: guide QA on what to focus testing on
-- **`_state.json`**: Update with enriched fields at each checkpoint and final completion
+- **`_state.json`**: **never rewrite the whole file.** Mỗi checkpoint: `node .kiro/tools/state-set.mjs
+  --set <checkpoint-field>=<value>` (chỉ field đổi). Khi S4 XONG: thêm
+  `--append phase_history='{"phase":"S4","agent":"developer","date":"…","note":"…(1-3 câu)"}'` trong
+  CÙNG lệnh cuối cùng — không phải 1 dòng phase_history cho mỗi checkpoint.
 - 🧠 **`memory/developer/{change-name}.md` — MEMORY WRITE-BACK (xuyên-spec, advisory)**: nếu S4 này rút ra lesson *tái dùng được, KHÔNG gắn riêng spec* (recurring bug pattern, validation/sync trap, framework gotcha) → WRITE một section `## {ISO-date} — {change-name}: {lesson}` vào `memory/developer/{change-name}.md` — **1 file riêng cho change này**, để 2 change chạy song song trên 2 branch khác nhau không bao giờ đụng cùng 1 đường dẫn (hết conflict khi merge). ĐỒNG THỜI append 1 dòng vào `memory/developer/_index.md`: `- {change-name} ({ISO-date}): {lesson}` — digest rẻ mà mọi run sau đọc trước tiên. KHÁC với CPP baton ở trên (baton chỉ trong spec này); `memory/developer/` tích luỹ XUYÊN spec (mỗi change 1 file). **Append-only trong phạm vi file này** — nếu `memory/developer/{change-name}.md` đã tồn tại (một round trước của CHÍNH change này đã ghi), READ nó trước, giữ NGUYÊN VĂN mọi section `## ` cũ, APPEND section mới ở cuối, rồi WRITE lại toàn bộ nội dung nối lại (write-path hook chặn write làm mất section). Không có lesson mới đáng giữ → BỎ QUA, đừng bịa filler. **Cờ gate (BẮT BUỘC):** trước khi return khỏi S4, set `_state.json.memory_writeback.developer` = `"appended"` (đã thêm section) hoặc `"nothing-reusable"` (build sạch, không có gì để thêm). cpp-guard CHẶN gate BUILD đến khi cờ này được set — biến việc "im lặng bỏ qua" thành quyết định có chủ đích, vì agent one-shot không có cơ hội thứ hai sau khi đã return.
 - ❌ NEVER mark S4 done without CPP artifacts updated
 - ❌ Orchestrator BUILD gate will BLOCK if CPP artifacts missing
