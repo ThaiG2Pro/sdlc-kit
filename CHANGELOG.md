@@ -90,6 +90,11 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   Also added a universal style rule in `sdlc-orchestration-core` SKILL.md restating this for the
   orchestrator's own awareness: CPP baton text fields are keyword/telegraphic by default at every
   scope — same information, fewer words — not just at `scope=tiny`.
+- **`init --gitignore-only`** — refreshes JUST the kit-owned `.gitignore` block and exits, without
+  `--force`'s full ~128-file `.claude`/`.kiro` recopy. Rolling out a new `GITIGNORE_PATTERNS` entry
+  (e.g. the `memory/*/_index.md` / `/context/` additions above) previously meant either a full
+  `--force` re-init — unrelated blast radius for what's a one-line pattern change — or hand-editing
+  every project's `.gitignore`. Errors if combined with `--no-gitignore` (contradictory).
 
 ### Changed
 

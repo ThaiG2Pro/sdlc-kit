@@ -51,6 +51,10 @@ const YES = flags.has('--yes') || flags.has('-y');
 const CHECK = flags.has('--check') || flags.has('--dry-run');
 const GITIGNORE = flags.has('--gitignore');       // force-write the kit .gitignore block (no prompt)
 const NO_GITIGNORE = flags.has('--no-gitignore'); // never touch .gitignore (no prompt)
+// Surgical mode: refresh ONLY the kit-owned .gitignore block (e.g. a new GITIGNORE_PATTERNS entry
+// shipped upstream) without touching .claude/.kiro/context/openspec/etc. Doesn't require --force —
+// a full re-init's ~128-file recopy is unrelated blast radius for what is a one-line pattern change.
+const GITIGNORE_ONLY = flags.has('--gitignore-only');
 
 // Text extensions that get placeholder substitution
 const TEXT_EXT = /\.(md|json|txt|ts|js|mjs|py|yaml|yml)$/i;
@@ -568,6 +572,13 @@ function printNextSteps(targets, hasOpenspec) {
 async function main() {
   log('\n  kiro-sdlc-kit — init\n  ' + '─'.repeat(40));
   if (!existsSync(SHARED_SRC)) die(`kit payload not found at ${SHARED_SRC}`);
+
+  if (GITIGNORE_ONLY) {
+    if (NO_GITIGNORE) die('--gitignore-only and --no-gitignore contradict each other');
+    log(`  Target project : ${TARGET}`);
+    updateGitignore();
+    exit(0);
+  }
 
   // Fail loudly on non-interactive (piped/non-TTY) stdin instead of the old silent no-op.
   if (!CHECK && !YES && !stdin.isTTY && TITLE === null) {

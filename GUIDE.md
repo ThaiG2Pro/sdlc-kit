@@ -40,14 +40,25 @@ contents, and **merges** `.claude/settings.json` so your `enabledPlugins`/`env`/
 permissions survive a kit upgrade),
 `--yes` (defaults, no prompts), `--title "Name"` (set the project title non-interactively),
 `--check` / `--dry-run` (print the per-target add/overwrite/preserve/prune plan and exit — writes nothing),
-`--gitignore` / `--no-gitignore` (force-add / never-touch the kit `.gitignore` block — see below).
+`--gitignore` / `--no-gitignore` (force-add / never-touch the kit `.gitignore` block — see below),
+`--gitignore-only` (refresh JUST the `.gitignore` block and exit — no `--force` needed, no `.claude`/
+`.kiro`/etc. recopy; use this after a kit upgrade adds a new ignore pattern and you don't otherwise
+need a full re-init).
 
 **`.gitignore` (optional).** `init` offers to add a kit-owned block to the project's `.gitignore`
 (interactive prompt defaults to **yes**; `--gitignore`/`--no-gitignore` decide it non-interactively).
-The block ignores only what the kit **regenerates** on every `--force`: `.claude/`, `.kiro/`,
-`/sdlc.config.json`, `/pipelines.json`. Your hand-authored knowledge — `context/`, `openspec/`,
-`docs/`, `memory/` — is deliberately **kept committable**. The block is bounded by
-`# >>> kiro-sdlc-kit >>>` / `# <<< kiro-sdlc-kit <<<` markers, so re-running `init` refreshes it in
+`GITIGNORE_PATTERNS` in `bin/init.mjs` is the single source of truth for what the block contains —
+edit it and re-run `--gitignore-only` (or a full `--force`) to roll the change out; there is no
+per-invocation flag for individual patterns. Currently: what the kit **regenerates** on every
+`--force` (`.claude/`, `.kiro/`, `/sdlc.config.json`, `/pipelines.json`) plus two narrow additions:
+`memory/*/_index.md` (a derived digest, regenerable, and the one `memory/` file parallel branches
+collide on) and `/context/` (a deliberate maintainer trade-off — hand-curated, NOT regenerable, so
+ignoring it means zero merge conflicts but no git history/shared source of truth for it; a project
+that wants `context/` tracked instead should remove that one line from its own `.gitignore` — the
+onboarder/`context-refresh` agents check `git check-ignore` at runtime either way, so both states work).
+`openspec/` and `docs/` are deliberately **kept committable** with no exception. The block is bounded
+by `# >>> kiro-sdlc-kit >>>` / `# <<< kiro-sdlc-kit <<<` markers, so re-running `init` (or `init
+--gitignore-only`) refreshes it in
 place (never duplicates), and deleting the whole block opts you back into committing the kit.
 
 `init` copies the framework for each target, runs `openspec init --tools <platform>` (scaffolds
