@@ -258,6 +258,13 @@ root-relative by both. The framework (process, skills, gates, security) is ident
     flat `memory/<role>.md` path in one blockquote, contradicting the per-change-file path
     (`memory/<role>/{change-name}.md`) correctly used everywhere else in the same file and by every
     role prompt. Fixed the reference.
+- **`memory/<role>/_index.md` added to the kit's `.gitignore` block** — real conflict reported: it's
+  the one `memory/` artifact every parallel branch/worktree appends to at the SAME path (unlike
+  `memory/<role>/{change-name}.md`, one unique file per change, which is exactly why THAT split
+  happened). `context/`, `openspec/`, `docs/`, and the per-change memory files stay tracked/committed
+  as before — only this specific derived digest is now ignored, since `init --force`'s
+  `backfillMemoryIndex()` already regenerates it in full from the `{change-name}.md` files' own `## `
+  headers, so nothing is lost by not tracking it.
 
 ### Tooling
 
