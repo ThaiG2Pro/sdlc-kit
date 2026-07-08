@@ -265,6 +265,15 @@ root-relative by both. The framework (process, skills, gates, security) is ident
   as before — only this specific derived digest is now ignored, since `init --force`'s
   `backfillMemoryIndex()` already regenerates it in full from the `{change-name}.md` files' own `## `
   headers, so nothing is lost by not tracking it.
+- **`context/*.md` merge conflicts across parallel branches — no gitignore fix exists here, unlike
+  `memory/_index.md`, because `context/*.md` is hand-curated and NOT regenerable.** Real conflict
+  reported: `onboarder`/`context-refresh` had zero guardrail against running on a per-change isolated
+  branch/worktree — nothing stopped two feature branches from each independently drifting the SAME
+  shared `context/*.md` a different way, guaranteeing a real content conflict on merge. Both agents
+  (both targets) now check `git branch --show-current` against `sdlc.config.json →
+  git.protected_branches` as their first step and warn + ask for confirmation before touching
+  `context/` from a branch that isn't the shared base — the fix is procedural (don't diverge it in the
+  first place), not file-exclusion (there's nothing to regenerate it from).
 
 ### Tooling
 

@@ -35,9 +35,21 @@ what demonstrably changed, never invent.
 2. **Diff before write** — produce the Drift Report first; only then edit, and edit the minimum.
 3. **Never invent** — every change cites an evidence file; undetectable → leave as-is or mark
    `UNKNOWN — needs owner input` and surface it.
+4. **Run this on a shared/base branch, not inside a per-change isolated branch/worktree.**
+   `context/*.md` is committed, shared project knowledge every in-flight SDLC pipeline reads — it is
+   NOT per-change data. Two isolated branches that each run context-refresh independently will each
+   drift `context/*.md` a different way; merging either one back is a REAL content conflict (the
+   opposite of the digest files under `memory/<role>/_index.md`, which are gitignored precisely
+   because they're derived/regenerable — `context/*.md` is hand-curated and can't be regenerated the
+   same way). Check first: `git branch --show-current`, compare against `sdlc.config.json →
+   git.protected_branches`. Not on one of them → tell the user plainly ("you're on `<branch>`, a
+   per-change branch — refreshing context here will diverge from `<protected_branches[0]>` and can
+   conflict on merge; recommend switching there first") and ask before proceeding anyway.
 
 ## Procedure
 
+0. **Branch check** (Hard rule 4) — `git branch --show-current` vs `sdlc.config.json →
+   git.protected_branches`; warn + confirm if not on a listed branch.
 1. **Re-detect today's reality** (same probes as the onboarder, looking for *changes*):
    - manifests/deps (package.json, composer.json, go.mod, pyproject.toml, …) → new/changed
      framework, test/coverage tooling since `stack.md`;

@@ -50,6 +50,12 @@ could not answer — and you MUST surface every such marker at hand-off).
 
 ### Phase 0 — Mode
 
+**Branch check first** (skip only for a true GREENFIELD/empty repo): `git branch --show-current` vs
+`sdlc.config.json → git.protected_branches`. Not on one of them → this is a per-change isolated
+branch/worktree, not the shared base — `context/*.md` is committed knowledge every pipeline reads,
+not per-change data; onboarding/updating it here will diverge from `<protected_branches[0]>` and
+conflict on merge. Tell the user plainly and ask before proceeding anyway.
+
 First decide which of THREE modes you are in — it changes Phases 1–2.
 
 **A) Is the context already filled?** Unfilled = any `<!-- TODO` prefix (both forms):

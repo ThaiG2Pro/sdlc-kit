@@ -23,6 +23,11 @@ draft, self-check) and **return a "Facts to commit" table + an UNKNOWN list** fo
 
 ## Phase 0 — Mode (state it in your return)
 
+- **Branch check** (skip only for a true GREENFIELD/empty repo): `git branch --show-current` vs
+  `sdlc.config.json → git.protected_branches`. Not on one of them → this is a per-change isolated
+  branch/worktree, not the shared base — `context/*.md` is committed knowledge every pipeline reads,
+  not per-change data; onboarding/updating it here will diverge from `<protected_branches[0]>` and
+  conflict on merge. Tell the user plainly and ask before proceeding anyway.
 - `grep -rln '<!-- TODO' context/` → if some files have no markers → **UPDATE** (preserve
   human-written fields; flag anything you'd overwrite). Else:
 - Probe for manifests + real source → **EXISTING** (extract facts from code) vs **GREENFIELD**

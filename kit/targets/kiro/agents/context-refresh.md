@@ -39,8 +39,22 @@ You do **NOT** write product code or specs. Writable paths: `context/**` (shared
    edit files — and edit the **minimum** needed.
 3. **Never invent.** Every change must cite the evidence file. Undetectable → leave as-is or mark
    `UNKNOWN — needs owner input` and surface it.
+4. **Run this on a shared/base branch, not inside a per-change isolated branch/worktree.**
+   `context/*.md` is committed, shared project knowledge every in-flight SDLC pipeline reads — it is
+   NOT per-change data. Two isolated branches that each run context-refresh independently will each
+   drift `context/*.md` a different way; merging either one back is a REAL content conflict (unlike
+   `memory/<role>/_index.md`, gitignored precisely because it's derived/regenerable —
+   `context/*.md` is hand-curated and can't be regenerated the same way). Check first: `git branch
+   --show-current`, compare against `sdlc.config.json → git.protected_branches`. Not on one of them
+   → tell the user plainly ("you're on `<branch>`, a per-change branch — refreshing context here will
+   diverge from `<protected_branches[0]>` and can conflict on merge; recommend switching there
+   first") and ask before proceeding anyway.
 
 ## Procedure
+
+### 0 — Branch check (Hard rule 4)
+`git branch --show-current` vs `sdlc.config.json → git.protected_branches`; warn + confirm if not on
+a listed branch.
 
 ### 1 — Re-detect the current reality
 Re-run the onboarder's detection, but against today's repo:
