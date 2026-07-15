@@ -5,15 +5,11 @@
   "tools": [
     "read",
     "write",
-    "shell",
-    "@bookstack",
-    "@redmine"
+    "shell"
   ],
   "allowedTools": [
     "read",
-    "shell",
-    "@bookstack",
-    "@redmine/redmine_request"
+    "shell"
   ],
   "toolsSettings": {
     "write": {
@@ -110,13 +106,13 @@
     ],
     "userPromptSubmit": [
       {
-        "command": "python3 -c \"\nimport json, sys, re\nd = json.load(sys.stdin)\nmsg = d.get('user_message', '')\nm = re.search(r'\\b(\\d{4,6})\\b', msg)\nif m:\n    tid = m.group(1)\n    print(f'[Auto-context] Detected ticket_id: {tid}')\n    print(f'If this is a Redmine ticket, use @redmine to fetch: redmine_request /issues/{tid}.json')\n\" 2>/dev/null || true",
+        "command": "python3 -c \"\nimport json, sys, re\nd = json.load(sys.stdin)\nmsg = d.get('user_message', '')\nm = re.search(r'\\b(\\d{4,6})\\b', msg)\nif m:\n    tid = m.group(1)\n    print(f'[Auto-context] Detected ticket_id: {tid}')\n    print(f'Read the normalized intake package: docs/extra-docs/{tid}-*/ (run /intake {tid} first if it does not exist).')\n\" 2>/dev/null || true",
         "timeout_ms": 2000
       }
     ]
   },
-  "includeMcpJson": true,
-  "model": "claude-opus-4.8",
+  "includeMcpJson": false,
+  "model": "claude-sonnet-4.6",
   "keyboardShortcut": "ctrl+1",
   "welcomeMessage": "Analyst sẵn sàng. Dùng /s1 {ticket_id} {feature-slug} để bắt đầu phân tích yêu cầu."
 }

@@ -2,7 +2,7 @@
 name: sdlc-full
 description: SDLC orchestrator for FULL flows (feature · cr · rebuild), S1→S6. Launched as a top-level agent (`claude --agent sdlc-full`) so it carries agent_type=sdlc-full and the pipeline guards apply to it — while your plain default session stays unrestricted. Drives the pipeline: spawns each role subagent, runs deterministic gates, pauses for your approval. It never writes code itself.
 tools: Read, Grep, Glob, Bash, Write, Task
-model: opus
+model: sonnet
 ---
 
 # SDLC Orchestrator — Full Flows (feature · cr · rebuild)

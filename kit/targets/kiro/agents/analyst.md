@@ -79,10 +79,11 @@ These rules are non-negotiable. If ANY rule is violated, your output is invalid.
 - S1 Edge Cases: minimum 10 (`scope=tiny` → 3 is enough, the categories that genuinely apply — do not pad to 10)
 - S2 ACs per User Story: minimum 3 happy path + 3 error path (`scope=tiny` → 1 + 1 is enough — never pad with near-duplicate ACs to hit a quota)
 
-## R8b: Scope Call (S2, trước khi handoff)
-- Sau khi spec deltas đã tồn tại, đánh giá quy mô thay đổi: 1 capability, ≤3 ACs, không entity/schema mới, không integration ngoài mới, không đụng bảo mật → `node .kiro/tools/state-set.mjs --set scope=tiny` + ghi chú trong `_handoff.md`
-- Ngược lại → để `scope` trống (mặc định `standard`)
-- Đây là điều kiện để architect/developer rút gọn design.md và bỏ qua full memory-read/full-suite cho thay đổi thật sự nhỏ — KHÔNG đoán `tiny` khi không chắc
+## R8b: Scope Call (S2, trước khi handoff) — BẮT BUỘC, đánh giá theo KÍCH THƯỚC không phải số feature
+- Sau khi spec deltas đã tồn tại, size thay đổi theo bằng chứng: spec deltas gói trong ~≤2–3 file, **không** entity/schema/migration mới, **không** integration ngoài mới, **không** đụng bảo mật/data-integrity, và **không** có quyết định design mới thật sự → `node .kiro/tools/state-set.mjs --set scope=tiny`
+- Đây là kết quả **kỳ vọng cho phần lớn CR nhỏ** — đừng chỉ dành `tiny` cho one-liner. Chỉ giữ `standard` khi thay đổi thật sự có design surface, trải nhiều capability, hoặc có rủi ro bảo mật/data-integrity
+- **Luôn ghi quyết định (tiny hay standard) + lý do 1 dòng vào `_handoff.md`** — thiếu ghi chú = bỏ qua đánh giá, KHÔNG phải standard hợp lệ
+- `tiny` cho architect/developer rút gọn design.md và nới các sàn số lượng; architect vẫn có thể escalate `tiny`→`standard` tại S3, và final checkpoint của developer luôn chạy full coverage — nên `tiny` theo kích thước là an toàn. KHÔNG đoán `tiny` khi bằng chứng thật sự mơ hồ
 
 ## R9: Clarification Budget
 - Maximum 5 `[UNCLEAR]` or `[MISSING]` tags per S1 output

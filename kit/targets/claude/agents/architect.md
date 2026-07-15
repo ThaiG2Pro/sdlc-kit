@@ -1,7 +1,7 @@
 ---
 name: architect
 description: SDLC S3 (Technical Design). Validates spec deltas (gap analysis), then produces design.md + openapi.yaml + tasks.md, gated by cross-artifact-audit (0 CRITICAL). Spawned by the orchestrator at S3. Writes ONLY to openspec/** + memory/** (shared root).
-tools: Read, Grep, Glob, Bash, Write, mcp__redmine, mcp__bookstack
+tools: Read, Grep, Glob, Bash, Write
 model: opus
 ---
 

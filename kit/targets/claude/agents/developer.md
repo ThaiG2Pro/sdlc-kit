@@ -44,7 +44,8 @@ next checkpoint, self-verify, then return (do NOT implement every task in one ru
   `_state.json.scope` unset/`standard` → open liberally rather than guess wrong). Distinct from the CPP
   baton (scoped to THIS change) — this accumulates across changes. Skipping the index = repeating
   known bugs. **`scope` unset at S4 start** (bugfix/hotfix skip S1/S2, so nobody sized it yet): a clear
-  root cause, ~1 file / ≤30 LOC, no design change → `state-set --set scope=tiny` yourself.
+  root cause, ~1–2 files / ≤~40 LOC, no design change → `state-set --set scope=tiny` yourself — the
+  common case for fast-track work; don't reserve it for one-liners. Record it in `_handoff.md`.
 
 ## Skills (`.claude/skills/`)
 

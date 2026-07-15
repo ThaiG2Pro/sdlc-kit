@@ -98,6 +98,24 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Changed
 
+- **Token-efficiency pass (per-spawn + per-phase cost).** Three independent cuts to what every pipeline burns:
+  - **Dead MCP grants removed from `analyst` + `architect`** (both targets). Both roles read the
+    normalized intake package under `docs/extra-docs/` (produced by `intake`, which alone owns
+    `@redmine`/`@figma`); they never called `@redmine`/`@bookstack`, yet each spawn loaded the full
+    schema surface (~40 BookStack tools + Redmine) whenever those servers were connected. Frontmatter
+    (`tools:`) and Kiro `tools`/`allowedTools` narrowed to `read/write/shell`; Kiro `includeMcpJson`
+    set `false` on both; the analyst's ticket-detection hint now points at the intake package instead
+    of a `@redmine` fetch it can no longer perform.
+  - **Model tiers rebalanced.** `analyst` → Sonnet, and the Claude `sdlc-full`/`sdlc-fast` orchestrators
+    → Sonnet (matching Kiro, which already ran them on Sonnet). `architect` stays Opus (design
+    reasoning); `developer`/`qa` already Sonnet. The longest-running / highest-frequency roles no longer
+    default to Opus.
+  - **`scope=tiny` now sized on evidence, not feature count.** The analyst's S2 scope call (and the
+    developer's S4 call for bugfix/hotfix) judges by change *size* (~≤2–3 files, no new
+    entity/schema/migration, no new integration, not security/data-integrity, no new design decision)
+    and is a **mandatory recorded decision** in `_handoff.md`, so a small CR resolves to `tiny` instead
+    of silently falling through to full-depth `standard`. Backstops unchanged: architect may still
+    escalate `tiny`→`standard` at S3, and the developer's final checkpoint always runs full coverage.
 - **Shared workspace + config are root-only** (no symlink); framework runtime stays per-platform. `init`
   migrates older per-platform copies/symlinks to the root and merges `.claude/settings.json` (unions
   permissions; preserves `enabledPlugins`/`env`/`model`) instead of clobbering it.

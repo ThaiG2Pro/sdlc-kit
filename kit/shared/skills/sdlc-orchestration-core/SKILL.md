@@ -122,15 +122,24 @@ orchestrator (`state-set test_scope=full` + a note), not a silent QA-side decisi
 > phase that DOES run produces* — a condensed design.md, index-first memory reads, affected-tests-only
 > at intermediate checkpoints. It never skips a phase, a gate, or a mandatory artifact.
 
-`_state.json.scope` ∈ `tiny` | `standard` — default **`standard`** when unset (never assume tiny; an
-agent that finds no `scope` key proceeds at full depth). Resolved progressively, **no kickoff
-question** — whichever role first has real evidence of the change's size sets it:
+`_state.json.scope` ∈ `tiny` | `standard`. At **read time** an agent that finds no `scope` key proceeds
+at full depth (`standard`) — the safe fallback. But resolution is **not optional**: the sizing role
+below MUST actively evaluate and set the key every run, so "standard" is a *decision on the evidence*,
+not a silently-skipped evaluation that defaults to full cost. No kickoff question — whichever role
+first has real evidence of the change's size sets it:
 
-- **Analyst, at S2** (once the spec deltas exist): single capability, ≤3 ACs, no new entity/schema,
-  no new external integration, nothing security-sensitive → `node {{PLATFORM_DIR}}/tools/state-set.mjs
-  --set scope=tiny` and note it in `_handoff.md`. Otherwise leave it unset (`standard`).
-- **Developer, at S4 start**, for `bugfix`/`hotfix` (no S1/S2 to size it): same evidence bar — a clear
-  root cause, ~1 file / ≤30 LOC, no design change → `scope=tiny`.
+- **Analyst, at S2** (once the spec deltas exist): evaluate on **size evidence**, not feature count.
+  A single, well-understood change — spec deltas confined to ~≤2–3 files' worth of surface, **no** new
+  entity/schema/migration, **no** new external integration, **not** security- or data-integrity-
+  sensitive, and **no** genuinely new design decision → `node {{PLATFORM_DIR}}/tools/state-set.mjs
+  --set scope=tiny`. This is the **expected outcome for most bugfixes and small CRs** — do not reserve
+  `tiny` for trivial one-liners. Stay `standard` only when the change genuinely carries design surface,
+  spans multiple capabilities, or has security/data-integrity stakes. **Record the decision (tiny or
+  standard) + the one-line reason in `_handoff.md` every run** — a missing note reads as a skipped
+  evaluation, not a valid standard.
+- **Developer, at S4 start**, for `bugfix`/`hotfix` (no S1/S2 to size it): same size-evidence bar — a
+  clear root cause, ~1–2 files / ≤~40 LOC, no design change → `scope=tiny` (the common case for fast-
+  track work). Record it in `_handoff.md`.
 - **Architect, at S3**, MAY escalate `tiny`→`standard` (never the reverse) if the sketch reveals real
   design complexity the analyst missed — record why in the handoff.
 - A human overrides anytime: `--scope=tiny|standard` on the `sdlc …` command, or a direct
