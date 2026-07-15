@@ -98,6 +98,13 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Changed
 
+- **Orchestrator may switch to an existing isolation branch on resume.** The shell guard now allows the
+  orchestrator a plain `git switch <branch>` (no flags, one arg) in addition to the branch/worktree
+  *create* it already permitted — so a resumed session that starts on the base branch can move onto the
+  pipeline's isolation branch before delegating (§2 Load State does this automatically, comparing HEAD to
+  `_state.json.isolation.branch`). `git switch` is file-safe (it cannot restore/overwrite a file the way
+  `git checkout <path>` can); dangerous forms stay blocked — `git checkout <anything>`, any `git switch`
+  with `-f`/`--discard-changes` or a trailing pathspec, and every chained command. Guard self-test 61/61.
 - **Token-efficiency pass (per-spawn + per-phase cost).** Three independent cuts to what every pipeline burns:
   - **Dead MCP grants removed from `analyst` + `architect`** (both targets). Both roles read the
     normalized intake package under `docs/extra-docs/` (produced by `intake`, which alone owns

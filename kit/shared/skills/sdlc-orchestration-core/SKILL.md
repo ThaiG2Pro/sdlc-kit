@@ -261,6 +261,14 @@ Run `openspec list` → enumerate active changes (source of truth).
 - **Flow-ownership guard**: the calling flow agent verifies `type` ∈ its own set and refuses a
   mismatch (telling the user which orchestrator to open). Honor that — never operate a change
   whose `type` is outside the loaded flow's set.
+- **Branch alignment on resume (MANDATORY when `isolation.method == "branch"`)**: a resumed session may
+  start on the base branch, not the pipeline's isolation branch — delegating a phase there would make
+  the developer write on the wrong branch. Compare `git rev-parse --abbrev-ref HEAD` to
+  `_state.json.isolation.branch`; if they differ, **`git switch <isolation.branch>`** before routing
+  (this is the one branch-switch the shell guard allows the orchestrator — plain `git switch <branch>`,
+  no flags). If the switch fails (dirty tree / conflict) → STOP and surface it; do not delegate onto the
+  wrong branch. For `isolation.method == "worktree"`, the change already lives in its own working tree —
+  operate from `isolation.worktree_path` instead of switching.
 
 ### 3. Route
 
@@ -518,9 +526,12 @@ Any check fails → block the gate, name the agent that must complete the artifa
 - ❌ Orchestrator does NOT run build/test/lint and does NOT write code via the shell. It MAY run
   read-only OpenSpec CLI (`list`/`status`/`change validate`). Mutating commands (`new change`,
   `archive`) and `/opsx:apply` run at setup/S6 or by the developer agent.
-- ✅ The ONLY shell-mutation the orchestrator may run is creating a NEW pipeline's isolation
-  branch/worktree (`git checkout -b` / `git switch -c` / `git worktree add`), at §New Change Setup
-  step 2. The shell guard blocks every other git (add/commit/checkout-file/reset/merge/branch-delete).
+- ✅ The ONLY shell-mutations the orchestrator may run are on a pipeline's isolation branch/worktree:
+  **creating** one at kickoff (`git checkout -b` / `git switch -c` / `git worktree add`, §New Change
+  Setup step 2) and **switching to an existing** one on resume (plain `git switch <branch>`, no flags,
+  §2 Load State). The shell guard blocks every other git — add/commit/reset/merge/branch-delete,
+  `git checkout <anything>` (ambiguous with file-restore), and any `git switch` carrying a flag
+  (`-f`/`--discard-changes`) or trailing pathspec.
 - ✅ Always show current state + exact next step. Always update `_state.json` on gate change —
   `_progress.md` is the role's own artifact (§Progress Marking), not yours to also rewrite.
 

@@ -33,7 +33,8 @@ DUAL-PLATFORM (one source, two hosts):
 
 ACTOR → CLASS → POLICY (identical regex denylist for both hosts):
   developer                              → ALLOW (the only code-writing role; full shell)
-  orchestrator (Kiro sdlc-*, Claude main)→ READ-ONLY except a single branch/worktree create
+  orchestrator (Kiro sdlc-*, Claude main)→ READ-ONLY except an isolation branch/worktree create
+                                           OR a plain `git switch <branch>` (resume) — see _BRANCH_*
   restricted   (analyst/architect/qa/…)  → READ-ONLY, no exceptions
 
 CONTRACT: reads the hook JSON on stdin; exit 0 = allow, exit 2 = block (fail-closed on parse error).
@@ -114,7 +115,10 @@ _DENY = [
     (re.compile(r"\b(?:cp|mv|rm|rmdir|touch|mkdir|dd|truncate|ln|chmod|chown)\b"), "filesystem-mutating command"),
     # `(?:\S+\s+)*?` non-greedily consumes any git global options (`-c x`, `-C /repo`,
     # `--git-dir=…`) smuggled between `git` and the mutating subcommand — closes the bypass.
-    (re.compile(r"\bgit\s+(?:\S+\s+)*?(?:add|commit|apply|checkout|restore|reset|stash|rm|mv|push|merge|rebase|tag|clean)\b"), "git working-tree mutation"),
+    # `switch` is here so dangerous switch forms (`-f`/`--discard-changes`, a trailing pathspec) are
+    # denied by default; the orchestrator's SAFE `git switch <branch>` resume form is allowlisted
+    # earlier in classify() (via _BRANCH_SWITCH), which returns before this _DENY sweep.
+    (re.compile(r"\bgit\s+(?:\S+\s+)*?(?:add|commit|apply|checkout|switch|restore|reset|stash|rm|mv|push|merge|rebase|tag|clean)\b"), "git working-tree mutation"),
     (re.compile(r"\bgit\s+branch\b[^|;&]*\s-(?:d|D|m|M|c|C|-delete|-move|-copy|-force)\b"), "git branch delete/rename"),
     (re.compile(r"\bpatch\b"), "`patch` (applies a diff)"),
     # Package/dependency managers mutate project files (pyproject.toml, lockfiles, node_modules)
@@ -130,16 +134,28 @@ _DEVELOPER = {"developer"}
 # actor is None), so None also maps to the orchestrator class below.
 _ORCH_AGENTS = {"sdlc-full", "sdlc-fast"}
 
-# The orchestrator may create — and ONLY create — an isolation branch/worktree for a new pipeline
-# (sdlc.config.json git.isolation). This is the single, deliberate exception to the "shell is
-# read-only for the orchestrator" rule: a branch/worktree create touches NO tracked project file
-# (it just moves HEAD / adds a sibling working tree). `git add/commit/checkout <file>/restore/
-# reset/merge/...` stay BLOCKED for everyone — the orchestrator still never writes code.
+# The orchestrator may manage a pipeline's isolation branch/worktree — and NOTHING else — via the
+# shell (sdlc.config.json git.isolation). This is the single, deliberate exception to the "shell is
+# read-only for the orchestrator" rule. Two shapes are allowed:
+#   • CREATE a new isolation branch/worktree at pipeline kickoff (_BRANCH_CREATE below).
+#   • SWITCH to an EXISTING isolation branch on pipeline resume (_BRANCH_SWITCH below).
+# Both only move HEAD / add a sibling working tree — they touch NO tracked file as an authored write.
+# `git add/commit/checkout <file>/restore/reset/merge/...` stay BLOCKED for everyone — the
+# orchestrator still never writes code.
 _CMD_SEP = re.compile(r"(?:[;|&]|\$\(|`|<\(|>\()")   # no chaining/substitution may ride along
 _BRANCH_CREATE = [
     re.compile(r"^git\s+checkout\s+-b\s+\S"),         # create + switch to a NEW branch
     re.compile(r"^git\s+switch\s+-c\s+\S"),           # modern equivalent of checkout -b
     re.compile(r"^git\s+worktree\s+add\s+\S"),        # create a new working tree (may carry -b)
+]
+# Resume: switch to an EXISTING branch. Only `git switch <branch>` — the purpose-built, file-safe
+# form: unlike `git checkout <path>` it CANNOT restore/overwrite a working-tree file (that is `git
+# restore`), so it never becomes a code-write vector. The pattern permits exactly ONE non-flag arg and
+# nothing after it, so destructive flags (`-f`/`--force`/`--discard-changes`/`-C`) and a trailing
+# pathspec are excluded. Plain `git checkout <branch>` stays BLOCKED — it is ambiguous with the
+# file-restore form — so resume is steered to `git switch`.
+_BRANCH_SWITCH = [
+    re.compile(r"^git\s+switch\s+(?!-)\S+\s*$"),      # switch to an existing branch (no flags, one arg)
 ]
 
 # Kit-OWNED helper scripts a restricted role IS allowed to run via an interpreter: they live under
@@ -180,13 +196,14 @@ def actor_class(actor, claude_host=None):
     return "restricted"   # analyst / architect / qa / onboarder + any unknown role
 
 
-def _is_branch_create(command: str) -> bool:
-    """True iff `command` is exactly one branch/worktree-create invocation with no shell chaining
-    or command substitution smuggled in."""
+def _is_isolation_branch_op(command: str) -> bool:
+    """True iff `command` is exactly one isolation branch/worktree op the orchestrator may run —
+    a CREATE (`checkout -b` / `switch -c` / `worktree add`) or a SWITCH to an existing branch
+    (`git switch <branch>`) — with no shell chaining or command substitution smuggled in."""
     cmd = command.strip()
     if _CMD_SEP.search(cmd):
         return False
-    return any(rx.match(cmd) for rx in _BRANCH_CREATE)
+    return any(rx.match(cmd) for rx in _BRANCH_CREATE + _BRANCH_SWITCH)
 
 
 def classify(command: str, cls: str = "restricted"):
@@ -196,8 +213,8 @@ def classify(command: str, cls: str = "restricted"):
         return None
     if cls in ("developer", "default"):
         return None  # developer = the code-writing role; default = the user's own session — full shell
-    if cls == "orchestrator" and _is_branch_create(command):
-        return None  # single deliberate exception: isolation branch/worktree create
+    if cls == "orchestrator" and _is_isolation_branch_op(command):
+        return None  # deliberate exception: isolation branch/worktree create OR switch-to-existing (resume)
     # Sanctioned exception (all restricted roles incl. orchestrator): run a KIT-OWNED generator
     # (.kiro//.claude/ skills|tools) — kit-managed, not role-authorable, writes only into the role's
     # fence. Must be a single command with no chaining/substitution smuggled alongside.
@@ -253,6 +270,14 @@ def _self_test() -> int:
         ("sdlc-full", None, "git checkout -b feat/x",       ALLOW),  # branch-create exception
         ("sdlc-full", None, "git switch -c feat/x",         ALLOW),
         ("sdlc-full", None, "git worktree add ../wt",       ALLOW),
+        ("sdlc-full", None, "git switch feat/x",            ALLOW),  # switch to existing isolation branch (resume)
+        ("sdlc-full", None, "git switch sdlc/iso-123",      ALLOW),
+        ("sdlc-full", None, "git switch -f feat/x",         BLOCK),  # --force/discard flag not allowed
+        ("sdlc-full", None, "git switch --discard-changes feat/x", BLOCK),
+        ("sdlc-full", None, "git checkout feat/x",          BLOCK),  # bare checkout is ambiguous with file-restore
+        ("sdlc-full", None, "git checkout package.json",    BLOCK),  # file-restore = a write, stays blocked
+        ("sdlc-full", None, "git switch feat/x -- src/a.ts",BLOCK),  # trailing pathspec not allowed
+        ("sdlc-full", None, "git switch a && rm x",         BLOCK),  # chaining defeats exception
         ("sdlc-full", None, "cat f && rm x",                BLOCK),  # chaining defeats exception
         ("sdlc-fast", None, "openspec list",                ALLOW),
         ("sdlc-full", None, "grep -rn foo .",               ALLOW),
@@ -272,6 +297,10 @@ def _self_test() -> int:
         (None, "sdlc-full", "echo x > src/app.ts",          BLOCK),
         (None, "sdlc-full", "uv add requests",              BLOCK),
         (None, "sdlc-full", "git checkout -b feat/x",       ALLOW),  # branch-create exception
+        (None, "sdlc-full", "git switch feat/x",            ALLOW),  # switch to existing isolation branch (resume)
+        (None, "sdlc-full", "git switch -f feat/x",         BLOCK),  # --force not allowed
+        (None, "sdlc-full", "git checkout feat/x",          BLOCK),  # bare checkout stays blocked
+        (None, "sdlc-fast", "git switch bugfix/iso-9",      ALLOW),  # fast-track resume
         (None, "sdlc-fast", "grep -rn foo .",               ALLOW),
         (None, "analyst",   "echo x > openspec/p.md",       BLOCK),  # restricted roles: read-only shell
         (None, "architect", "rm x",                         BLOCK),
