@@ -26,22 +26,22 @@ workspace** — the pipeline guards do not touch it.
 > a role subagent's `agent_type` ⇒ its role policy; `developer` ⇒ writes code. A **bare main session**
 > (no `agent_type`) is your unrestricted default — so do the SDLC pipeline inside the agent, not here.
 
-## Always-on rules (steering)
+## Essential project context (loaded every spawn)
 
-@steering/security.md
-@steering/sdlc-workflow.md
-@steering/rules-registry.md
-
-## Project context contract
-
-<!-- Context lives ONCE at the project root (./context/) — shared by both platforms, no symlink.
-     @imports resolve relative to THIS file's dir (.claude/), so the root copy is `@../context/*`. -->
-@../context/project.md
+<!-- Only non-verbose context that changes per-project. Steering files (security, sdlc-workflow, 
+rules-registry) are role-specific reads referenced in agent docs, not defaults. Context lives ONCE
+at the project root (./context/) — shared by both platforms, no symlink. -->
 @../context/stack.md
 @../context/conventions.md
-@../context/architecture.md
 @../context/glossary.md
-@../context/legacy-ref.md
+
+## Optional context (agents read as needed)
+
+Agents may reference these directly:
+- `context/project.md` — for project overview
+- `context/architecture.md` — for design/dev phases
+- `context/legacy-ref.md` — for legacy code areas
+- `.claude/steering/{security,sdlc-workflow,rules-registry}.md` — role-specific guidance
 
 ## Notes
 
