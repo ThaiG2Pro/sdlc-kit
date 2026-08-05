@@ -1,8 +1,10 @@
 {
   "$schema-note": "Declarative context→agent mapping. The mapper (bin/lib/context-map.mjs) reads this and (re)writes the `resources` array of each .kiro/agents/<agent>.json. Shared-root entries (context/*, openspec, sdlc.config.json, pipelines.json) resolve to the project root (file://./<entry>, no symlink); platform-local entries (steering, ai) resolve under .kiro/ (file://./.kiro/<entry>). extraDocs are project-root-relative. Any path is SKIPPED if it does not exist — so the kit never produces a broken reference. Edit this file (or let the onboarder agent edit it), then run the mapper.",
 
+  "$cost-note": "knowledgeBase entries are RAG-indexed (indexType: best), so a broad source costs retrieval noise, not fixed per-spawn tokens — but noise is worse than cost: a chunk from an ARCHIVED change reads as current spec. So the openspec kb is scoped to `openspec/specs` (the living capability specs) + `openspec/config.yaml`; `openspec/changes/**` is NEVER indexed — a role reads the ACTIVE change by explicit path (every role prompt already names it). `steering` is not listed here either: Kiro auto-includes .kiro/steering/*.md by front-matter `inclusion`, so indexing it too would double-count it.",
+
   "always": {
-    "knowledgeBase": ["steering", "openspec", "sdlc.config.json", "context/project.md", "context/glossary.md"]
+    "knowledgeBase": ["openspec/specs", "openspec/config.yaml", "sdlc.config.json", "context/project.md", "context/glossary.md"]
   },
 
   "agents": {
@@ -23,7 +25,7 @@
       "knowledgeBase": ["ai", "context/stack.md", "context/architecture.md", "context/conventions.md", "context/legacy-ref.md"]
     },
     "developer": {
-      "skills": ["verification-loop", "commit-message-helper", "security-review", "test-generator", "coding-standards", "deployment-patterns", "sonar-local", "search-first", "api-documentation-checker", "agentic-engineering"],
+      "skills": ["verification-loop", "commit-message-helper", "security-review", "test-generator", "coding-standards", "deployment-patterns", "release-and-fix", "sonar-local", "search-first", "api-documentation-checker", "agentic-engineering"],
       "knowledgeBase": ["ai", "context/stack.md", "context/architecture.md", "context/conventions.md", "context/legacy-ref.md"]
     },
     "qa": {

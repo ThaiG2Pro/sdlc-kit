@@ -1,8 +1,14 @@
 ---
 title: 12 Rule
-version: 1.1.0
+version: 1.2.0
 scope: all-projects
+inclusion: fileMatch
+fileMatchPattern: '**/*.{ts,tsx,js,jsx,mjs,cjs,vue,php,py,go,rb,java,kt}'
 ---
+
+<!-- Not always-included: these are CODING rules. Each role's own Hard Rules already carry the
+phase-specific version, so loading all 12 on an analyst/architect/orchestrator spawn is pure
+duplication. They load when a source file is in context. -->
 
 These rules apply to every task in this project unless explicitly overridden.
 Bias: caution over speed on non-trivial work. Use judgment on trivial tasks.
@@ -33,10 +39,10 @@ Use me for: classification, drafting, summarization, extraction.
 Do NOT use me for: routing, retries, deterministic transforms.
 If code can answer, code answers.
 
-## Rule 6 — Token budgets are not advisory
-Per-task: 4,000 tokens. Per-session: 30,000 tokens.
-If approaching budget, summarize and start fresh.
-Surface the breach. Do not silently overrun.
+## Rule 6 — Read what the task needs, not everything nearby
+Scope your reads to the files the task actually touches plus their direct callers.
+Don't sweep a directory "for context". Don't re-read a file already in context.
+If a phase genuinely needs a wide sweep, say why before doing it.
 
 ## Rule 7 — Surface conflicts, don't average them
 If two patterns contradict, pick one (more recent / more tested).

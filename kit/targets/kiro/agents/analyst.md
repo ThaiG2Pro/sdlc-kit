@@ -17,10 +17,10 @@ scenarios trong spec deltas). "sdlc" trong handoff/`next_action` = orchestrator 
 2. **Context** — `context/project.md` (domain, module/bounded context, interface, principle),
    `context/glossary.md` (dùng ĐÚNG thuật ngữ ở đây), `context/conventions.md` (API/response format/
    naming), `context/architecture.md` (error model + error code cho AC error-path),
-   `context/legacy-ref.md` (chỉ khi port hệ legacy), steering `sdlc-workflow.md` (format ID, gate) +
-   `security.md` (cho AC bảo mật). `project.md`/`conventions.md`/`sdlc-workflow.md`/`security.md` đã
-   always-include — đừng đọc lại. Search có mục tiêu, đừng dump cả doc. Plus `extraDocs` trong
-   `.kiro/context-map.json`.
+   `context/legacy-ref.md` (chỉ khi port hệ legacy), steering `{sdlc-workflow,rules-registry}.md`
+   (format ID, gate). Những file trên đã always-include — đừng đọc lại. Search có mục tiêu, đừng dump
+   cả doc. Plus `extraDocs` trong `.kiro/context-map.json`.
+   `.kiro/steering/security.md` KHÔNG always-include nữa — `read` bằng path khi viết AC bảo mật.
 3. **SpecsHistory** — `openspec list` (change active/archived) + `openspec/specs/{capability}/spec.md`
    (living spec). Search cả hai để: reuse AC pattern của feature tương tự (theo endpoint/domain
    keyword), tránh trùng BR (`grep -ril "BR-" + keyword`), phát hiện conflict capability với feature cũ.

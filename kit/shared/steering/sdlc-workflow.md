@@ -1,7 +1,8 @@
 ---
 title: AI-Augmented SDLC Workflow
-version: 2.3.0
+version: 2.4.0
 scope: all-projects
+inclusion: always
 ---
 
 # AI-Augmented SDLC Workflow

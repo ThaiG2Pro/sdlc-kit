@@ -109,6 +109,40 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Changed
 
+- **Context-loading pass — a Kiro role spawn now pays 24 KB of fixed context instead of 32 KB (−25%),
+  and retrieval stopped serving archived specs as if they were current.** Five independent fixes; the
+  first is a correctness fix that happens to also be the cheapest.
+  - **`openspec/` is no longer indexed whole.** Every agent had `file://./openspec` as a
+    `knowledgeBase` (`indexType: best`) — 3.7 MB on a mature repo, of which 1.2 MB was
+    `changes/archive/`. Retrieval could therefore surface a chunk from a **superseded** change and it
+    would read as current spec. The kb is now scoped to `openspec/specs` (the living capability specs,
+    `autoUpdate: true`) + `openspec/config.yaml`; `openspec/changes/**` is never indexed — a role reads
+    the ACTIVE change by explicit path, which every role prompt already instructs. `context-map.mjs`
+    gained prefix-aware shared-root resolution (`openspec/**`, `context/**`) to support this.
+  - **`.kiro/steering` was double-counted** — auto-included by Kiro *and* wired as a knowledgeBase in
+    every agent.json. Removed from `always.knowledgeBase`.
+  - **Steering split by `inclusion:`** (previously all 5 files were always-included, 14.2 KB on every
+    spawn → now 8.1 KB). `sdlc-workflow.md` + `rules-registry.md` stay `always`; `security.md` and
+    `12-rule.md` become `fileMatch` on source extensions (they bind code, so they load for dev/QA, not
+    on an analyst/architect/orchestrator spawn); `commit-policy.md` becomes `manual` (only the
+    developer commits, only at S4-end/S6). Every role prompt that relied on always-inclusion now names
+    the file by path at the point it's needed, so nothing became unreachable.
+  - **`12-rule.md` Rule 6 replaced.** It mandated "per-task: 4,000 tokens, per-session: 30,000" — a
+    budget no real phase can meet, so the rule was either ignored or caused silent truncation. Now it
+    says what was actually meant: scope reads to the files the task touches plus direct callers, don't
+    sweep a directory "for context", and justify a wide sweep before doing one.
+  - **QA's minimum-effort floor now scales with `rigor`/`scope`.** It was absolute — *read ALL test
+    files, ≥3 risky sources, <15 min on ≥10 ACs is a red flag* — and applied identically to a 20-line
+    `hotfix` at `rigor=lite`/`scope=tiny`. At `lite`/`tiny` it is now diff-scoped (test files of the
+    modified module, files in the diff + direct callers, no time floor). AC-ID mapping against the spec
+    deltas never relaxes, and the table is explicitly a floor, not a quota: a bug signal means read
+    wider and say why.
+  - **S4-FIX + S6 procedures moved out of the always-loaded developer prompt** into a new shared
+    `release-and-fix` skill (3.6 KB, loaded only when the trigger is `/s4-fix` or `/s6`). A plain S4
+    build run — the common case — stopped paying for them. Both targets point at it as Step 0 for those
+    triggers. Kiro `developer.md` 18.3 KB → 16.2 KB; Claude `developer.md` 10.8 → 9.6.
+  - Net per-spawn fixed context, Kiro developer: 32.5 KB → 24.3 KB. analyst/architect/qa each drop
+    ~6 KB of steering; the orchestrator drops the same on top of its 25 KB skill.
 - **Prompt-size pass — every hot file rewritten tighter (−95 KB, ~43% of the kit's per-spawn surface).**
   No rule, command, JSON shape, gate, or user-facing prompt string was dropped; what went was
   restatement, rationale-about-rationale, historical notes on superseded behavior, and the per-skill

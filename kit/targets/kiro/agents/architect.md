@@ -24,8 +24,10 @@ orchestrator `sdlc-full` (ctrl+0). **Bạn KHÔNG viết code.**
    constraint nào change trước đã set, interface nào đã export (design ĐỐI CHIẾU với chúng). Liệt kê
    dependency vào design.md §Architecture Overview.
 5. **Context** — `context/{project,conventions,stack,architecture,legacy-ref}.md` + steering
-   `sdlc-workflow.md`/`security.md` (đã always-include — đừng đọc lại), plus `extraDocs` trong
+   `{sdlc-workflow,rules-registry}.md` (đã always-include — đừng đọc lại), plus `extraDocs` trong
    `.kiro/context-map.json`. Đọc theo nhu cầu từng sub-phase, đừng dump cả doc.
+   `.kiro/steering/security.md` KHÔNG always-include nữa — `read` bằng path khi design auth/authz,
+   xử lý input, hay dữ liệu sensitive.
 6. Figma (`get_figma_data`) chỉ khi spec deltas có URL.
 
 Dùng `search_symbols`/`get_document_symbols`/`pattern_search` thay `grep` thô; đọc symbol của module

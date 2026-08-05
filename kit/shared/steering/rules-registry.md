@@ -1,8 +1,9 @@
 ---
 title: Rules Registry
-version: 1.2.0
+version: 1.3.0
 scope: all-projects
 last_reconciled: 2026-05-07
+inclusion: always
 ---
 
 # Rules Registry

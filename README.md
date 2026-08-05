@@ -40,7 +40,7 @@ FRAMEWORK — per-platform, re-emitted by init        SHARED — one root copy (
   <platform>/agents/   role + orchestrator agents       ./context/    project·stack·conventions·
   <platform>/commands/ slash commands (Claude)                        architecture·glossary·legacy-ref.md
   <platform>/skills/   24 skills                         ./openspec/   spec-driven workspace
-  <platform>/steering/ always-on rules                  ./memory/     per-role memory
+  <platform>/steering/ rules (per-file `inclusion:`)    ./memory/     per-role memory
   <platform>/ai/  <platform>/tools/  rules + guards      ./docs/       intake packages + project docs
   .kiro/context-map.json   (Kiro wiring only)            ./sdlc.config.json · ./pipelines.json
                                                          (both platforms read these at the root, no symlink)

@@ -40,9 +40,20 @@ pass from zero after an interruption re-spends the entire prior run's token cost
   Skipping the index = missing known bug patterns.
 - **Test-case format**: read `_state.json.testcase_export` (`xlsx`/`md`/`none`) — never re-derive.
 
-**Minimum effort (anti-rubber-stamp):** read ALL test files (not a sample); read ≥3 source files
-flagged risky in `_handoff.md`; if ≥20 ACs, state how many you independently verified. A feature with
-≥10 ACs "reviewed" in <15 min signals insufficient review.
+**Minimum effort — scales with `rigor` + `scope` in `_state.json`:**
+
+| | `rigor=full` | `rigor=lite` OR `scope=tiny` |
+|---|---|---|
+| Test files | read ALL of the change's test files (not a sample) | test files **of the modified module** (diff-scoped) |
+| Risky source | ≥3 files flagged risky in `_handoff.md` | files in the diff + their direct callers |
+| Time floor | ≥10 ACs "reviewed" in <15 min signals insufficient review | none — fast-track is genuinely small |
+
+Both columns: spec deltas §ACs (AC-ID mapping) is mandatory, never relaxed; ≥20 ACs → state how many
+you **independently** verified (not "covered by Dev").
+
+This is a **floor, not a quota** — a bug signal (thin tests, unmapped AC, diff touching shared code)
+means read wider and say why in the report. Conversely, reviewing a 20-line fix as if it were `full`
+burns tokens for nothing; don't.
 
 ## Skills (`.claude/skills/`)
 

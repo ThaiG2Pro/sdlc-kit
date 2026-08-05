@@ -47,7 +47,11 @@ entries were skipped (missing). Re-running is safe and idempotent.
 
 ```jsonc
 {
-  "always":   { "knowledgeBase": ["steering", "openspec", "sdlc.config.json", "context/project.md", "context/glossary.md"] },
+  // NOT here: "steering" (Kiro already auto-includes .kiro/steering/*.md by front-matter
+  // `inclusion:` — indexing it too double-counts it) and bare "openspec" (that would index
+  // changes/archive/**, so retrieval can serve a SUPERSEDED spec as current — index the living
+  // specs only; roles read the active change by explicit path).
+  "always":   { "knowledgeBase": ["openspec/specs", "openspec/config.yaml", "sdlc.config.json", "context/project.md", "context/glossary.md"] },
   "agents": {
     "architect": {
       "skills": ["cross-artifact-audit", "api-design"],

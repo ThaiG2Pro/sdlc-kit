@@ -89,9 +89,10 @@ function dedupe(arr) { return [...new Set(arr)]; }
 
 // Shared-root knowledge lives once at the project root (no symlink): context/*, plus the openspec
 // workspace and the shared config files. Everything else (steering, ai) is platform-local under .kiro/.
-const SHARED_ROOT_KB = new Set(['openspec', 'sdlc.config.json', 'pipelines.json']);
+const SHARED_ROOT_KB = new Set(['sdlc.config.json', 'pipelines.json']);
+const SHARED_ROOT_PREFIX = ['context', 'openspec'];
 function isSharedRootKb(e) {
-  return e === 'context' || e.startsWith('context/') || SHARED_ROOT_KB.has(e);
+  return SHARED_ROOT_KB.has(e) || SHARED_ROOT_PREFIX.some((p) => e === p || e.startsWith(`${p}/`));
 }
 
 // Build a Kiro knowledgeBase resource entry with a derived name.
@@ -104,7 +105,7 @@ function kbEntry(source, entry) {
     source,
     name,
     indexType: 'best',
-    autoUpdate: entry === 'specs',
+    autoUpdate: tail === 'specs',
   };
 }
 

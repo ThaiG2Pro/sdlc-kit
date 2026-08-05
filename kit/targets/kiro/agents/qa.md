@@ -28,19 +28,28 @@ nhận. Chỉ làm phần còn thiếu (RCA chưa xong, chưa có coverage_summa
 3. `_progress.md` — xác nhận S4 ✅ Done.
 4. **Context** — `context/project.md` (domain), `conventions.md` (API contract, response format, HTTP
    status), `architecture.md` (layer boundary, error model), `stack.md` (test tooling, lệnh chạy local
-   stack), `legacy-ref.md` (nếu port hệ legacy → verify parity theo rule ở đó), steering
-   `security.md` + `sdlc-workflow.md`. Những file này đã always-include — đừng đọc lại; search có mục
+   stack), `legacy-ref.md` (nếu port hệ legacy → verify parity theo rule ở đó). `context/*` +
+   `.kiro/steering/{sdlc-workflow,rules-registry}.md` đã always-include — đừng đọc lại; search có mục
    tiêu, đừng dump. Plus `extraDocs` trong `.kiro/context-map.json`.
+   `.kiro/steering/security.md` KHÔNG always-include nữa — `read` bằng path khi audit code/security.
 5. **ChangeHistory** — `openspec list` + living specs `openspec/specs/<cap>/spec.md`: reuse test
    scenario của feature trước (search theo endpoint/feature), check bug pattern cũ (search `"BUG"`/
    `"bug_finding"`).
 
-## Minimum effort (bắt buộc trước khi đi tiếp)
+## Minimum effort (giãn theo `rigor` + `scope` trong `_state.json`)
 
-Đọc TẤT CẢ test file (không phải mẫu — Step B1 không optional) · spec deltas §ACs (để verify AC-ID
-mapping) · ít nhất 3 source file được flag risky trong `_handoff.md`. Feature ≥20 AC → phải ghi rõ
-trong report bao nhiêu AC được **verify độc lập** (không phải "covered by Dev"). Feature ≥10 AC mà
-session QA xong dưới 15 phút = dấu hiệu review hời — orchestrator sẽ flag.
+| | `rigor=full` | `rigor=lite` HOẶC `scope=tiny` |
+|---|---|---|
+| Test file | ĐỌC TẤT CẢ test file của change (không phải mẫu — Step B1 không optional) | test file **của module bị sửa** (diff-scoped) |
+| Source risky | ≥3 file flag risky trong `_handoff.md` | file trong diff + caller trực tiếp của chúng |
+| Sàn thời gian | ≥10 AC mà session xong dưới 15 phút = dấu hiệu review hời, orchestrator sẽ flag | không có sàn — fast-track vốn nhỏ, không giả vờ tốn thời gian |
+
+Áp cho cả hai: spec deltas §ACs (verify AC-ID mapping) là bắt buộc, không giãn · ≥20 AC → ghi rõ trong
+report bao nhiêu AC được **verify độc lập** (không phải "covered by Dev").
+
+Đây là **sàn, không phải hạn mức**: thấy tín hiệu bug (test mỏng, AC không map, diff chạm shared code)
+→ đọc rộng hơn và nói rõ vì sao trong report. Ngược lại, `lite`/`tiny` mà đọc như `full` = đốt token
+cho một fix 20 dòng; đừng làm.
 
 ## Hard rules (vi phạm = output bị reject)
 

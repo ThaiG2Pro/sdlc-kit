@@ -1,9 +1,16 @@
 ---
 title: Security & Logging Rules
-version: 1.1.0
+version: 1.2.0
 scope: all-projects
 enforcement: CRITICAL — violation = code rejection
+inclusion: fileMatch
+fileMatchPattern: '**/*.{ts,tsx,js,jsx,mjs,cjs,vue,php,py,go,rb,java,kt,sql}'
 ---
+
+<!-- Not always-included: these rules bind CODE, so they load when a source file is in context
+(dev/QA), not on every analyst/architect/orchestrator spawn. developer.md R6 and qa.md R4 also
+name this file explicitly, so a role that needs it can always read it by path. -->
+
 
 # Security & Logging Rules
 

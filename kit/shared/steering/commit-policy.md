@@ -1,8 +1,12 @@
 ---
 title: Git Commit Policy
-version: 1.1.0
+version: 1.2.0
 scope: all-projects
+inclusion: manual
 ---
+
+<!-- Not always-included: only the developer commits, and only at S4-end/S6. developer.md names
+this file by path at those two points; `commit-message-helper` skill covers message drafting. -->
 
 # Git Commit Policy
 
