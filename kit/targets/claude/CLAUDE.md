@@ -45,24 +45,18 @@ Agents may reference these directly:
 
 ## Notes
 
-- **Stack-specific packs** (laravel / nestjs / nextjs, etc.) ship under `.claude/stacks/<stack>/`
-  (a `preset.json` + `context/` + `skills/`). Activate one with
-  `node .claude/tools/apply-stack.mjs <stack>` (`--list` to see them): it seeds
-  `./context/{stack,conventions}.md` (shared root) and copies the pack's skills into `.claude/skills/`,
-  where they become **model-invoked skills** that load only when relevant. They are intentionally
-  NOT `@import`ed here — keeps every session's base context small (see MIGRATION.md §7 Q2). On
-  Claude there is no `context-map.json` wiring step (skills auto-discover); that is Kiro-only.
-- **Golden examples** — fully worked-out reference artifacts (proposal, design, tasks, qa-report,
-  dev-test-report, openapi, migration, handoff/state/progress, glossary, …) live under
-  `.claude/agents/examples/`. Role subagents should read the matching example before authoring an
-  artifact: it shows the *assembled* document shape, which the OpenSpec `<template>`/`<rules>` (skeleton
-  + checklist) do not. They are reference-only — never edited, never part of a change. **They show
-  STRUCTURE, never a length target** — each is a fully-worked reference for a substantial change; a
-  `_state.json.scope == "tiny"` change's own artifact should be a fraction of the example's length
-  while still hitting every required section (see each role's Hard Rules for the numeric minimums
-  that relax at `scope=tiny`).
-- The OpenSpec workspace (`openspec/`) is the spec backend; `sdlc.config.json` +
-  `pipelines.json` (shared-root, at the project root — read root-relative) configure gates, rigor,
-  and the phase pipeline.
-- After updating the kit, re-run `npx kiro-sdlc-init . --force` and start a **new session** — agents,
-  commands, settings, and hooks load at session start, not mid-session.
+- **Stack packs** (laravel / nestjs / nextjs, …) live in `.claude/stacks/<stack>/`. Activate:
+  `node .claude/tools/apply-stack.mjs <stack>` (`--list` to see them) — seeds
+  `./context/{stack,conventions}.md` and copies the pack's skills into `.claude/skills/` as
+  **model-invoked skills** that load only when relevant. Deliberately NOT `@import`ed here, to keep
+  base context small.
+- **Golden examples** (`.claude/agents/examples/`) — worked reference artifacts (proposal, design,
+  tasks, qa-report, dev-test-report, openapi, migration, handoff/state/progress, glossary). A role
+  reads the matching one before authoring: it shows the *assembled* shape that the OpenSpec
+  `<template>`/`<rules>` skeleton doesn't. Reference-only, never edited. **They show STRUCTURE, never
+  a length target** — at `scope=tiny` an artifact should be a fraction of the example's length while
+  still hitting every required section (each role's Hard Rules list the minimums that relax at `tiny`).
+- `openspec/` is the spec backend; `sdlc.config.json` + `pipelines.json` (project root, read
+  root-relative) configure gates, rigor, and the phase pipeline.
+- After updating the kit: re-run `npx kiro-sdlc-init . --force` and start a **new session** — agents,
+  commands, settings, and hooks load at session start.

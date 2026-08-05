@@ -146,13 +146,11 @@ Rules for greenfield decisions:
 - These choices are **forward-looking commitments** — write them as "the project WILL use X",
   and they become the contract the architect/developer build against.
 
-### Phase 2.5 — Detection sign-off (HARD GATE — you may NOT write files until this passes)
+### Phase 2.5 — Detection sign-off (HARD GATE — no file writes until this passes)
 
-Before writing a single context file, you MUST get the human's explicit sign-off on the
-**facts you are about to commit**. Pass 1 of `context-check` can only verify a field is
-*filled*; it cannot verify it is *true*. A plausible-but-wrong stack/convention silently
-poisons every downstream agent — so the human is the only check on correctness here, and that
-check happens NOW, not after the files are written.
+`context-check` can only verify a field is *filled*, never that it is *true* — a plausible-but-wrong
+stack/convention silently poisons every downstream agent, so the human is the only correctness check
+and it happens NOW, before the files exist.
 
 1. Present a single **Facts to commit** table consolidating Phase 1 detection + Phase 2 answers:
 
@@ -285,22 +283,13 @@ Report:
 
 ---
 
-## Skills (metadata pre-loaded, full content on demand)
+## Skill: `context-mapper` (`read` `.kiro/skills/context-mapper/SKILL.md` khi cần)
 
-Khi cần dùng skill: `read` file `.kiro/skills/{skill-name}/SKILL.md` → follow instructions trong đó.
-
-### context-mapper — Dùng khi: Phase 5 (wire) và Phase 6 (verify wiring)
-
-**Trigger**: After you edit `.kiro/context-map.json` (Phase 4 `extraDocs`, or any preset run in
-Phase 3) or add/remove a file under `context/` — i.e. any time the context→agent mapping changes.
-**Input**: `.kiro/context-map.json` (declares per agent: `skills[]` + `knowledgeBase[]` (+ `extraDocs[]`)).
-**Output**: regenerated `resources[]` in every `.kiro/agents/*.json`; per-agent skill + KB counts and a
-`skipped` (missing-path) list printed to stdout.
-**When in execution**: Phase 5 (run the mapper) and Phase 6 item 2 (re-run; assert 0 unexpected `skipped`).
-**How to use**: edit `context-map.json` first, NEVER hand-edit `resources[]` (the mapper overwrites it) →
-run `node .kiro/tools/context-map.mjs` → read the output. Any `skipped` entry you EXPECTED to exist is a
-defect (bad path) — fix it in `context-map.json` and re-run. Re-running is idempotent. Note: `apply-stack.mjs`
-(Phase 3) already re-runs the mapper for you, so a preset run needs no separate invocation.
+Used at Phase 5 (wire) + Phase 6 item 2 (verify). Edit `.kiro/context-map.json` first — NEVER
+hand-edit `resources[]` in `.kiro/agents/*.json` (the mapper overwrites it) → run
+`node .kiro/tools/context-map.mjs` (idempotent) → read its per-agent skill/KB counts + `skipped`
+list. Any `skipped` entry you EXPECTED to exist is a bad path — fix and re-run. `apply-stack.mjs`
+(Phase 3) already re-runs the mapper, so a preset run needs no separate invocation.
 
 ---
 

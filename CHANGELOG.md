@@ -109,6 +109,26 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Changed
 
+- **Prompt-size pass — every hot file rewritten tighter (−95 KB, ~43% of the kit's per-spawn surface).**
+  No rule, command, JSON shape, gate, or user-facing prompt string was dropped; what went was
+  restatement, rationale-about-rationale, historical notes on superseded behavior, and the per-skill
+  metadata blocks (Trigger/Input/Output/When/How ×10) that each role duplicated for skills whose own
+  `SKILL.md` already says all of it — now one line per skill naming when to load it.
+  - Kiro role agents, loaded in full on every spawn: `developer.md` 44 KB → 18 KB (−58%),
+    `architect.md` 37 → 18 (−51%), `analyst.md` 36 → 18 (−48%), `qa.md` 30 → 18 (−39%). Each keeps its
+    Kiro-specific machinery (sub-phase mini-gates, resume presentation, `/opsx:*`, `/agent swap`
+    routing, checkpoint report blocks) and now leads with a single "đọc trước tiên" list instead of
+    repeating the same input inventory across ROLE / CONTEXT / per-step sections. The 20+ item
+    self-validation checklists that re-listed already-stated Hard Rules collapse to one short
+    pre-gate paragraph.
+  - `sdlc-orchestration-core/SKILL.md` (every orchestrator session) 43 KB → 25 KB (−41%): the
+    `type`/`rigor`/`test_scope`/`scope` "don't confuse these" warnings — four separate callouts saying
+    the same thing — become one table plus one line; the enforcement paragraphs shrink to the one
+    sentence that says which guard blocks what.
+  - `steering/sdlc-workflow.md` (always-included on Kiro, every role, every spawn) 8.5 → 6.0 KB: the
+    git-isolation procedure now points at `sdlc-orchestration-core` §New Change Setup instead of
+    restating it; the role-is-a-playbook-not-an-identity invariant stays verbatim in substance.
+  - `targets/claude/CLAUDE.md` 4.6 → 4.0 KB, Kiro `onboarder.md` 20 → 19 KB.
 - **Orchestrator may switch to an existing isolation branch on resume.** The shell guard now allows the
   orchestrator a plain `git switch <branch>` (no flags, one arg) in addition to the branch/worktree
   *create* it already permitted — so a resumed session that starts on the base branch can move onto the

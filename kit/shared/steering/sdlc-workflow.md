@@ -1,6 +1,6 @@
 ---
 title: AI-Augmented SDLC Workflow
-version: 2.2.0
+version: 2.3.0
 scope: all-projects
 ---
 
@@ -10,67 +10,41 @@ scope: all-projects
 
 ## Input Sources (before S1)
 
-S1 analyst needs raw requirements to produce `proposal.md`. Three sources, combinable:
+Three combinable sources for the analyst's `proposal.md`:
 
-| Source | Convention | When to use |
-|--------|-----------|-------------|
-| **docs folder** | `docs/extra-docs/<ticket-id>-<slug>/` (e.g., `docs/extra-docs/1234-voucher-redeem/`) | BA attachments + the intake package (Word, PDF, Figma exports, screenshots, `intake.md`, `figma-urls.txt`). Produced by the `intake` agent or dropped in by hand. No sub-structure required. |
-| **Redmine ticket** | `sdlc feature <module> --ticket=1234` | Ticket exists in Redmine; AI fetches subject, description, attachments, comments automatically. Requires Redmine MCP/config. |
-| **Direct chat** | No ticket, no docs | Smallest changes; analyst asks user directly. |
+| Source | Convention |
+|---|---|
+| **docs folder** | `docs/extra-docs/<ticket-id>-<slug>/` — BA attachments + intake package (Word/PDF/Figma exports, `intake.md`, `figma-urls.txt`). From the `intake` agent or dropped in by hand; no sub-structure required. |
+| **Ticket tracker** | `sdlc feature <module> --ticket=1234` — AI fetches subject/description/attachments via the configured MCP. |
+| **Direct chat** | No ticket, no docs — analyst asks the user. |
 
-**Combinable**: `--ticket=1234` + a matching `docs/1234-feature-xxx/` folder → AI reads both.
+Folder rules: prefix with the ticket ID; kebab-case slug matching the eventual OpenSpec change name;
+one folder per feature; **INPUT only** — S1 output lives in `openspec/changes/<change>/`, never `docs/`.
 
-Folder naming rules:
-- Prefix with ticket ID when one exists — makes reverse lookup trivial.
-- Use kebab-case slug that matches the eventual OpenSpec change name (`add-voucher-redeem`, `update-merchant-flow`).
-- One folder per feature. Do NOT dump multiple features into one folder.
-- Folder is INPUT only — S1 output (`proposal.md`) lives in `openspec/changes/<change>/`, never in `docs/`.
+## Git isolation (R-SDLC-003)
 
-## Git Branch / Worktree Policy (R-SDLC-003)
-
-**Mỗi pipeline mới PHẢI được cô lập trên nhánh/worktree riêng. KHÔNG code trên nhánh protected
-(`main`/`master`/…) hay trên nhánh của change cũ.**
-
-Đây là bước **bắt buộc, tự động** do orchestrator chạy khi tạo change mới (mọi type:
-feature/cr/rebuild/bugfix/hotfix) — chi tiết ở `sdlc-orchestration-core` §New Change Setup step 2.
-Hành vi được điều khiển bởi `sdlc.config.json` → khối `git`:
-
-```
-1. Base branch = nhánh hiện tại.
-2. Chọn method theo git.isolation (ask → hỏi dev; branch | worktree | off).
-3. Tạo TRƯỚC phase đầu (S1 cho feature/cr/rebuild, S4 cho bugfix/hotfix):
-   • branch  : git checkout -b {type}/{ticket}-{slug}      (vd feature/71194-voucher-redeem)
-   • worktree: git worktree add {worktree_path} -b {branch} → mở Kiro trong thư mục đó, code ở đó
-4. Ghi isolation.{method,branch,worktree_path,base_branch} vào _state.json.
-5. Thông báo: "✅ Đã tạo {branch|worktree} {name}". Lệnh git lỗi → STOP, không tạo change.
-```
-
-Naming mặc định (`git.branch_naming`): `{type}/{ticket}-{slug}` — vd `feature/71194-voucher-redeem`,
-`bugfix/71194-null-guard`, `hotfix/71194-cache-stampede`. Đổi mẫu trong `sdlc.config.json` nếu cần.
-
-> Chỉ orchestrator được phép tạo nhánh/worktree (shell guard chỉ cho `git checkout -b`/`switch -c`/
-> `worktree add`). Mọi git mutation khác (add/commit/checkout-file/reset/merge) vẫn bị chặn — code
-> chỉ do developer (S4) viết.
+**Mỗi pipeline mới PHẢI cô lập trên nhánh/worktree riêng — KHÔNG code trên nhánh protected
+(`main`/`master`/…) hay nhánh của change cũ.** Orchestrator tự chạy bước này khi tạo change (mọi
+type), điều khiển bởi `sdlc.config.json → git`; quy trình chi tiết ở `sdlc-orchestration-core`
+§New Change Setup step 2. Naming mặc định `{type}/{ticket}-{slug}` (vd
+`feature/71194-voucher-redeem`). Chỉ orchestrator được tạo nhánh/worktree; mọi git mutation khác bị
+shell guard chặn — code chỉ do developer (S4) viết.
 
 > ### 🔒 Bất biến: role là PLAYBOOK, không phải DANH TÍNH
-> Nạp prompt của một role (vd orchestrator đọc `architect.md` để chạy S3 inline, hoặc tự xưng "tôi
-> là architect") = mượn **checklist** của phase đó — KHÔNG phải trở thành actor có quyền của role đó.
-> Quyền GHI do **host cấp danh tính**, không theo lời tự khai: Kiro lấy tên agent từ `argv[1]` (hardwire
-> theo agent đang active); Claude lấy `agent_type` từ subagent do Task spawn (main session = không có).
-> Mỗi danh tính có write-fence cố định — **chỉ `developer` mới có `src/**`**; orchestrator + analyst/
-> architect/qa/onboarder chỉ ghi spec/doc/test. Vì vậy:
-> - Mạo danh role chỉ-đọc-spec (analyst/architect/qa) → vô hại; phase đó vốn không sinh code.
-> - Mạo danh `developer` để ghi code → guard tra danh tính thật (vd `sdlc-full`), không thấy đường
->   `src/**` trong fence → **chặn (exit 2)**. Mạo danh KHÔNG leo thang được tới code.
-> - S4 (Build) là chỗ inline-driving cố tình "gãy": muốn ghi code phải là `developer` thật — trên
->   Kiro `/agent swap → developer`, trên Claude orchestrator **spawn** developer subagent.
+> Nạp prompt của một role (orchestrator đọc `architect.md` để chạy S3 inline, hay tự xưng "tôi là
+> architect") = mượn **checklist** của phase đó, KHÔNG phải trở thành actor có quyền của role đó.
+> Quyền GHI do **host cấp danh tính**, không theo lời tự khai: Kiro lấy tên agent từ `argv[1]`; Claude
+> lấy `agent_type` từ subagent do Task spawn (main session = không có). Mỗi danh tính có write-fence
+> cố định — **chỉ `developer` có `src/**`**. Nên: mạo danh role chỉ-ghi-spec là vô hại (phase đó vốn
+> không sinh code); mạo danh `developer` để ghi code thì guard tra danh tính THẬT, không thấy `src/**`
+> trong fence → **chặn (exit 2)**. Mạo danh KHÔNG leo thang tới code. S4 là chỗ inline-driving cố tình
+> "gãy": muốn ghi code phải là `developer` thật (Kiro `/agent swap → developer`; Claude: orchestrator
+> **spawn** developer subagent).
 
----
+## Lifecycle phases
 
-## Lifecycle Phases
-
-| Phase | Role | Gate Owner |
-|-------|------|------------|
+| Phase | Role | Gate owner |
+|---|---|---|
 | S1 — Req Intake | Analyst | BA + Dev + QC |
 | S2 — Func Spec | Analyst | BA + QC |
 | 🔒 SPEC LOCK | Human | BA + Dev + QC |
@@ -79,112 +53,58 @@ Naming mặc định (`git.branch_naming`): `{type}/{ticket}-{slug}` — vd `fea
 | S5 — QA | QA | QC Lead |
 | S6 — Release | Developer | Dev + QC |
 
-## Fast-Track (hotfix / small changes)
+**Fast-track** (`bugfix`/`hotfix`: clear root cause, config/copy change, dependency bump, small
+refactor with no behavior change) = **S4 → S5 (lite) → docs sync → merge**. Developer writes fix +
+tests (coverage ≥ threshold); QA does retest + regression only. **Docs sync is MANDATORY**: API
+behavior changed → `openapi.yaml`; business logic → spec deltas' AC; DB schema → `design.md`. Commit
+docs separately (`docs(<scope>): <ticket-id> sync spec after fix`) from the fix
+(`fix(<scope>): <ticket-id> <subject>`). ⚠ Scope grows mid-fix → escalate to the full flow.
 
-Not every change needs full S1→S6. Use fast-track when:
-- Bug fix with clear root cause
-- Config/copy change
-- Dependency update
-- Small refactor (no behavior change)
+## Spec zone (S1 ↔ S2)
 
-Fast-track flow: **S4 → S5 (lite) → docs sync → merge**
-- Skip S1-S3 for implementation
-- Developer writes fix + tests (coverage ≥ 80%)
-- QA lite: retest + regression only
-- Docs sync (MANDATORY): update affected specs/design to match fix
-  - If fix changes API behavior → update `openapi.yaml`
-  - If fix changes business logic → update `specs/` AC
-  - If fix changes DB schema → update `design.md`
-  - Commit docs update separately: `docs(<scope>): <ticket-id> sync spec after fix`
-- Commit fix: `fix(<scope>): <ticket-id> <subject>`
+Loop freely at cost 1× until the spec is 100% clear. No S3 without SPEC LOCK (BA + Dev + QC sign-off,
+no "TBD"). S3 runs sketch first — gap found → back to S2/S1. After S2 the analyst runs a lightweight
+risk scan (edge cases, missing error handling, security risks) into an `### Early Risk Flags` section;
+Critical risks block SPEC LOCK. Catching risk here costs 1× instead of 25× at S5.
 
-⚠ If scope grows during fix → escalate to full SDLC.
+## Source of truth (R-SDLC-001)
 
-## Spec Zone Rules (S1 ↔ S2)
-
-- Loop freely — cost = 1×, iterate until spec is 100% clear
-- Do NOT open S3 without SPEC LOCK
-- SPEC LOCK = BA + Dev + QC sign-off, no "TBD"
-- S3 runs sketch first → if gap found → return to S2/S1
-
-### QA Early Review (after S2, before SPEC LOCK)
-
-Analyst runs lightweight risk scan after completing S2:
-1. Scan AC list → find edge cases, missing error handling, security risks
-2. Output: `### Early Risk Flags` section at end of specs
-3. Critical risks → block SPEC LOCK until addressed
-4. Purpose: detect risk at cost 1× instead of 25× at S5
-
-## Source of Truth (R-SDLC-001)
-
-**Immutable flow**: specs → design (+ openapi.yaml) → code
+**Immutable flow**: spec deltas → design (+ `openapi.yaml`) → code.
 
 | Artifact | Owner | Rule |
-|----------|-------|------|
-| `proposal.md` + `specs/` | BA + S2 | Changes only via S1/S2 |
-| `design.md` | Architect + S3 | Changes only via S3 |
-| `openapi.yaml` | Architect + S3 | Do NOT update from code |
-| Code | Developer + S4 | Must follow design |
+|---|---|---|
+| `proposal.md` + spec deltas | Analyst, S1/S2 | changes only via S1/S2 |
+| `design.md` | Architect, S3 | changes only via S3 |
+| `openapi.yaml` | Architect, S3 | never updated from code |
+| Code | Developer, S4 | must follow design |
 
-AI agent rules:
-- ❌ Do NOT update openapi.yaml when code changes
-- ❌ Do NOT update design.md to "match" code
-- ✅ Code diverges from design → flag gap (S4→S3, cost 5×)
-- ✅ Requirements change → update specs first → design → code
+Never update `openapi.yaml`/`design.md` to "match" code — code diverging from design is a **gap**
+(S4→S3, 5×). A requirement change after SPEC LOCK goes spec deltas → design → openapi → commit the
+spec change → then implement.
 
-Requirement change after SPEC LOCK:
-1. Update `proposal.md` + `specs/`
-2. Update `design.md`
-3. Update `openapi.yaml` (if API affected)
-4. Commit specs before writing code
-5. Implement
-
-## Cost Escalation
+## Cost escalation
 
 | Loop | Cost | Signal |
-|------|------|--------|
-| S1 ↔ S2 | 🟢 1× | Expected, iterate freely |
-| S3 sketch → S2 (spec gap) | 🟡 3× | S3 sketch found gap |
-| S4 → S3 (design gap) | 🟠 5× | Needs improvement |
-| S4 → S2 (spec gap) | 🟠 5-8× | S2 was weak |
-| S5 → S4 (code bug) | 🔴 15× | Normal but expensive |
-| S5 → S3 (design gap) | 🔴 20× | S3 was weak |
-| S5 → S2 (spec gap) | 💀 25× | S2 was very weak |
+|---|---|---|
+| S1 ↔ S2 | 🟢 1× | expected, iterate freely |
+| S3 sketch → S2 | 🟡 3× | sketch found a spec gap |
+| S4 → S3 | 🟠 5× | design gap |
+| S4 → S2 | 🟠 5–8× | S2 was weak |
+| S5 → S4 | 🔴 15× | code bug — normal but expensive |
+| S5 → S3 | 🔴 20× | S3 was weak |
+| S5 → S2 | 💀 25× | S2 was very weak |
 | S6 rollback | 💀 75× | S5 was weak |
 
-## Gate Checklists
+## Gate checklists
 
-### SPEC LOCK Gate — R-SDLC-002 (before S3)
-- [ ] 100% AC testable — no "TBD"
-- [ ] Scope closed
-- [ ] BA + Dev + QC sign-off
-- [ ] Figma URL in specs (or `Figma: N/A`)
-- [ ] Early Risk Flags reviewed — no unaddressed 🔴 Critical risks
+- **SPEC LOCK** (R-SDLC-002, before S3) — 100% AC testable, no "TBD" · scope closed · BA+Dev+QC
+  sign-off · Figma URL (or `Figma: N/A`) · Early Risk Flags reviewed, no unaddressed Critical.
+- **S3** (before S4) — `design.md` complete · `openapi.yaml` committed if API (real YAML, not
+  pseudo-code) · DB migrations documented · `tasks.md` with dependencies.
+- **S4** (before merge) — CI green · PR approved · R-COV-001 coverage ≥ threshold · R-SEC-001 security
+  scan PASS · R-SEC-003 input validation on new DTOs.
+- **S5** (before release) — 0 Critical/High bugs open · all ACs verified.
+- **S6** (before deploy) — migration reviewed · rollback plan documented · stable 30 min post-deploy.
 
-### S3 Gate (before S4)
-- [ ] `design.md` complete
-- [ ] `openapi.yaml` committed (if API) — actual YAML, not pseudo-code
-- [ ] DB migrations documented
-- [ ] `tasks.md` with dependencies
-
-### S4 Gate (before merge)
-- [ ] CI green
-- [ ] PR approved
-- [ ] R-COV-001: Test coverage ≥ 80%
-- [ ] R-SEC-001: Security scan PASS
-- [ ] R-SEC-003: Input validation on new DTOs
-
-### S5 Gate (before release)
-- [ ] 0 Critical/High bugs open
-- [ ] All AC verified
-
-### S6 Gate (before deploy)
-- [ ] Migration reviewed
-- [ ] Rollback plan documented
-- [ ] Stable 30 min post-deploy
-
-## S5 QA Role
-- ✅ QA: test, report bugs, classify severity, RCA, GO/NO-GO
-- ❌ QA does NOT fix bugs or modify code
-
-Bug Flow: S5 finds bug → Report → NO-GO → S4 fix → S5 retest → GO/NO-GO
+QA tests, reports, classifies, does RCA, and calls GO/NO-GO — it never fixes code. Bug flow: S5 finds
+bug → report → NO-GO → S4 fix → S5 retest → GO/NO-GO.
