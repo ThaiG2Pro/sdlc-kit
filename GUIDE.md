@@ -43,7 +43,9 @@ permissions survive a kit upgrade),
 `--gitignore` / `--no-gitignore` (force-add / never-touch the kit `.gitignore` block — see below),
 `--gitignore-only` (refresh JUST the `.gitignore` block and exit — no `--force` needed, no `.claude`/
 `.kiro`/etc. recopy; use this after a kit upgrade adds a new ignore pattern and you don't otherwise
-need a full re-init).
+need a full re-init),
+`--global-ignore` (write the kit's **personal-layer** block to the machine-level git ignore file and
+exit — see below).
 
 **`.gitignore` (optional).** `init` offers to add a kit-owned block to the project's `.gitignore`
 (interactive prompt defaults to **yes**; `--gitignore`/`--no-gitignore` decide it non-interactively).
@@ -60,6 +62,49 @@ onboarder/`context-refresh` agents check `git check-ignore` at runtime either wa
 by `# >>> kiro-sdlc-kit >>>` / `# <<< kiro-sdlc-kit <<<` markers, so re-running `init` (or `init
 --gitignore-only`) refreshes it in
 place (never duplicates), and deleting the whole block opts you back into committing the kit.
+
+> ⚠️ **`.kiro/*` vs `.kiro/`** — the block ignores `.kiro/*` (the *contents*) and re-opens
+> `!.kiro/specs/`, never `.kiro/` (the *directory*). Ignoring the directory stops git from
+> descending into it, which kills every `!` negation below it — even one in a higher-precedence
+> layer — and silently hides teammates' NEW `.kiro/specs/` docs while the old ones stay tracked.
+> If you hand-edit ignore rules for a mixed directory, always ignore contents, then negate.
+
+**`--global-ignore` — the personal-layer alternative (recommended for teams).** The per-repo
+`.gitignore` block has a structural weakness: `.gitignore` is itself version-controlled. Left
+uncommitted, the block lives on exactly one checkout — switch branches or add a worktree and the
+rules vanish (kit files flood `git status`), and every status shows a permanent `M .gitignore`.
+Committed, it imposes one developer's local-tool setup on the whole team. Git, however, reads
+ignore rules from **three** places, and two of them are never committed:
+
+```
+1. ~/.config/git/ignore      ← machine-level, every repo/branch/worktree/future clone
+2. <repo>/.git/info/exclude  ← repo-local, never committed
+3. <repo>/.gitignore         ← committed, shared with the team
+```
+
+`kiro-sdlc-init --global-ignore` maintains a marker-bounded kit block in file 1 (honoring a custom
+`core.excludesFile` if set). One run covers every kit project on the machine — including repos you
+clone next year — with nothing to commit and nothing imposed on teammates. It contains everything
+the per-repo block has **plus an OpenSpec state allowlist**: everything inside
+`openspec/changes/<change>/` is ignored, then only team deliverables are re-opened (`proposal.md`,
+`design.md`, `tasks.md`, `openapi.yaml`, `stride-threat-model.md`, `specs/`, `release/`, the QA
+test-case workbooks, `.openspec.yaml`) and `changes/archive/**` stays fully tracked. Net effect:
+the CPP baton (`_state.json`, `_handoff.md`, `_decisions.jsonl`, `_progress.md`), gate reports and
+QA scratch (run logs, Playwright output) — the classic cross-branch merge-conflict magnets — never
+reach git, while the documents your team reviews keep flowing. New state files the pipeline invents
+later are local automatically; the allowlist needs no maintenance.
+
+Adopting it is intrinsically safe: **ignore rules never affect already-tracked files**, so anything
+teammates committed keeps behaving exactly as before. The flip side: on repos that already track
+kit *machinery* on the remote, ignore rules alone change nothing — untrack selectively, once, via a
+reviewed commit (`git ls-files .claude .kiro` to see what's tracked, then `git rm -r --cached` the
+machinery **only** — never sweep team docs like `.kiro/specs/`, and never let a tool run
+`git rm --cached` for you unreviewed: it stages deletions of files your teammates own). After
+`--global-ignore`, answer "n" to the per-repo `.gitignore` question (or pass `--no-gitignore`) on
+new installs. Caveats worth knowing: the machine-level file doesn't travel with the repo — each
+teammate runs `--global-ignore` once per machine; and a baton ignored by git is per-checkout, so
+resuming a pipeline from a *different* clone/worktree needs the change dir's `_`-files copied over
+(same trade-off as the existing `/context/` choice).
 
 `init` copies the framework for each target, runs `openspec init --tools <platform>` (scaffolds
 `openspec/` + the namespaced `opsx`/`openspec-*` skills), scaffolds the root `./context/` +

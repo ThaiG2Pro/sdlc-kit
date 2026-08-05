@@ -13,6 +13,17 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Added
 
+- **`--global-ignore` — personal-layer ignore (recommended for teams).** Maintains a marker-bounded
+  kit block in the MACHINE-level git ignore file (`core.excludesFile`, default `~/.config/git/ignore`)
+  instead of any repo's committed `.gitignore`: one run covers every repo/branch/worktree/future clone
+  on the machine, is never committed, and imposes nothing on teammates (ignore rules never affect
+  already-tracked files). Includes the per-repo patterns plus an **OpenSpec state allowlist** — all of
+  `openspec/changes/<change>/` ignored, team deliverables re-opened (proposal/design/tasks/openapi/
+  stride/specs/release/QA workbooks/.openspec.yaml), `changes/archive/**` kept tracked — so the CPP
+  baton and QA scratch (the cross-branch merge-conflict magnets users reported) never reach git while
+  reviewed documents keep flowing. New pipeline state files are local automatically. See GUIDE.md
+  §`--global-ignore` for the 3-layer model + the selective-untrack path for repos that already track
+  kit machinery.
 - **Claude Code target (`.claude/`).** Orchestrator runs as a dedicated `sdlc-full`/`sdlc-fast` agent
   that spawns one-shot role subagents; context via `@import`, skills auto-discovered. `--target
   kiro|claude|both` on `init` (per-target `.kit-manifest.json`; per-target `--check`/`--force` plans).
@@ -161,6 +172,11 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Fixed
 
+- **`.gitignore` block: `.kiro/` → `.kiro/*` + `!.kiro/specs/`.** Ignoring the *directory* stopped git
+  from descending into `.kiro/`, which killed any `specs/` negation (even one in a higher-precedence
+  ignore layer) and silently hid teammates' NEW Kiro spec docs — old ones stayed tracked, so the loss
+  was invisible. The block now ignores contents and re-opens `.kiro/specs/`; run `init
+  --gitignore-only` on existing projects to pick it up.
 - **Hooks survive a mid-session `cd`** — every hook runs `cd "${CLAUDE_PROJECT_DIR}" && …` and the
   scripts self-locate the project root, so a `cd` into a subdir no longer bricks the session (cwd-poisoning).
 - **Guards read config from the project root** (`./pipelines.json` / `./sdlc.config.json`), not the
