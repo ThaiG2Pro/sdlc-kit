@@ -106,30 +106,18 @@ function appendPath(obj, path, val) {
   return o[last].length;
 }
 
-// Soft, non-blocking nudge (not a hard validation failure — some phases genuinely need more): an
-// appended entry's note/result/summary field ballooning past a couple sentences is exactly the
-// "phase_history entries are giant paragraphs" pattern that makes every LATER phase's mandatory
-// "read _state.json first" step re-pay the same cost. Detail belongs in _handoff.md / memory/<role>/,
-// which are read selectively — phase_history is read in FULL, every phase, forever.
-const NOTE_SOFT_CAP = 400;
 const warnings = [];
-function checkNoteLength(val, path) {
-  if (!val || typeof val !== 'object') return;
-  for (const k of ['note', 'result', 'summary']) {
-    const v = val[k];
-    if (typeof v === 'string' && v.length > NOTE_SOFT_CAP) {
-      warnings.push(`${path}.${k} is ${v.length} chars (soft guideline: ≤${NOTE_SOFT_CAP} — 1-3 ` +
-        `sentences; push detail into _handoff.md / memory/<role>/, not phase_history — every future ` +
-        `phase reads this array in full).`);
-    }
-  }
-}
+// Top-level keys this invocation writes to. The bloat audit below is a HARD failure for these (a
+// write may never introduce drift) and a printed warning for everything else (a change already
+// mid-flight must never deadlock on state a previous version of the kit let through).
+const touched = new Set();
 
 const changes = [];
 for (const s of sets) {
   const eq = s.indexOf('=');
   if (eq < 0) die(`--set needs key=value (got "${s}")`);
   const path = s.slice(0, eq), val = parseVal(s.slice(eq + 1));
+  touched.add(path.split('.')[0]);
   const old = setPath(state, path, val);
   changes.push(`${path}: ${JSON.stringify(old)} → ${JSON.stringify(val)}`);
 }
@@ -138,7 +126,7 @@ for (const s of appends) {
   const eq = s.indexOf('=');
   if (eq < 0) die(`--append needs key=value (got "${s}")`);
   const path = s.slice(0, eq), val = parseVal(s.slice(eq + 1));
-  checkNoteLength(val, path);
+  touched.add(path.split('.')[0]);
   const len = appendPath(state, path, val);
   changes.push(`${path}[${len - 1}]: appended ${JSON.stringify(val)}`);
 }
@@ -146,7 +134,20 @@ for (const s of appends) {
 // ── canonical-shape validation: refuse to persist drift (covers BOTH new writes and pre-existing drift
 //    in the file we just read — so the fix is a single state-set that ends in a canonical shape). ──
 try {
-  const { validateState } = await import('./state-schema.mjs');
+  const { validateState, auditState, CANONICAL_KEYS } = await import('./state-schema.mjs');
+
+  // ── anti-bloat: this write may not INTRODUCE a non-canonical key or bust a cap. Pre-existing
+  //    drift only warns, so a change mid-flight never deadlocks (compact it with baton-compact.mjs).
+  const { warnings: bloat, offendingKeys } = auditState(state);
+  const introduced = offendingKeys.filter((k) => touched.has(k));
+  if (introduced.length) {
+    console.log('  ✗ refusing to write — _state.json is read in FULL on every spawn; this write bloats it:');
+    for (const w of bloat) if (introduced.some((k) => w.includes(`\`${k}\``) || w.startsWith(k))) console.log(`      - ${w}`);
+    console.log(`  → legal top-level keys: ${[...CANONICAL_KEYS].join(', ')}`);
+    process.exit(1);
+  }
+  warnings.push(...bloat);
+
   const { ok, problems } = validateState(state);
   if (!ok) {
     console.log('  ✗ refusing to write — result would be a non-canonical _state.json:');

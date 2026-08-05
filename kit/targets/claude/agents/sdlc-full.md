@@ -71,7 +71,13 @@ Per the core skill's Gate Audit Map, in order:
 4. On approval: clear the blocker, set `gates["<phase>"]="passed"`, (S3 only) append the Cross-Spec
    Context block, run the convergence loop when `rigor=full` and the gate is a convergence gate — all
    per the core skill (`_progress.md` is the role's own artifact — you don't also mark it, see
-   `sdlc-orchestration-core` §Progress Marking). Then spawn the next phase's subagent.
+   `sdlc-orchestration-core` §Progress Marking).
+5. **Then compact the baton**, before spawning anything: `node .claude/tools/baton-compact.mjs --change
+   <name> --apply`. The baton is re-read in full by every later spawn, so this is what stops each phase
+   from re-paying for the last one; it only archives what nothing reads (see the core skill §Baton
+   budget). If it reports something it can't fix mechanically — an oversized `_handoff.md`, too many
+   decision entries — pass that to the next subagent's prompt so it fixes it while REPLACING the file.
+   Then spawn the next phase's subagent.
 
 ## Work types (read `pipelines.json` → `types[<type>]`)
 

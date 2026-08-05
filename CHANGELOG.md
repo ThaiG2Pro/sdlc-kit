@@ -13,6 +13,17 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Added
 
+- **`baton-compact.mjs` — the missing compaction step for the CPP baton.** Every writer's instruction
+  was "append" and nothing ever shrank the result, so the baton — re-read IN FULL by every role on
+  every spawn — had grown to 34–155 KB per spawn across 8 live changes (≈9–39k tokens, i.e. **2–6× the
+  entire agent prompt + steering**). The tool does only what is mechanically safe: archives
+  non-canonical `_state.json` keys, folds old `phase_history` into one digest line, shortens over-cap
+  `decision`/`reasoning`/`rejected`/`alternatives` fields behind a `full` pointer, and drops
+  `[SUPERSEDED]` glossary rows whose replacement is already present. Everything removed lands in
+  `<CHANGE_DIR>/_archive/` (inside the baton write-fence, read by nothing). Dry-run by default;
+  `--apply` writes, `--all` sweeps every active change, `--handoff` also archives handoff sections past
+  the 5-section contract. Measured −34…−38% on the two worst live changes without touching a single
+  judgement call. The orchestrator runs it after each `approve`.
 - **`--global-ignore` — personal-layer ignore (recommended for teams).** Maintains a marker-bounded
   kit block in the MACHINE-level git ignore file (`core.excludesFile`, default `~/.config/git/ignore`)
   instead of any repo's committed `.gitignore`: one run covers every repo/branch/worktree/future clone
@@ -109,6 +120,36 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Changed
 
+- **Baton pass — the CPP baton is now bounded, so a spawn stops re-paying for what earlier phases
+  wrote.** The prompt/context work above cut the fixed per-spawn cost to 24 KB; measuring the *other*
+  half showed the baton had quietly become the bigger number (34–155 KB per spawn on live changes).
+  None of it was agent misbehaviour — each cause was designed in:
+  - **`_state.json` had no key allowlist**, so roles used it as a document store: 4.8–42 KB per file of
+    keys no guard and no prompt reads (`staging_evidence` 10.7 KB, `regression` 6.6 KB, `gate_audit`
+    5.5 KB, `s3_outputs`, `resolved_at_s3`, `rigor_downgrade`, `s4_checkpoint_2`, …). `state-schema.mjs`
+    now defines `CANONICAL_KEYS` + `CAPS` and `auditState()`; **`state-set` refuses a write that
+    introduces a non-canonical key or busts a cap**, while pre-existing drift only warns — so a change
+    already mid-flight never deadlocks on state an older kit let through. `pipeline-guard` STEP 0 prints
+    the same audit at every status/gate check.
+  - **`terminology` and `active_concerns` were duplicates the kit itself asked for** — `terminology`
+    restated `_glossary.md`, `active_concerns` restated `next_action.watch_items`, and both appeared in
+    8/8 live changes because the templates and the analyst prompt prescribed them. Removed from the
+    seed state, the template and every prompt.
+  - **`_decisions.jsonl` was used for prose** (939 B average per line, 2.6 KB worst — a full root-cause
+    write-up with before/after code). Now capped: `decision` ≤240 chars, `reasoning`/`rejected` ≤120,
+    with the analysis pushed to the phase report that is read ONCE at its gate. The analyst's "log every
+    `[CONFIRMED]` AC" rule — which alone produced 21–28 `requirement` entries per change, a second copy
+    of spec deltas every role already reads — is now "log what the spec cannot show".
+  - **`_handoff.md` was defined as append**, so it became an audit log (§1-5, then §6, §6a-6e, §7 across
+    fix rounds). It is now explicitly REPLACE, exactly 5 sections, ≤6 KB, in all four role prompts and
+    the template: a handoff carries what the next phase needs; git carries the history.
+  - **Superseded glossary rows were kept beside their replacements** (append-only, "never delete a
+    row"), so a term's dead meaning was paid for on every remaining spawn. Terms are now edited in
+    place, definitions are one line ≤220 chars, and a row must earn its place by not being derivable
+    from the spec.
+  - **`cpp-guard` reports baton bloat at every gate** (`auditBaton()` — over-cap decision entries,
+    handoff/glossary/progress size, superseded markers, whole-baton total in KB and tokens), advisory
+    so it never blocks a gate, printed on pass and fail alike.
 - **Context-loading pass — a Kiro role spawn now pays 24 KB of fixed context instead of 32 KB (−25%),
   and retrieval stopped serving archived specs as if they were current.** Five independent fixes; the
   first is a correctness fix that happens to also be the cheapest.

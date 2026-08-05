@@ -10,7 +10,12 @@ description: >
 
 <!--
   HOW TO USE
-  - Overwrite (do not append) {CHANGE_DIR}/_handoff.md at phase end.
+  - Overwrite (do not append) {CHANGE_DIR}/_handoff.md at phase end. EXACTLY these five sections,
+    <=6 KB. A handoff states what the NEXT phase needs — not the history of this one, and not a
+    per-round addendum (§6, §6a, "## Round 3", "## Addendum"). A later fix/retest round REWRITES
+    these same five sections for the current round; git keeps the earlier ones. Left to accumulate,
+    this file is re-read in full on every spawn and the next role has to work out which half is
+    still true.
   - The header's role MUST be the agent finishing the phase (analyst|architect|developer|qa)
     — cpp-guard greps the header line for it (e.g. the S3 gate requires the architect's name).
   - Keep ALL five "##" headings verbatim — cpp-guard's S2 gate matches them by name.

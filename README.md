@@ -119,7 +119,19 @@ file every branch would conflict on). This is **deterministically enforced**, no
   {`appended`, `nothing-reusable`}), closing the gap where a one-shot agent returned and silently lost
   its only chance to persist a cross-spec lesson.
 - **`state-schema.mjs`** validates the canonical `_state.json` shape at write time (via `state-set.mjs`)
-  and at guard STEP 0, so drift surfaces immediately instead of one gate later.
+  and at guard STEP 0, so drift surfaces immediately instead of one gate later. It also holds the **key
+  allowlist**: `state-set` refuses a write that introduces a key nothing reads (pre-existing drift only
+  warns, so a change mid-flight never deadlocks).
+
+The baton is **bounded**, because every role re-reads all five files on every spawn — left to accumulate
+it costs more than the agent prompt itself. Ceilings: `_state.json` ≤8 KB (canonical keys only),
+`_handoff.md` ≤6 KB and **replaced** each phase rather than appended, `_glossary.md` ≤6 KB with one-line
+definitions edited in place (no `[SUPERSEDED]` twins), `_progress.md` ≤4 KB, whole baton ≤24 KB;
+`_decisions.jsonl` entries are the one-line WHAT (`decision` ≤240 chars) with the analysis in the phase
+report, which is read once at its gate. `cpp-guard` reports anything over cap at every gate, and
+**`baton-compact.mjs`** (run by the orchestrator after each `approve`) archives what nothing reads into
+`<CHANGE_DIR>/_archive/`. The split that decides where content goes: **baton = written once, read on
+every later spawn; phase artifact = written once, read once at its gate.**
 
 Trailing side-effects the orchestrator owes (cross-spec bridge at S3, progress marking, the
 convergence loop at `rigor=full`) are verified at the next gate. `sprint-retro` at S6 is the final

@@ -154,6 +154,89 @@ export function checkCpp({ changeDir, gatePhase }) {
   return { ok: problems.length === 0, problems };
 }
 
+// ── baton bloat audit (advisory — never blocks a gate) ────────────────────────────────────────────
+//
+// WHY: the CPP contract above checks the baton is COMPLETE; nothing checked it stayed CHEAP. Every
+// role re-reads all five files on every spawn, so the baton is a fixed tax on the rest of the change.
+// Measured across 8 live changes it had grown to 34–155 KB per spawn (~9–39k tokens) — 2-6× the whole
+// agent prompt + steering. Causes, all structural: `decision` used as a prose essay (939 B average,
+// 2.6 KB worst), `_handoff.md` appended per fix round until it was an audit log (§1-5 then §6, §6a-6e,
+// §7), superseded glossary rows kept verbatim ALONGSIDE their replacement. These caps make each one
+// visible at every gate; baton-compact.mjs fixes what has already grown.
+export const BATON_CAPS = {
+  decisionChars: 240,     // one `decision` field — the WHAT, not the write-up
+  reasoningChars: 120,    // one `reasoning` field
+  decisionLineChars: 450, // one whole JSONL line
+  handoffBytes: 6000,     // read in full by the next role, every spawn
+  glossaryBytes: 6000,
+  glossaryDefChars: 220,  // one Definition cell
+  progressBytes: 4000,
+  totalBytes: 24000,      // all five files — the per-spawn floor for the rest of the change
+};
+
+/**
+ * Advisory size/shape audit of the whole baton. Exit code is never affected.
+ * @returns {{warnings:string[], bytes:number}}
+ */
+export function auditBaton({ changeDir }) {
+  const warnings = [];
+  const size = (f) => { const t = readText(join(changeDir, f)); return t ? Buffer.byteLength(t) : 0; };
+  const bytes = ['_handoff.md', '_glossary.md', '_decisions.jsonl', '_progress.md', '_state.json']
+    .reduce((n, f) => n + size(f), 0);
+
+  const dec = readText(join(changeDir, '_decisions.jsonl'));
+  if (dec) {
+    let over = 0, worst = 0, worstId = '';
+    dec.split('\n').forEach((raw) => {
+      const t = raw.trim(); if (!t) return;
+      let o = null; try { o = JSON.parse(t); } catch { return; }
+      const d = typeof o?.decision === 'string' ? o.decision.length : 0;
+      const r = typeof o?.reasoning === 'string' ? o.reasoning.length : 0;
+      if (d > BATON_CAPS.decisionChars || r > BATON_CAPS.reasoningChars || t.length > BATON_CAPS.decisionLineChars) {
+        over++;
+        if (t.length > worst) { worst = t.length; worstId = o?.id || o?.type || '?'; }
+      }
+    });
+    if (over)
+      warnings.push(`_decisions.jsonl: ${over} entr${over === 1 ? 'y' : 'ies'} over cap (decision ≤` +
+        `${BATON_CAPS.decisionChars} chars, reasoning ≤${BATON_CAPS.reasoningChars}; worst ${worst} B at ` +
+        `"${worstId}") — a decision line is the WHAT + a pointer; the root-cause write-up belongs in the ` +
+        `phase report, which is read once at its gate rather than on every later spawn.`);
+  }
+
+  const h = size('_handoff.md');
+  if (h > BATON_CAPS.handoffBytes)
+    warnings.push(`_handoff.md is ${h} B (cap ${BATON_CAPS.handoffBytes}) — a handoff is what the NEXT ` +
+      `phase needs, so REPLACE it each phase; do not append a new section per fix round (git has the history).`);
+
+  const g = readText(join(changeDir, '_glossary.md'));
+  if (g) {
+    const gb = Buffer.byteLength(g);
+    if (gb > BATON_CAPS.glossaryBytes)
+      warnings.push(`_glossary.md is ${gb} B (cap ${BATON_CAPS.glossaryBytes}) — drop terms the next phase ` +
+        `can read straight off the spec, and DELETE a superseded row instead of keeping it beside its replacement.`);
+    const wide = tableRows(g).filter((r) => (r[1] || '').length > BATON_CAPS.glossaryDefChars).length;
+    if (wide)
+      warnings.push(`_glossary.md: ${wide} definition(s) over ${BATON_CAPS.glossaryDefChars} chars — one line each; ` +
+        `if a term needs a paragraph it is a design note, not a glossary entry.`);
+    const superseded = (g.match(/SUPERSEDED|HISTORICAL|DO NOT IMPLEMENT/gi) || []).length;
+    if (superseded)
+      warnings.push(`_glossary.md: ${superseded} superseded marker(s) — replace the row's definition with the ` +
+        `current one; a term carrying both its old and new meaning is paid for on every spawn, forever.`);
+  }
+
+  const p = size('_progress.md');
+  if (p > BATON_CAPS.progressBytes)
+    warnings.push(`_progress.md is ${p} B (cap ${BATON_CAPS.progressBytes}) — one table row per phase plus ` +
+      `## Next Action; narrative belongs in the phase report.`);
+
+  if (bytes > BATON_CAPS.totalBytes)
+    warnings.push(`baton total ${(bytes / 1024).toFixed(1)} KB (cap ${(BATON_CAPS.totalBytes / 1024).toFixed(0)} KB) ` +
+      `≈ ${Math.round(bytes / 4000)}k tokens EVERY spawn for the rest of this change — run baton-compact.mjs.`);
+
+  return { warnings, bytes };
+}
+
 /**
  * Trailing check: the side-effects the ORCHESTRATOR (not the role agent) owes from already-passed
  * gates — recorded as part of an `approve`, which happens AFTER pipeline-guard's STEP 0. So they
@@ -286,8 +369,18 @@ if (resolve(process.argv[1] || '') === resolve(new URL(import.meta.url).pathname
   const cpp = checkCpp({ changeDir, gatePhase });
   const trail = checkTrailing({ projectRoot: projectDir, changeDir, state });
   const problems = [...cpp.problems, ...trail.problems];
-  if (problems.length === 0) { console.log(`  ✓ CPP + record contract for ${gatePhase} satisfied.`); process.exit(0); }
+  // Advisory bloat report, printed on PASS and FAIL alike — the gate is the one moment every phase
+  // passes through, so it is where a baton that has outgrown its caps has to become visible.
+  const { warnings, bytes } = auditBaton({ changeDir });
+  const report = () => {
+    if (!warnings.length) return;
+    console.log(`  ⚠ baton bloat (${(bytes / 1024).toFixed(1)} KB read on every spawn):`);
+    for (const w of warnings) console.log(`       - ${w}`);
+    console.log(`       → node <platform>/tools/baton-compact.mjs --change ${changeName || changeDir.split(/[\\/]/).pop()}`);
+  };
+  if (problems.length === 0) { console.log(`  ✓ CPP + record contract for ${gatePhase} satisfied.`); report(); process.exit(0); }
   console.log(`  ✗ MISSING CONTEXT/RECORDS for ${gatePhase}:`);
   for (const p of problems) console.log(`       - ${p}`);
+  report();
   process.exit(1);
 }

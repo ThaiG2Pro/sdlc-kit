@@ -77,14 +77,22 @@ if (!state) die(`unreadable _state.json in ${CHANGE_DIR}`);
 // ── STEP 0: canonical-shape validation. Catches drift introduced by a raw Write (the path state-set
 //    cannot police) at the very next status/gate check — deterministically, not via the LLM noticing. ──
 try {
-  const { validateState } = await import('./state-schema.mjs');
+  const { validateState, auditState } = await import('./state-schema.mjs');
   const { ok, problems } = validateState(state);
   if (!ok) {
     console.log(`  ✗ NON-CANONICAL _state.json (shape drift) in ${CHANGE_DIR.split('/').pop()}:`);
     for (const p of problems) console.log(`       - ${p}`);
-    console.log('  → normalize via state-set BEFORE any gate (rich per-gate data goes in gate_audit), e.g.:');
+    console.log('  → normalize via state-set BEFORE any gate (gate outcomes go in _progress.md), e.g.:');
     console.log(`       node <platform>/tools/state-set.mjs --change ${changeName || CHANGE_DIR.split('/').pop()} --unset gates.SPEC_LOCK --set gates.S2=passed`);
     process.exit(1);
+  }
+  // Bloat is advisory here (never blocks a gate) — but it is printed at every status/gate check, so a
+  // baton that has grown past the caps stays visible instead of silently taxing every later spawn.
+  const { warnings: bloat } = auditState(state);
+  if (bloat.length) {
+    console.log(`  ⚠ _state.json bloat (${bloat.length}) — run baton-compact.mjs:`);
+    for (const w of bloat.slice(0, 6)) console.log(`       - ${w}`);
+    if (bloat.length > 6) console.log(`       … +${bloat.length - 6} more`);
   }
 } catch (e) {
   if (e && e.code === 'ERR_MODULE_NOT_FOUND')

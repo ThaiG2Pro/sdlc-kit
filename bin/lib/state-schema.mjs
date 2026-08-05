@@ -18,6 +18,113 @@
 
 const PHASE_ID = /^S[1-9]\d*$/; // base phase id: S1, S2, … (no sub-phase suffix — gates/convergence key on base)
 
+// ── Key allowlist + size caps (the anti-bloat contract) ────────────────────────────────────────
+//
+// WHY: _state.json is read IN FULL by every role on every spawn, forever. Validating only the SHAPE
+// of keys we happened to know about let it become a document store: measured across 8 live changes,
+// 4.8–42 KB per file was keys NO guard and NO prompt ever reads — `staging_evidence` (10.7 KB),
+// `regression` (6.6 KB), `gate_audit` (5.5 KB), `s3_outputs`, `resolved_at_s3`, `rigor_downgrade`,
+// `s4_checkpoint_2`, … A role wrote its phase report INTO the baton and every later spawn paid for it.
+// So the contract is now closed: these keys and no others. Detail goes to the file that is read
+// SELECTIVELY (_handoff.md, the phase report, memory/<role>/), never to the one read unconditionally.
+
+/** Every key legal in a canonical _state.json. Read by a guard, by the orchestrator, or by a prompt. */
+export const CANONICAL_KEYS = new Set([
+  'change_name', 'feature_slug', 'ticket_id', 'type', 'rigor', 'scope', 'test_scope',
+  'current_phase', 'phases', 'gates', 'convergence', 'memory_writeback', 'deploy_status',
+  'phase_history', 'next_action', 'last_updated', 'last_agent', 'testcase_export', 'isolation',
+]);
+
+/** Keys seen in the wild that DUPLICATE another baton file — named so the error says where to put it. */
+export const RELOCATED_KEYS = {
+  terminology: '_glossary.md (it is the glossary — state was carrying a second copy)',
+  active_concerns: 'next_action.watch_items (same thing, one copy is enough)',
+  gate_audit: '_progress.md (gate outcomes belong in the progress table)',
+  gate_details: '_progress.md',
+  staging_evidence: 'the phase report (dev-test-report.md / qa-report.md)',
+  regression: 'the phase report + one _decisions.jsonl line',
+  s3_outputs: 'nothing — design.md/tasks.md on disk already prove it',
+  scope_rationale: '_handoff.md (one line)',
+  rigor_downgrade: '_handoff.md (one line)',
+  resolved_at_s3: '_decisions.jsonl',
+  spec_lock: 'gates.S2',
+  blocker: 'next_action.blocker',
+  change_dir: 'nothing — it is the directory the file lives in',
+  skipped_phases: 'nothing — derivable from `phases` + `type`',
+};
+
+/** Size ceilings. Every one of these was exceeded by a real change before they existed. */
+export const CAPS = {
+  noteChars: 200,            // one phase_history note — 1-2 sentences
+  historyEntryChars: 400,    // one whole phase_history entry, serialized
+  historyEntries: 12,        // S1..S6 + fix rounds; past this, compact
+  nextActionChars: 900,      // incl. priority_reading + watch_items
+  totalBytes: 8000,          // the whole file — every spawn pays this
+};
+
+/**
+ * Non-blocking bloat/drift audit, separate from validateState's shape contract.
+ * Returns one warning per problem, each naming the key and where its content belongs instead.
+ * Callers decide severity: state-set REJECTS warnings caused by the write in hand (so drift can
+ * never be introduced) and only PRINTS pre-existing ones (so a change mid-flight never deadlocks);
+ * pipeline-guard only ever prints.
+ * @returns {{warnings:string[], offendingKeys:string[]}}
+ */
+export function auditState(state) {
+  const warnings = [], offendingKeys = [];
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return { warnings, offendingKeys };
+
+  for (const k of Object.keys(state)) {
+    if (k === '_comment' || CANONICAL_KEYS.has(k)) continue;
+    offendingKeys.push(k);
+    const bytes = JSON.stringify(state[k]).length;
+    const where = RELOCATED_KEYS[k];
+    warnings.push(`\`${k}\` (${bytes} B) is not a canonical _state.json key — nothing reads it, but ` +
+      `every future spawn reads it. Put it in ${where || '_handoff.md or the phase report'}; then ` +
+      `\`--unset ${k}\`.`);
+  }
+
+  const h = state.phase_history;
+  if (Array.isArray(h)) {
+    if (h.length > CAPS.historyEntries) {
+      offendingKeys.push('phase_history');
+      warnings.push(`phase_history has ${h.length} entries (cap ${CAPS.historyEntries}) — run ` +
+        `baton-compact.mjs to fold the oldest into one digest line.`);
+    }
+    h.forEach((e, i) => {
+      const n = e && typeof e.note === 'string' ? e.note.length : 0;
+      if (n > CAPS.noteChars) {
+        offendingKeys.push('phase_history');
+        warnings.push(`phase_history[${i}].note is ${n} chars (cap ${CAPS.noteChars}) — 1-2 sentences; ` +
+          `detail goes in _handoff.md / the phase report, which are read selectively.`);
+      }
+      const b = JSON.stringify(e ?? null).length;
+      if (b > CAPS.historyEntryChars) {
+        offendingKeys.push('phase_history');
+        warnings.push(`phase_history[${i}] is ${b} B (cap ${CAPS.historyEntryChars}) — keep it to ` +
+          `{phase, agent, date, note}; artifacts are on disk, no need to list them.`);
+      }
+    });
+  }
+
+  if (state.next_action != null) {
+    const b = JSON.stringify(state.next_action).length;
+    if (b > CAPS.nextActionChars) {
+      offendingKeys.push('next_action');
+      warnings.push(`next_action is ${b} B (cap ${CAPS.nextActionChars}) — priority_reading is a list of ` +
+        `file names with a short why, not the reasoning itself.`);
+    }
+  }
+
+  const total = JSON.stringify(state).length;
+  if (total > CAPS.totalBytes) {
+    warnings.push(`_state.json is ${total} B (cap ${CAPS.totalBytes}) — this is re-read on EVERY spawn ` +
+      `for the rest of the change. Run baton-compact.mjs.`);
+  }
+
+  return { warnings, offendingKeys: [...new Set(offendingKeys)] };
+}
+
 /**
  * Validate the canonical shape of a parsed _state.json object.
  * Only validates keys that are PRESENT — a fresh/NEW state with no gates/convergence is legal.
