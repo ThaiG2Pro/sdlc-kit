@@ -165,8 +165,11 @@ export function checkCpp({ changeDir, gatePhase }) {
 // visible at every gate; baton-compact.mjs fixes what has already grown.
 export const BATON_CAPS = {
   decisionChars: 240,     // one `decision` field — the WHAT, not the write-up
-  reasoningChars: 120,    // one `reasoning` field
-  decisionLineChars: 450, // one whole JSONL line
+  reasoningChars: 120,    // any other free-text field on the entry
+  decisionLineChars: 900, // one whole JSONL line. Backstop for an entry stuffed with many small
+                          // fields — must stay clear of decision(240) + several capped fields + keys,
+                          // or a fully compacted entry would keep reporting itself as over-cap and the
+                          // warning would be unactionable.
   handoffBytes: 6000,     // read in full by the next role, every spawn
   glossaryBytes: 6000,
   glossaryDefChars: 220,  // one Definition cell
@@ -190,9 +193,12 @@ export function auditBaton({ changeDir }) {
     dec.split('\n').forEach((raw) => {
       const t = raw.trim(); if (!t) return;
       let o = null; try { o = JSON.parse(t); } catch { return; }
-      const d = typeof o?.decision === 'string' ? o.decision.length : 0;
-      const r = typeof o?.reasoning === 'string' ? o.reasoning.length : 0;
-      if (d > BATON_CAPS.decisionChars || r > BATON_CAPS.reasoningChars || t.length > BATON_CAPS.decisionLineChars) {
+      // By value length, not by field name — roles invent their own fat fields (`source`,
+      // `root_cause`, `impact`), so naming only decision/reasoning would miss most of the weight.
+      const fat = Object.entries(o || {}).some(([k, v]) =>
+        k !== 'full' && typeof v === 'string' &&
+        v.length > (k === 'decision' ? BATON_CAPS.decisionChars : BATON_CAPS.reasoningChars));
+      if (fat || t.length > BATON_CAPS.decisionLineChars) {
         over++;
         if (t.length > worst) { worst = t.length; worstId = o?.id || o?.type || '?'; }
       }
@@ -263,7 +269,9 @@ export function checkTrailing({ projectRoot, changeDir, state }) {
     if (!key) problems.push('_state.json has no change_name/ticket_id — cannot verify the S3 cross-spec fragment file');
     else {
       const csPath = join(projectRoot, 'openspec', '_cross-spec-context', `${key}.md`);
-      if (!readText(csPath).trim())
+      // readText returns null when the file is absent — which is precisely the case this check
+      // exists to report, so dereferencing it directly crashed the guard instead of naming the gap.
+      if (!(readText(csPath) || '').trim())
         problems.push(`openspec/_cross-spec-context/${key}.md missing (S3 cross-spec block never written)`);
     }
   }

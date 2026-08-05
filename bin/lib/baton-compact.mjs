@@ -39,12 +39,18 @@ function readText(p) { try { return readFileSync(p, 'utf8'); } catch { return nu
 function readJson(p) { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } }
 const bytes = (s) => (s ? Buffer.byteLength(s) : 0);
 
-/** Truncate at the last sentence/clause boundary before `cap`, so a note stays readable. */
+/**
+ * Truncate at the last sentence/clause boundary before `cap`, so a note stays readable.
+ * The ' …' marker is budgeted INSIDE cap — appending it afterwards would push every clipped field
+ * a few chars past the cap, and the guard would then keep reporting an already-compacted entry.
+ */
+const ELLIPSIS = ' …';
 function clip(s, cap) {
   if (s.length <= cap) return s;
-  const head = s.slice(0, cap);
+  const room = cap - ELLIPSIS.length;
+  const head = s.slice(0, room);
   const cut = Math.max(head.lastIndexOf('. '), head.lastIndexOf('; '), head.lastIndexOf(' — '));
-  return (cut > cap * 0.5 ? head.slice(0, cut + 1) : head.trimEnd()) + ' …';
+  return (cut > room * 0.5 ? head.slice(0, cut + 1) : head.trimEnd()) + ELLIPSIS;
 }
 
 // ---- args ----
@@ -113,13 +119,28 @@ for (const changeDir of targets) {
     }
 
     if (Array.isArray(st.phase_history)) {
-      let clipped = 0;
+      const original = JSON.stringify(st.phase_history, null, 2) + '\n';
+      let clipped = 0, folded = 0;
+      // An entry is {phase, agent, date, note}. Roles invent other names for the prose field
+      // (`result`, `summary`, `key_outcome`) and list artifacts that are already on disk — so
+      // normalize by VALUE, not by a list of key names we happen to know.
+      const ENTRY_KEYS = new Set(['phase', 'agent', 'date', 'note']);
       for (const e of st.phase_history) {
-        if (e && typeof e.note === 'string' && e.note.length > NOTE_CAP) { e.note = clip(e.note, NOTE_CAP); clipped++; }
-        // artifacts are on disk — listing them in state duplicates a directory listing on every spawn
-        for (const k of ['artifacts_produced', 'started', 'completed', 'key_outcome']) if (e && k in e) delete e[k];
+        if (!e || typeof e !== 'object') continue;
+        for (const [k, v] of Object.entries(e)) {
+          if (ENTRY_KEYS.has(k)) continue;
+          // fold the longest stray prose field into `note` rather than dropping what it said
+          if (typeof v === 'string' && v.length > (typeof e.note === 'string' ? e.note.length : 0)) e.note = v;
+          delete e[k];
+          folded++;
+        }
+        if (typeof e.note === 'string' && e.note.length > NOTE_CAP) { e.note = clip(e.note, NOTE_CAP); clipped++; }
       }
-      if (clipped) notes.push(`_state.json: clipped ${clipped} phase_history note(s) to ${NOTE_CAP} chars`);
+      if (clipped || folded) {
+        archive(`phase-history-full-${stamp}.json`, original);
+        notes.push(`_state.json: normalized phase_history — ${clipped} note(s) clipped to ${NOTE_CAP} chars` +
+          (folded ? `, ${folded} stray field(s) folded into note/dropped` : '') + ` (full copy in _archive/)`);
+      }
       if (st.phase_history.length > KEEP_HISTORY) {
         const old = st.phase_history.slice(0, st.phase_history.length - KEEP_HISTORY);
         const kept = st.phase_history.slice(-KEEP_HISTORY);
@@ -145,13 +166,22 @@ for (const changeDir of targets) {
       const t = raw.trim();
       if (!t) continue;
       let o; try { o = JSON.parse(t); } catch { out.push(t); continue; }  // keep unparseable lines untouched
-      // Every free-prose field, not just `decision` — measured, `reasoning` is usually the fattest,
-      // and `rejected`/`alternatives` carry the same write-up in a second copy.
-      const CAPS = { decision: DECISION_CAP, reasoning: REASONING_CAP, rejected: 120, alternatives: 120 };
-      const over = Object.entries(CAPS).filter(([k, cap]) => typeof o[k] === 'string' && o[k].length > cap);
-      if (over.length) {
+      // Clip by VALUE LENGTH, not by a list of field names: roles invent their own fat fields
+      // (`source` at 741 B, `impact`, `root_cause`, `fixed`, …), so an allowlist misses most of the
+      // weight. `decision` gets the larger budget; every other free-text field is a summary line.
+      // Arrays of strings (`rejected`, `alternatives`, `refs`) are clipped element-wise.
+      const capFor = (k) => (k === 'decision' ? DECISION_CAP : REASONING_CAP);
+      let didClip = false;
+      for (const [k, v] of Object.entries(o)) {
+        if (k === 'full') continue;
+        if (typeof v === 'string' && v.length > capFor(k)) { o[k] = clip(v, capFor(k)); didClip = true; }
+        else if (Array.isArray(v)) {
+          const next = v.map((x) => (typeof x === 'string' && x.length > REASONING_CAP ? clip(x, REASONING_CAP) : x));
+          if (JSON.stringify(next) !== JSON.stringify(v)) { o[k] = next; didClip = true; }
+        }
+      }
+      if (didClip) {
         moved.push(t);
-        for (const [k, cap] of over) o[k] = clip(o[k], cap);
         o.full = `${ptr}#${o.id || o.ts || ''}`;
       }
       out.push(JSON.stringify(o));
