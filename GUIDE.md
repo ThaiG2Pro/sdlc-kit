@@ -22,12 +22,12 @@ From the target project root. **The only thing that differs between Kiro and Cla
 
 ```bash
 # run straight from GitHub (no clone, no npm publish — always latest):
-npx github:<owner>/kiro-sdlc-kit ../my-project --title "My App"   # interactive: asks the platform
+npx github:ThaiG2Pro/sdlc-kit ../my-project --title "My App"   # interactive: asks the platform
 
 # choose the platform up front (skips the menu):
-npx github:<owner>/kiro-sdlc-kit . --target claude   # Claude Code only  → .claude/
-npx github:<owner>/kiro-sdlc-kit . --target kiro     # Kiro IDE only     → .kiro/
-npx github:<owner>/kiro-sdlc-kit . --target both     # both              → .kiro/ + .claude/
+npx github:ThaiG2Pro/sdlc-kit . --target claude   # Claude Code only  → .claude/
+npx github:ThaiG2Pro/sdlc-kit . --target kiro     # Kiro IDE only     → .kiro/
+npx github:ThaiG2Pro/sdlc-kit . --target both     # both              → .kiro/ + .claude/
 
 # or from a local clone:
 node /path/to/kiro-sdlc-kit/bin/init.mjs --target claude        # into current dir
@@ -368,7 +368,7 @@ so updates are explicit and legible:
 
 ```bash
 # 1. Refresh your local kit source first (it's where init copies from):
-git -C /path/to/kiro-sdlc-kit pull          # or just use `npx github:<owner>/kiro-sdlc-kit` (always latest)
+git -C /path/to/kiro-sdlc-kit pull          # or just use `npx github:ThaiG2Pro/sdlc-kit` (always latest)
 
 # 2. Preview what the update would change — writes nothing (per target):
 node /path/to/kiro-sdlc-kit/bin/init.mjs ../my-project --target claude --check
