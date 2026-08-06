@@ -361,10 +361,16 @@ Any check fails → block the gate, name the agent that must complete the artifa
      `git.default_method`.
    - **Name** = filled `git.branch_naming` (`{type}`/`{ticket}`/`{slug}`), e.g. `feature/71194-voucher-redeem`.
    - **branch**: `git checkout -b <branch>` (from current HEAD).
-   - **worktree**: `git worktree add <path> -b <branch>` at the filled `git.worktree_path`; tell the
-     user to open the IDE there and continue THERE. The worktree gets its own `openspec/` checkout but
-     no `memory/` (`mkdir` or symlink it), and — if `/context/` is gitignored in this project — no
-     `context/` either: `ln -s "$(pwd)/context" <path>/context` so it reads the same live copy.
+   - **worktree**: `git worktree add <path> -b <branch>` at the filled `git.worktree_path`, then —
+     MANDATORY, in the new directory — `node <kit>/bin/init.mjs . --target <platform> --yes --worktree`.
+     Everything the kit owns is gitignored, so `git worktree add` copies NONE of it: without that
+     second command the worktree has no agents, no tools, no config, and no `context/`. **Do not
+     improvise the setup with `mkdir`/`ln -s`** — that is what left one project with five worktrees in
+     five different states. The command is idempotent: it symlinks `context/` + `memory/` to the main
+     checkout (one live copy, so learnings are never trapped on one branch), copies `.kiro/`/`.claude/`
+     fresh, and carries over `sdlc.config.json` + `openspec/config.yaml`. Anything it prints with `!`
+     is real content it refused to overwrite — surface that to the user, do not delete it yourself.
+     Then tell the user to open the IDE THERE and continue THERE.
    - You may run ONLY `git checkout -b` / `git switch -c` / `git worktree add` plus read-only
      `git status`/`rev-parse`/`branch --list`. **Command fails (branch exists, detached HEAD, dirty
      tree) → STOP, surface it, do NOT proceed to `openspec new change`.** Then announce:

@@ -45,7 +45,31 @@ permissions survive a kit upgrade),
 `.kiro`/etc. recopy; use this after a kit upgrade adds a new ignore pattern and you don't otherwise
 need a full re-init),
 `--global-ignore` (write the kit's **personal-layer** block to the machine-level git ignore file and
-exit — see below).
+exit — see below),
+`--worktree` (set up a **linked git worktree** — see below).
+
+### Linked worktrees
+
+Everything the kit owns is gitignored, so `git worktree add` copies **none** of it: the new directory
+has no agents, no tools, no config, no `context/`. Run this once inside it:
+
+```bash
+node <kit>/bin/init.mjs . --target kiro|claude|both --yes --worktree
+```
+
+It splits the workspace by what breaks when it exists twice:
+
+| | | why |
+|---|---|---|
+| `context/`, `memory/` | **symlinked** to the main checkout | hand-curated and accumulated, not regenerable, not git-tracked — a second copy diverges with no merge to reconcile it, and one branch's learnings never reach the next |
+| `.kiro/`, `.claude/`, `pipelines.json` | copied fresh | kit-generated and deterministic; identical wherever `init` runs |
+| `sdlc.config.json`, `openspec/config.yaml` | seeded from main, then owned locally | carries over the parts you own — `paths.{code_roots,test_roots}` (which the write-fence reads) and any project-specific openspec config — that a fresh scaffold would blank |
+| `openspec/changes/**` | untouched | the baton is one pipeline's state on one branch; sharing it is how two changes overwrite each other |
+
+Idempotent, and it never overwrites: real content already sitting where a symlink belongs is reported
+with `!` and left exactly as it is, for you to merge into main or delete. `.gitignore` is left alone
+too (it belongs to the branch) — pass `--gitignore` if you really want it written here. Both doctors
+now flag a worktree whose `context/`/`memory/` is a private copy rather than a link.
 
 **`.gitignore` (optional).** `init` offers to add a kit-owned block to the project's `.gitignore`
 (interactive prompt defaults to **yes**; `--gitignore`/`--no-gitignore` decide it non-interactively).

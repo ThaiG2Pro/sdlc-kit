@@ -9,7 +9,7 @@
 // Usage:  node .claude/tools/doctor-claude.mjs [projectDir]
 // Exit:   0 = no FAIL (WARN allowed)   1 = at least one FAIL
 
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, lstatSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 
@@ -141,6 +141,30 @@ for (const name of ['openspec', 'memory', 'context', 'docs']) {
     : warn(`no ./${name} at project root — run init`);
   if (existsSync(join(cc, name))) warn(`.claude/${name} exists — should be root-only; re-run init --force to strip it`);
 }
+
+// 7b. Linked worktree: context/ and memory/ must be ONE live copy shared with the main checkout.
+// Nothing the kit owns is git-tracked, so `git worktree add` brings none of it across and each
+// worktree gets whatever was improvised there. A private copy is the failure that hides: it reads
+// fine, and only later does someone notice a branch's learnings never reached anywhere else.
+(function checkLinkedWorktree() {
+  let main;
+  try {
+    const g = (a) => execSync(`git rev-parse --path-format=absolute ${a}`,
+      { cwd: projectDir, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    const common = g('--git-common-dir');
+    if (!common || common === g('--git-dir')) return; // main checkout, or not a worktree
+    main = dirname(common);
+  } catch { return; } // not a git repo, or git too old for --path-format
+  ok(`linked worktree of ${main}`);
+  for (const name of ['context', 'memory']) {
+    const p = join(projectDir, name);
+    let link = false;
+    try { link = lstatSync(p).isSymbolicLink(); } catch { /* absent */ }
+    if (link) ok(`${name}/ → main checkout (shared, one live copy)`);
+    else if (existsSync(p)) warn(`${name}/ is a private copy, not a link to ${main}/${name} — it will drift silently; see \`init --worktree\``);
+    else warn(`no ${name}/ in this worktree — run \`init . --yes --worktree\``);
+  }
+})();
 
 // 8. Context completeness (same semantics doctor.mjs uses; context-check.mjs enforces in full).
 //    Context lives at the project root (shared, no symlink).

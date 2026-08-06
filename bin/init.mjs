@@ -6,7 +6,7 @@
 // One source (kit/shared + kit/targets/<platform>) emits each target.
 // Zero runtime dependencies (Node >= 18 built-ins only).
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, lstatSync, copyFileSync, cpSync, rmSync, rmdirSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, lstatSync, copyFileSync, cpSync, rmSync, rmdirSync, renameSync, symlinkSync, readlinkSync, realpathSync } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
@@ -61,6 +61,14 @@ const GITIGNORE_ONLY = flags.has('--gitignore-only');
 // One write covers every repo on the machine (current AND future clones), every branch, every
 // worktree — and can never reach a remote. See GLOBAL_IGNORE_PATTERNS for what/why.
 const GLOBAL_IGNORE = flags.has('--global-ignore');
+// Set up a LINKED git worktree (`git worktree add`) so it matches the main checkout deterministically.
+// Needed because everything the kit owns is gitignored — `.kiro/`, `.claude/`, `context/`, `memory/`,
+// the root config, `openspec/config.yaml` — so `git worktree add` brings across NONE of it. Until now
+// the only instruction was a prose line in SKILL.md telling the orchestrator to "mkdir or symlink"
+// some of it, re-improvised by an LLM per worktree; the observed result was five worktrees of one
+// project in five different states, two of them missing `openspec/config.yaml` (hence the kit's own
+// artifact rules) entirely. See WORKTREE_LINK / WORKTREE_SEED for what is shared vs copied and why.
+const WORKTREE = flags.has('--worktree');
 
 // Text extensions that get placeholder substitution
 const TEXT_EXT = /\.(md|json|txt|ts|js|mjs|py|yaml|yml)$/i;
@@ -507,6 +515,11 @@ function backfillMemoryIndex() {
 // first, then scaffolds templates (preserving any already-filled file). Runs once for all targets.
 function scaffoldRootContext(targets, vals) {
   const rootCtx = join(TARGET, 'context');
+  // In a linked worktree, context/ belongs to the main checkout — either as the symlink setupWorktree
+  // just made (scaffolding through it would write templates into ANOTHER directory) or as real content
+  // setupWorktree refused to replace (scaffolding on top would bury the very files the user has to
+  // review). Both cases: hands off.
+  if (WORKTREE) { log('  ✓ context → owned by the main checkout (not scaffolded here)'); return; }
   // Migration: no root ./context yet, but an older install has a REAL <platform>/context dir →
   // copy its (possibly filled) files to root before applyTarget strips that per-platform dir.
   if (!existsSync(rootCtx)) {
@@ -570,6 +583,100 @@ function scaffoldRootConfig(vals) {
     n++;
   }
   if (n) log(`  ✓ config → ./{${SHARED_ROOT_FILES.join(', ')}} (shared root, read root-relative by each platform)`);
+}
+
+// --- linked-worktree setup ------------------------------------------------------------------
+// Two categories, split by "what happens if this exists twice":
+//
+//   WORKTREE_LINK — SYMLINKED to the main checkout. Hand-curated, accumulated content that is NOT
+//   regenerable: `context/` (the onboarder's project knowledge) and `memory/` (per-change learnings).
+//   A second copy immediately diverges, and since neither is git-tracked there is no merge to
+//   reconcile them — one branch's learnings would simply be invisible to the next. One live copy,
+//   every worktree reading it, is the only state that stays true.
+//
+//   WORKTREE_SEED — COPIED ONCE from the main checkout, then owned by the worktree. These are
+//   kit-generated and deterministic, so a per-worktree copy is safe; we seed rather than scaffold
+//   only to carry the USER-owned parts across (`sdlc.config.json`'s `paths.{code_roots,test_roots}`,
+//   which the write-fence reads — a fresh worktree scaffolded from the template would silently get
+//   empty roots — and whatever project-specific openspec config sits outside the kit's rules block).
+//   After seeding, the normal install path regenerates the kit-owned portions as usual.
+//
+// Deliberately NOT handled: `openspec/changes/**`. The baton is the state of ONE pipeline on ONE
+// branch; sharing or copying it across worktrees is how two changes end up overwriting each other.
+const WORKTREE_LINK = ['context', 'memory'];
+const WORKTREE_SEED = ['sdlc.config.json', join('openspec', 'config.yaml')];
+
+// Absolute path of the main checkout when TARGET is a LINKED worktree, else null. `--git-common-dir`
+// is the shared `.git` of the whole repo; in a linked worktree it differs from that worktree's own
+// `--git-dir` (which is `<main>/.git/worktrees/<name>`), and that difference is the detection.
+function resolveMainWorktree() {
+  const git = (a) => execSync(`git rev-parse --path-format=absolute ${a}`,
+    { cwd: TARGET, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  let common, own;
+  try { common = git('--git-common-dir'); own = git('--git-dir'); }
+  catch { return null; } // not a git repo, or git < 2.31 (no --path-format)
+  if (!common || common === own) return null; // main worktree, not a linked one
+  const main = dirname(common);
+  try { return statSync(main).isDirectory() ? main : null; } catch { return null; }
+}
+
+// Report-only classification of what's already at `rel`, so the caller never has to guess whether
+// overwriting is safe.
+function inspectPath(p) {
+  let st;
+  try { st = lstatSync(p); } catch { return { kind: 'absent' }; }
+  if (st.isSymbolicLink()) {
+    let to = null;
+    try { to = realpathSync(p); } catch { /* dangling */ }
+    return { kind: 'link', to, raw: readlinkSync(p) };
+  }
+  if (st.isDirectory()) {
+    let n = 0;
+    try { n = readdirSync(p).length; } catch { /* unreadable */ }
+    return { kind: 'dir', entries: n };
+  }
+  return { kind: 'file', size: st.size };
+}
+
+// Make TARGET (a linked worktree) match the main checkout. Idempotent, and never destructive: a real
+// file or non-empty directory already sitting where a symlink belongs is REPORTED, not replaced —
+// that content is the user's and only they know whether it should be merged into main or discarded.
+function setupWorktree(mainDir) {
+  log(`  Linked worktree of : ${mainDir}`);
+  const rows = [];
+  for (const rel of WORKTREE_LINK) {
+    const dst = join(TARGET, rel), src = join(mainDir, rel);
+    const cur = inspectPath(dst);
+    if (!existsSync(src)) { rows.push([rel, `skip — main has no ${rel}/`]); continue; }
+    if (cur.kind === 'link') {
+      const ok = cur.to === realpathSync(src);
+      rows.push([rel, ok ? 'link → main (already)' : `! link points elsewhere: ${cur.raw}`]);
+      continue;
+    }
+    if (cur.kind === 'dir' && cur.entries > 0) {
+      rows.push([rel, `! real dir with ${cur.entries} entr${cur.entries === 1 ? 'y' : 'ies'} — left alone`]);
+      continue;
+    }
+    if (cur.kind === 'file') { rows.push([rel, '! a real FILE is in the way — left alone']); continue; }
+    if (cur.kind === 'dir') rmdirSync(dst); // empty → safe to replace with the link
+    symlinkSync(src, dst);
+    rows.push([rel, 'linked → main']);
+  }
+  for (const rel of WORKTREE_SEED) {
+    const dst = join(TARGET, rel), src = join(mainDir, rel);
+    if (existsSync(dst)) { rows.push([rel, 'kept (worktree already has it)']); continue; }
+    if (!existsSync(src)) { rows.push([rel, 'skip — main has none either']); continue; }
+    mkdirSync(dirname(dst), { recursive: true });
+    copyFileSync(src, dst);
+    rows.push([rel, 'seeded from main']);
+  }
+  const w = Math.max(...rows.map(([r]) => r.length));
+  for (const [r, s] of rows) log(`    ${r.padEnd(w)}  ${s}`);
+  const stuck = rows.filter(([, s]) => s.startsWith('!'));
+  if (stuck.length) {
+    log('  ! Nothing above marked "!" was touched. Each is real content this tool will not judge:');
+    log(`    move what matters into ${mainDir}/<name>, delete the leftover here, then re-run.`);
+  }
 }
 
 // Idempotently maintain the kit-owned block in the project's .gitignore. An existing block is
@@ -751,6 +858,19 @@ async function main() {
   log(`  Target project : ${TARGET}`);
   log(`  Platform(s)    : ${targets.map((t) => TARGET_DIRS[t]).join(', ')}`);
 
+  // A linked worktree needs the shared workspace wired to the main checkout BEFORE anything
+  // scaffolds a second copy of it into this directory.
+  let mainWorktree = null;
+  if (WORKTREE) {
+    mainWorktree = resolveMainWorktree();
+    if (!mainWorktree) {
+      if (rl) rl.close();
+      die(`--worktree, but ${TARGET} is not a linked git worktree (it is the main checkout, or not a\n` +
+          '    git repo at all). Run plain `init` here; use --worktree only in a directory created by\n' +
+          '    `git worktree add`.');
+    }
+  }
+
   // Guard: refuse to clobber an existing kit install per target unless --force/--check.
   for (const t of targets) {
     const outDir = join(TARGET, TARGET_DIRS[t]);
@@ -776,6 +896,9 @@ async function main() {
   let doGitignore;
   if (NO_GITIGNORE) doGitignore = false;
   else if (GITIGNORE) doGitignore = true;
+  // A worktree's .gitignore is the branch's tracked file — the main checkout already owns that block,
+  // and rewriting it here just plants a stray diff on a feature branch. Opt back in with --gitignore.
+  else if (WORKTREE) doGitignore = false;
   else if (rl) {
     const ans = (await rl.question('  Add kit files (.claude/, .kiro/, sdlc.config.json, pipelines.json) to .gitignore? [Y/n]: ')).trim().toLowerCase();
     doGitignore = !(ans === 'n' || ans === 'no');
@@ -810,6 +933,7 @@ async function main() {
   // Establish the shared project-root workspace FIRST (canonical, root-only — no symlink), so the
   // per-platform strip in applyTarget never discards data: scaffold ./context/ (migrating any older
   // real per-platform context dir), then migrate any older real per-platform docs/memory to root.
+  if (mainWorktree) setupWorktree(mainWorktree);
   scaffoldRootContext(targets, vals);
   scaffoldRootConfig(vals);
   // docs/ workspace (intake's extra-docs/ ticket packages; project docs). memory/ baton workspace.

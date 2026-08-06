@@ -13,6 +13,22 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Added
 
+- **`init --worktree` — deterministic setup for a linked git worktree.** Everything the kit owns is
+  gitignored, so `git worktree add` brings across *none* of it — no agents, no tools, no config, no
+  `context/`. The only guidance was a prose line in `SKILL.md` telling the orchestrator to "`mkdir` or
+  symlink" some of it, re-improvised by an LLM per worktree; one project was found with five worktrees
+  in five different states, two of them missing `openspec/config.yaml` (and therefore the kit's own
+  artifact rules) entirely. The flag replaces that with one idempotent command that splits the
+  workspace by what breaks when it exists twice: `context/` + `memory/` are **symlinked** to the main
+  checkout (hand-curated, not regenerable, not git-tracked — a second copy diverges with no merge to
+  reconcile it); `.kiro/`, `.claude/`, `pipelines.json` are copied fresh (deterministic); and
+  `sdlc.config.json` + `openspec/config.yaml` are **seeded from main** so the parts you own survive —
+  notably `paths.{code_roots,test_roots}`, which the write-fence reads and a fresh scaffold would
+  blank. `openspec/changes/**` is deliberately untouched: the baton is one pipeline's state on one
+  branch. Never destructive — real content already sitting where a symlink belongs is reported with
+  `!` and left alone; `.gitignore` is not written (it belongs to the branch). Both doctors now flag a
+  worktree whose `context/`/`memory/` is a private copy instead of a link, which is the failure that
+  hides — it reads fine, and only later does someone notice a branch's learnings went nowhere.
 - **`baton-compact.mjs` — the missing compaction step for the CPP baton.** Every writer's instruction
   was "append" and nothing ever shrank the result, so the baton — re-read IN FULL by every role on
   every spawn — had grown to 34–155 KB per spawn across 8 live changes (≈9–39k tokens, i.e. **2–6× the
