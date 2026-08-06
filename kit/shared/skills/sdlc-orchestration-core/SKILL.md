@@ -362,7 +362,9 @@ Any check fails → block the gate, name the agent that must complete the artifa
    - **Name** = filled `git.branch_naming` (`{type}`/`{ticket}`/`{slug}`), e.g. `feature/71194-voucher-redeem`.
    - **branch**: `git checkout -b <branch>` (from current HEAD).
    - **worktree**: `git worktree add <path> -b <branch>` at the filled `git.worktree_path`, then —
-     MANDATORY, in the new directory — `node <kit>/bin/init.mjs . --target <platform> --yes --worktree`.
+     MANDATORY, in the new directory — `npx -y github:ThaiG2Pro/sdlc-kit . --target <platform> --yes
+     --worktree`. Use exactly this form: `node <path>/bin/init.mjs` needs a kit path you have no way
+     to know, and the shell guard blocks a bare script file anyway.
      Everything the kit owns is gitignored, so `git worktree add` copies NONE of it: without that
      second command the worktree has no agents, no tools, no config, and no `context/`. **Do not
      improvise the setup with `mkdir`/`ln -s`** — that is what left one project with five worktrees in

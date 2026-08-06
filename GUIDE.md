@@ -54,7 +54,7 @@ Everything the kit owns is gitignored, so `git worktree add` copies **none** of 
 has no agents, no tools, no config, no `context/`. Run this once inside it:
 
 ```bash
-node <kit>/bin/init.mjs . --target kiro|claude|both --yes --worktree
+npx -y github:ThaiG2Pro/sdlc-kit . --target kiro|claude|both --yes --worktree
 ```
 
 It splits the workspace by what breaks when it exists twice:
