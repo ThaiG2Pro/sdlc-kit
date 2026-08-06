@@ -267,6 +267,21 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Fixed
 
+- **`init` no longer relocates your own `.gitignore` lines.** The kit block was maintained by stripping
+  it and re-appending at EOF, so every user line that happened to sit *after* the block was silently
+  moved above it (and its trailing whitespace trimmed) — a permanent `M .gitignore` whose entire diff
+  was reshuffling. Worse on a file whose rules depend on order: a `!` negation only wins when it
+  *follows* the pattern it overrides, so the reshuffle could change what git ignores. The block is now
+  rewritten **in place**; only a first install appends, and bytes outside the markers are preserved
+  exactly (missing final newline included). Duplicate blocks from a hand-edit still collapse to one.
+  Nothing inside an already-installed project changes — `init.mjs` is never copied into a project, so
+  the fix simply applies at the next `kiro-sdlc-init` run.
+- **`init` now warns when a project line excludes the `.kiro` *directory*.** The kit's `!.kiro/specs/`
+  cannot work if anything — at any position, in any layer — excludes `.kiro` itself, because git never
+  descends into an excluded directory. Already-tracked specs keep working, so the breakage only shows
+  up when a teammate adds a NEW spec file and `git status` never mentions it. `init` prints the
+  offending line number and the one-character fix (`.kiro/` → `.kiro/*`) and **changes nothing**: the
+  line lives outside the kit's markers, is often deliberate, and belongs to the project.
 - **`.gitignore` block: `.kiro/` → `.kiro/*` + `!.kiro/specs/`.** Ignoring the *directory* stopped git
   from descending into `.kiro/`, which killed any `specs/` negation (even one in a higher-precedence
   ignore layer) and silently hid teammates' NEW Kiro spec docs — old ones stayed tracked, so the loss
