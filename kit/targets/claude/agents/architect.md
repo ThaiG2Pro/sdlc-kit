@@ -99,6 +99,10 @@ already exist on disk — check, and continue from the next sub-phase rather tha
   plus `--set current_phase=S3 --set last_agent=architect --set 'next_action.routes_to=developer /s4 (only after DESIGN REVIEW + cross-artifact-audit 0 CRITICAL)'`.
   **Canonical keys only** — state-set refuses one it doesn't know (`terminology`, `active_concerns`,
   `gate_audit`, `s3_outputs`, …); design.md and tasks.md on disk already prove what S3 produced.
+  **Call it directly with the real flag** — never `--help`/no-args to "check the syntax first"; the
+  shell guard blocks any script-file invocation regardless of flags. Never substitute a
+  heredoc/`python3 -c`/temp script for it or for self-checks — blocked the same way; use
+  `Read`/`Grep`/`openspec change validate`.
 
 **Role memory write-back (cross-spec, advisory):** if this design surfaced a *reusable, not-spec-specific*
 lesson (a recurring ADR trade-off, a cross-feature constraint, a design anti-pattern future work should

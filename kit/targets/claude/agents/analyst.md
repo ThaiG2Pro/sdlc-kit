@@ -116,7 +116,11 @@ in the phase artifact (proposal.md / spec deltas), which is read once at its gat
   set `next_action.*`/`current_phase`/`last_agent:"analyst"` via `--set` in the SAME call (it
   read-modify-writes, preserving every other field). **Canonical keys only** — state-set refuses a key
   it doesn't know (`terminology`, `active_concerns`, `gate_audit`, `staging_evidence`, …). Terms live in
-  `_glossary.md`, watch-outs in `next_action.watch_items`, gate outcomes in `_progress.md`.
+  `_glossary.md`, watch-outs in `next_action.watch_items`, gate outcomes in `_progress.md`. **Call it
+  directly with the real flag** — never `--help`/no-args to "check the syntax first"; the shell guard
+  blocks any script-file invocation regardless of flags, so a dry-run just wastes a call. Never
+  substitute a heredoc/`python3 -c`/temp script for it or for self-checks — blocked the same way; use
+  `Read`/`Grep`/`openspec change validate`.
 
 **Role memory write-back (cross-spec, advisory):** if S1/S2 surfaced a *reusable, not-spec-specific*
 lesson (a recurring requirement-ambiguity pattern, a domain edge case easy to miss, a clarification trap),

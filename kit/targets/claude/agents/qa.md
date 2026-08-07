@@ -108,7 +108,10 @@ progress-example.md` shows the shape): `| S5 | ✅ Done | {date} | qa | {GO/NO-G
 plus `## Next Action` — your artifact, the orchestrator does not also write it; `_state.json` — **never rewrite the whole file**:
 `node .claude/tools/state-set.mjs --append phase_history='{"phase":"S5","agent":"qa","date":"…","note":"…(1-2 sentences, ≤200 chars; GO/NO-GO + why)"}' --set 'next_action.routes_to=<per outcome>'`
 — **canonical keys only**; state-set refuses one it doesn't know (`regression`, `staging_evidence`,
-`gate_audit`, …), and test evidence belongs in qa-report.md.
+`gate_audit`, …), and test evidence belongs in qa-report.md. **Call it directly with the real flag**
+— never `--help`/no-args to "check the syntax first"; the shell guard blocks any script-file
+invocation regardless of flags. Never substitute a heredoc/`python3 -c`/temp script for it or for
+self-checks — blocked the same way; use `Read`/`Grep`/`openspec change validate`.
 QA does NOT archive. `_decisions.jsonl`: READ → modify → WRITE whole file (append your lines).
 
 **Role memory write-back (cross-spec, advisory):** if this QA pass surfaced a *reusable, not-spec-specific*

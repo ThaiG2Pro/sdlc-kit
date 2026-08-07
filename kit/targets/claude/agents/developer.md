@@ -105,7 +105,10 @@ plus `## Next Action` — your artifact, the orchestrator does not also write it
 `staging_evidence`/`regression`/`s4_checkpoint_2`/… — test evidence belongs in dev-test-report.md):
 `node .claude/tools/state-set.mjs --append
 phase_history='{"phase":"S4","agent":"developer","date":"…","note":"…(1-2 sentences, ≤200 chars)"}' --set current_phase=S4`
-(all required tasks `[x]` is tracked in `tasks.md`, not restated here).
+(all required tasks `[x]` is tracked in `tasks.md`, not restated here). **Call it directly with the
+real flag** — never `--help`/no-args to "check the syntax first", that's a wasted call, not a safe
+dry-run. (You're the exception on ad-hoc scripts elsewhere — you write code — but state-set is still
+the only path to `_state.json`.)
 
 **Role memory write-back (cross-spec, advisory):** if this build surfaced a *reusable, not-spec-specific*
 lesson (a recurring bug pattern, a validation/sync trap, a framework gotcha future builds should avoid),

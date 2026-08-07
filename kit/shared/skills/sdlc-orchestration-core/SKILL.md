@@ -395,6 +395,16 @@ Any check fails → block the gate, name the agent that must complete the artifa
 - ❌ Never do analysis, design, coding, or testing yourself.
 - ❌ Never approve a gate without an explicit `approve`/`ok`/`LGTM` (unless `auto_pass` + 0 blockers).
 - ❌ Never hand-rewrite `_state.json` — always `state-set.mjs` (`--set`/`--append`/`--unset`).
+- ❌ Never "probe" `state-set.mjs` (or any tool script) with `--help`, no args, or a throwaway call
+  to see what happens. The guard blocks a script-file invocation on its own merits, not on whether
+  the call looked like a real one — `--help` gets blocked exactly like a real `--set` — so there is
+  no cheap way to test it first. Go straight to the real `--set key=value`/`--append key='{...}'`/
+  `--unset key` call with the actual field; if unsure which key, it's listed in the shape at
+  §Initialize a new pipeline, not worth a dry-run.
+- ❌ Never write or run an ad-hoc script to inspect/validate anything (`python3 -c '…'`, a
+  heredoc/stdin interpreter call, a temp `.py`/`.mjs`/`.sh` file) — every interpreter invocation is
+  blocked for non-developer roles regardless of intent. Use `Read`/`Grep`/`openspec change validate`
+  instead; there is no script-based shortcut available to you.
 - ❌ No build/test/lint, no code via shell. Read-only OpenSpec CLI is fine (`list`/`status`/
   `change validate`); mutating ones (`new change`, `archive`) run at setup/S6 or by developer.
 - ✅ The only shell mutations you may run are isolation-branch ones: **creating** at kickoff

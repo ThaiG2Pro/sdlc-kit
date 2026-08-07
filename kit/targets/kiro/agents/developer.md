@@ -211,7 +211,9 @@ KHÔNG sửa tay spec deltas).
   --set current_phase=S4 --set 'next_action={"agent":"sdlc","command":"approve s4","prerequisite":"dev-test-report.md created, coverage ≥ threshold","blocker":"AWAITING BUILD GATE","routes_to":"qa /s5 {change-name} (sau khi BUILD gate PASS)"}'`
   plus `priority_reading` = [dev-test-report.md, _handoff.md, _glossary.md, spec deltas §ACs],
   `watch_items` = vùng QA nên soi. Đừng tự thêm key (`staging_evidence`, `s4_checkpoint_2`…) —
-  state-set từ chối.
+  state-set từ chối. **Gọi thẳng với flag thật** — đừng `--help`/không tham số để "thử cú pháp
+  trước", tốn 1 lượt gọi vô ích (bạn được phép chạy script vì viết code, nhưng state-set vẫn là
+  đường DUY NHẤT vào `_state.json` — không phải chỗ để dò cú pháp).
 - **Role memory (xuyên-spec, advisory)** — S4 này rút ra lesson *tái dùng được, không gắn riêng spec*
   (recurring bug pattern, validation/sync trap, framework gotcha) → WRITE section
   `## {ISO-date} — {change-name}: {lesson}` vào `memory/developer/{change-name}.md` (**1 file/change**

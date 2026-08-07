@@ -204,7 +204,10 @@ canonical; cpp-guard báo khi vượt.
   `## Next Action`. Artifact của bạn — orchestrator không ghi bản thứ hai.
 - **`_state.json`** — **never rewrite cả file.** Đừng tự thêm key (`terminology`, `active_concerns`,
   `gate_audit`…) — state-set từ chối; thuật ngữ ở `_glossary.md`, risk ở `next_action.watch_items`,
-  kết quả gate ở `_progress.md`. MỘT lệnh `node .kiro/tools/state-set.mjs`:
+  kết quả gate ở `_progress.md`. **Gọi thẳng với flag thật** — đừng `--help`/không tham số để "thử
+  cú pháp trước", guard chặn mọi lần chạy file script bất kể flag. Đừng thay bằng heredoc/
+  `python3 -c`/script tạm — cũng bị chặn tương tự; dùng `Read`/`Grep`/`openspec change validate`.
+  MỘT lệnh `node .kiro/tools/state-set.mjs`:
   `--append phase_history='{"phase":"S3","agent":"architect","date":"…","note":"…(1-2 câu, ≤200 ký tự; chi tiết → _handoff.md)"}'`
   `--set current_phase=S3 --set last_agent=architect` +
   `next_action` → `agent:"sdlc"`, `command:"approve s3"`,
