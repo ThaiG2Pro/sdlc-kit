@@ -110,7 +110,9 @@ plus `## Next Action` — your artifact, the orchestrator does not also write it
 — **canonical keys only**; state-set refuses one it doesn't know (`regression`, `staging_evidence`,
 `gate_audit`, …), and test evidence belongs in qa-report.md. **Call it directly with the real flag**
 — never `--help`/no-args to "check the syntax first"; the shell guard blocks any script-file
-invocation regardless of flags. Never substitute a heredoc/`python3 -c`/temp script for it or for
+invocation regardless of flags. Never pipe it either (`| tail`, `| head`, `2>&1 | grep`) — real
+chaining, defeats the same exception; its own diff output is already a few lines. Never substitute
+a heredoc/`python3 -c`/temp script for it or for
 self-checks — blocked the same way; use `Read`/`Grep`/`openspec change validate`.
 QA does NOT archive. `_decisions.jsonl`: READ → modify → WRITE whole file (append your lines).
 

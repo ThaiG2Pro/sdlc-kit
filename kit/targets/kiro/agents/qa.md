@@ -237,7 +237,8 @@ Cap: `_handoff.md` ≤6 KB, `_glossary.md` ≤6 KB, `_progress.md` ≤4 KB, `_st
 - **`_progress.md`** — dòng S5 của bạn + Next Action.
 - **`_state.json`** — **never rewrite cả file.** Đừng tự thêm key (`regression`, `staging_evidence`…) —
   state-set từ chối. **Gọi thẳng với flag thật** — đừng `--help`/không tham số để "thử cú pháp
-  trước", guard chặn mọi lần chạy file script bất kể flag. Đừng thay bằng heredoc/`python3 -c`/
+  trước", guard chặn mọi lần chạy file script bất kể flag. Cũng đừng pipe (`| tail`, `| head`) —
+  chaining thật, phá luôn exception; output của nó đã ngắn sẵn. Đừng thay bằng heredoc/`python3 -c`/
   script tạm để tự kiểm tra — cũng bị chặn tương tự; dùng `Read`/`Grep`/`openspec change validate`.
   Một lệnh
   `node .kiro/tools/state-set.mjs

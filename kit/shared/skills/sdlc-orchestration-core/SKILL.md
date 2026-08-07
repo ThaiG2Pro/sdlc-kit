@@ -401,6 +401,10 @@ Any check fails → block the gate, name the agent that must complete the artifa
   no cheap way to test it first. Go straight to the real `--set key=value`/`--append key='{...}'`/
   `--unset key` call with the actual field; if unsure which key, it's listed in the shape at
   §Initialize a new pipeline, not worth a dry-run.
+- ❌ Never pipe a `state-set.mjs` (or any kit-script) call — `| tail`, `| head`, `2>&1 | grep`, or
+  a trailing `> file` all count as real chaining and defeat the kit-script allowlist exactly like
+  a semicolon would, landing back on the generic "running a script file" block. Its own diff
+  output is already a few lines; there is nothing to truncate.
 - ❌ Never write or run an ad-hoc script to inspect/validate anything (`python3 -c '…'`, a
   heredoc/stdin interpreter call, a temp `.py`/`.mjs`/`.sh` file) — every interpreter invocation is
   blocked for non-developer roles regardless of intent. Use `Read`/`Grep`/`openspec change validate`

@@ -100,8 +100,10 @@ already exist on disk — check, and continue from the next sub-phase rather tha
   **Canonical keys only** — state-set refuses one it doesn't know (`terminology`, `active_concerns`,
   `gate_audit`, `s3_outputs`, …); design.md and tasks.md on disk already prove what S3 produced.
   **Call it directly with the real flag** — never `--help`/no-args to "check the syntax first"; the
-  shell guard blocks any script-file invocation regardless of flags. Never substitute a
-  heredoc/`python3 -c`/temp script for it or for self-checks — blocked the same way; use
+  shell guard blocks any script-file invocation regardless of flags. Never pipe it either (`| tail`,
+  `| head`, `2>&1 | grep`) — real chaining, defeats the same exception; its own diff output is
+  already a few lines. Never substitute a heredoc/`python3 -c`/temp script for it or for
+  self-checks — blocked the same way; use
   `Read`/`Grep`/`openspec change validate`.
 
 **Role memory write-back (cross-spec, advisory):** if this design surfaced a *reusable, not-spec-specific*

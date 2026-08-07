@@ -118,8 +118,10 @@ in the phase artifact (proposal.md / spec deltas), which is read once at its gat
   it doesn't know (`terminology`, `active_concerns`, `gate_audit`, `staging_evidence`, …). Terms live in
   `_glossary.md`, watch-outs in `next_action.watch_items`, gate outcomes in `_progress.md`. **Call it
   directly with the real flag** — never `--help`/no-args to "check the syntax first"; the shell guard
-  blocks any script-file invocation regardless of flags, so a dry-run just wastes a call. Never
-  substitute a heredoc/`python3 -c`/temp script for it or for self-checks — blocked the same way; use
+  blocks any script-file invocation regardless of flags, so a dry-run just wastes a call. Never pipe
+  it either (`| tail`, `| head`, `2>&1 | grep`) — that's real chaining and defeats the same
+  exception; its own diff output is already a few lines. Never substitute a heredoc/`python3 -c`/
+  temp script for it or for self-checks — blocked the same way; use
   `Read`/`Grep`/`openspec change validate`.
 
 **Role memory write-back (cross-spec, advisory):** if S1/S2 surfaced a *reusable, not-spec-specific*

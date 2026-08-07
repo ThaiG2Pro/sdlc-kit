@@ -186,7 +186,8 @@ nhưng vẫn đủ mọi section bắt buộc (sàn số lượng nới theo R8)
   `watch_items`= cảnh báo cho architect. Đừng tự thêm key (`terminology`, `active_concerns`…) —
   state-set từ chối; thuật ngữ ở `_glossary.md`, watch item ở `next_action.watch_items`. **Gọi
   thẳng với flag thật** — đừng `--help`/không tham số để "thử cú pháp trước", guard chặn mọi lần
-  chạy file script bất kể flag, thử trước chỉ tốn 1 lượt gọi vô ích. Đừng thay bằng heredoc/
+  chạy file script bất kể flag, thử trước chỉ tốn 1 lượt gọi vô ích. Cũng đừng pipe (`| tail`,
+  `| head`) — chaining thật, phá luôn exception; output của nó đã ngắn sẵn. Đừng thay bằng heredoc/
   `python3 -c`/script tạm để tự kiểm tra gì cả — cũng bị chặn tương tự; dùng `Read`/`Grep`/
   `openspec change validate`.
 - **Role memory (xuyên-spec, advisory)** — S1/S2 này rút ra lesson *tái dùng được, không gắn riêng spec*
