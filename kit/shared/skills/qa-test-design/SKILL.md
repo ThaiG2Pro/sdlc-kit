@@ -92,6 +92,11 @@ Status được tô màu (Pass=green, Fail=red, N/A=grey) khi `openpyxl` có s�
 generator tự fallback ghi `testcases.csv` (mở được bằng Excel) và in cảnh báo — KHÔNG fail gate.
 File ghi vào `openspec/**` (trong write.allowedPaths của qa).
 
+⚠️ **Đừng tự kiểm tra `openpyxl` trước** (`python3 -c "import openpyxl"`, heredoc, hay script tạm) —
+shell guard chặn MỌI inline `python -c` với role restricted (qa/analyst/architect), kể cả khi chỉ để
+đọc version. Không cần thiết: generator tự detect + tự fallback .csv, không cần biết trước. Chạy
+đúng 1 lệnh script-file như trên và đọc output/exit code của nó.
+
 ### Bước 5: Coverage summary
 
 Lưu: `openspec/changes/<change>/qa/coverage_summary.md`

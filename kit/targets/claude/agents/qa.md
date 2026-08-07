@@ -80,7 +80,11 @@ burns tokens for nothing; don't.
    it in `qa-report.md` as a recommendation for the orchestrator to escalate, don't unilaterally widen.
 3. **Scenarios on paper** (AC-ID | scenario | how to verify | priority). If `testcase_export ∈
    {xlsx,md}` → export `<CHANGE_DIR>/qa/testcases.{xlsx|md|csv}` + `qa/coverage_summary.md` (this file
-   is a **hard prerequisite of the S5 gate** — missing or 0 rows → the orchestrator BLOCKS).
+   is a **hard prerequisite of the S5 gate** — missing or 0 rows → the orchestrator BLOCKS). For
+   `xlsx`: write `qa/testcases.json` then run the shipped generator (`gen_testcases_xlsx.py`) directly —
+   it self-detects `openpyxl` and falls back to `.csv` on its own. Never pre-check with
+   `python3 -c "import openpyxl"` first: any inline `python -c` is blocked for this role regardless of
+   what it's checking, and the check is redundant anyway.
 4. **Execute**: (A) run tests + coverage; (B) code review + `security-audit` over all handlers/services;
    trace entrypoint→service→data for each uncovered scenario; (B1) `qa-test-design` Phase 3 Mode B over
    EVERY test file — flag hollow TCs [H1]–[H5] as `[AI-DETECTABLE]` bugs; (C) boot the local stack and

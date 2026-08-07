@@ -162,6 +162,9 @@ python3 .kiro/skills/qa-test-design/gen_testcases_xlsx.py \
 Thiếu `openpyxl` → generator tự fallback `.csv` (vẫn hợp lệ). Ghi luôn `{CHANGE_DIR}/qa/coverage_summary.md`.
 ⚠️ Khi `testcase_export` ∈ {xlsx,md}, file này là **prerequisite CỨNG của gate S5** — thiếu hoặc 0 row →
 orchestrator CHẶN GO/NO-GO. Sinh trước khi present verdict.
+🚫 **Đừng tự kiểm tra `openpyxl` trước** bằng `python3 -c "import openpyxl"` hay script tạm — guard
+chặn MỌI `python -c` inline với role restricted, không có exception. Không cần: generator tự
+detect + tự fallback `.csv`. Chạy đúng lệnh script-file phía trên, đọc output của nó.
 
 ## Step 4: Verification — 3 phương pháp
 
