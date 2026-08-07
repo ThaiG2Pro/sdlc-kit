@@ -1,8 +1,7 @@
----
-name: tasks-example
-description: >
-  Golden example of tasks.md — full S3 task breakdown with file paths, AC-ID references, checkpoints, and dependency order.
----
+<!--
+  Golden example of tasks.md — full S3 task breakdown with file paths, AC-ID references,
+  checkpoints, and dependency order.
+-->
 
 # Implementation Plan: CMS Brand Management
 

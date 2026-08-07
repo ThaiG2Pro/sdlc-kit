@@ -1,9 +1,8 @@
----
-name: progress-example
-description: >
-  Golden example of _progress.md — progress tracking table with phase status, dates, agents, and Next Action section.
-  Use as pattern reference when creating or updating _progress.md for any feature spec.
----
+<!--
+  Golden example of _progress.md — progress tracking table with phase status, dates, agents,
+  and Next Action section. Use as pattern reference when creating or updating _progress.md for
+  any feature spec.
+-->
 
 # Progress — 71000-cms-brand-management
 

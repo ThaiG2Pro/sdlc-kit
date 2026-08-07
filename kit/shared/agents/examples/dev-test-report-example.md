@@ -1,8 +1,7 @@
----
-name: dev-test-report-example
-description: >
-  Golden example of dev-test-report.md — S4 handoff artifact for QA. Contains: AC coverage table, test results, self-review log, design deviations, coverage report.
----
+<!--
+  Golden example of dev-test-report.md — S4 handoff artifact for QA. Contains: AC coverage
+  table, test results, self-review log, design deviations, coverage report.
+-->
 
 ## Dev Test Report — 71000
 Date: 2026-04-13

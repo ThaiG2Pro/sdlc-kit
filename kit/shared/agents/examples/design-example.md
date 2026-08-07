@@ -1,8 +1,7 @@
----
-name: design-example
-description: >
-  Golden example of design.md — full S3 output for CMS Brand Management. Contains: Sketch/Gap Analysis, ADRs, DB Schema, API Design, Sequence Flows, Error Mapping, Implementation Guide.
----
+<!--
+  Golden example of design.md — full S3 output for CMS Brand Management. Contains: Sketch/Gap
+  Analysis, ADRs, DB Schema, API Design, Sequence Flows, Error Mapping, Implementation Guide.
+-->
 
 # S3 — Full Design: CMS Brand Management
 

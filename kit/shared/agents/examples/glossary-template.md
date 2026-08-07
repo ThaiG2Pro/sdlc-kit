@@ -1,12 +1,10 @@
----
-name: glossary-template
-description: >
-  Template for {CHANGE_DIR}/_glossary.md — the shared domain/technical glossary every agent adds to.
-  These definitions are the canonical truth across all phases. cpp-guard checks this is a markdown
-  table with >=1 data row (S2) and >=1 row whose Phase is S3 (S3), and warns once the file passes
-  6 KB or a definition passes 220 chars. IMPORTANT: keep "Phase" as the LAST column — cpp-guard
-  reads the trailing cell as the phase.
----
+<!--
+  Template for {CHANGE_DIR}/_glossary.md — the shared domain/technical glossary every agent adds
+  to. These definitions are the canonical truth across all phases. cpp-guard checks this is a
+  markdown table with >=1 data row (S2) and >=1 row whose Phase is S3 (S3), and warns once the
+  file passes 6 KB or a definition passes 220 chars. IMPORTANT: keep "Phase" as the LAST column —
+  cpp-guard reads the trailing cell as the phase.
+-->
 
 # Glossary — {change-name} (ticket {ticket_id})
 

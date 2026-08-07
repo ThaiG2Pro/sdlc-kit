@@ -1,10 +1,8 @@
----
-name: qa-report-template
-description: >
+<!--
   Template for {CHANGE_DIR}/qa-report.md — the standalone S5 gate artifact (S5->S6). QA writes
   this BEFORE updating CPP. Contains: gate checklist, test scenarios, bug list (classification +
   RCA phase), AC coverage, visual QA, dependency audit, GO/NO-GO decision + blockers.
----
+-->
 
 # S5 QA Report — {ticket_id} ({change-name})
 Date: {ISO date}

@@ -1,10 +1,8 @@
----
-name: release-template
-description: >
+<!--
   Template for {CHANGE_DIR}/release.md — the S6 release artifact the developer writes before
   `openspec archive`. Contains: release notes (ref AC-IDs), migration checklist, rollback plan,
   post-deploy smoke test, deploy strategy.
----
+-->
 
 # Release — {ticket_id} ({change-name})
 Date: {ISO date}
