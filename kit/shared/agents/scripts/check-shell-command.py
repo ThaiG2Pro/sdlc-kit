@@ -201,7 +201,7 @@ def _is_isolation_branch_op(command: str) -> bool:
     a CREATE (`checkout -b` / `switch -c` / `worktree add`) or a SWITCH to an existing branch
     (`git switch <branch>`) — with no shell chaining or command substitution smuggled in."""
     cmd = command.strip()
-    if _CMD_SEP.search(cmd):
+    if _CMD_SEP.search(_strip_quoted(cmd)):
         return False
     return any(rx.match(cmd) for rx in _BRANCH_CREATE + _BRANCH_SWITCH)
 
@@ -217,8 +217,14 @@ def classify(command: str, cls: str = "restricted"):
         return None  # deliberate exception: isolation branch/worktree create OR switch-to-existing (resume)
     # Sanctioned exception (all restricted roles incl. orchestrator): run a KIT-OWNED generator
     # (.kiro//.claude/ skills|tools) — kit-managed, not role-authorable, writes only into the role's
-    # fence. Must be a single command with no chaining/substitution smuggled alongside.
-    if not _CMD_SEP.search(command.strip()) and _KIT_SCRIPT.search(command):
+    # fence. Must be a single command with no chaining/substitution smuggled alongside — checked on
+    # the QUOTE-STRIPPED command, same as the _DENY sweep below: state-set.mjs's own arguments are
+    # free-text JSON (`--append phase_history='{"note":"...; gaps G1-G7..."}'`) and a `;`/`|`/`&`
+    # that only exists INSIDE that quoted payload is inert data, not real shell chaining — scanning
+    # the raw string here was defeating this exception on ordinary note text and falling through to
+    # the generic "running a script file" block below (the exact bug that made state-set.mjs calls
+    # block unpredictably depending on what a role happened to write in a free-text field).
+    if not _CMD_SEP.search(_strip_quoted(command).strip()) and _KIT_SCRIPT.search(command):
         return None
     # Blank quoted string contents (inert data, not real shell syntax), then remove harmless
     # /dev/null + fd-dup redirections, so neither trips the `>` / keyword rules below.
@@ -326,6 +332,15 @@ def _self_test() -> int:
         (None, "qa",        "python3 .claude/skills/qa-test-design/gen_testcases_xlsx.py a.json a.xlsx && rm x", BLOCK),  # chaining defeats it
         (None, "developer", "python3 openspec/changes/x/qa/gen_xlsx.py", ALLOW),  # developer runs any script
         (None, None,        "python3 some_script.py",         ALLOW),  # default session — unrestricted
+        # --- real incident: a `;`/`|`/`&` INSIDE a quoted state-set.mjs JSON payload must not defeat
+        #     the _KIT_SCRIPT exception (architect/analyst free-text notes routinely contain these) ---
+        (None, "architect", 'node .claude/tools/state-set.mjs --append phase_history=\'{"phase":"S3","note":"design; gaps G1-G7, ok"}\'', ALLOW),
+        (None, "architect", "node .claude/tools/state-set.mjs --set note='a | b & c'", ALLOW),
+        (None, "analyst",   'node .claude/tools/state-set.mjs --set note="x; y"',       ALLOW),
+        ("sdlc-full", None, "node .kiro/tools/state-set.mjs --set note='a; b'",         ALLOW),
+        # a REAL unquoted chain must still defeat the exception and get blocked
+        (None, "architect", "node .claude/tools/state-set.mjs --set x=1 ; rm -rf /",    BLOCK),
+        (None, "architect", "node .claude/tools/state-set.mjs --set x=1 | tee f",       BLOCK),
     ]
     fails = 0
     for argv_agent, agent_type, command, expect in vectors:
