@@ -334,13 +334,42 @@ def snapshot_existing(norm, keep=5):
         pass  # best-effort net — preservation must never break a legitimate write
 
 
+def projected_content(current, tool_input):
+    """The file text AFTER this tool call lands, for whichever write-shaped tool fired:
+      • Write      → tool_input.content (the whole new file)
+      • Edit       → current with old_string→new_string applied (replace_all honoured)
+      • MultiEdit  → current with each of tool_input.edits applied in order
+    Returns None when the shape is unrecognised (→ caller skips the content guard, as before).
+    WHY: the memory append-only guard used to read only `content`, so an Edit that deleted a '## '
+    header sailed through unchecked. Every Claude role carries Edit now, so project it too."""
+    content = tool_input.get("content")
+    if isinstance(content, str):
+        return content
+    edits = tool_input.get("edits")
+    if not isinstance(edits, list):
+        if "old_string" in tool_input or "new_string" in tool_input:
+            edits = [tool_input]
+        else:
+            return None
+    text = current or ""
+    for e in edits:
+        if not isinstance(e, dict):
+            continue
+        old = e.get("old_string") or ""
+        new = e.get("new_string") or ""
+        if old == "":
+            continue                      # an empty old_string is a no-op / tool-side error
+        text = text.replace(old, new) if e.get("replace_all") else text.replace(old, new, 1)
+    return text
+
+
 def preserve(norm, tool_input):
     """Run the two backstops for an ALLOWED write to a preserved target. Returns a deny message
     (caller exits 2) if the memory append-guard trips, else None after taking a snapshot."""
     if not is_preserved_target(norm):
         return None
     crel = canonical_rel(norm)
-    new_content = tool_input.get("content")
+    new_content = projected_content(read_text(norm), tool_input)
     if crel.startswith("memory/") and crel.endswith(".md") and isinstance(new_content, str):
         if os.path.basename(crel) == "_index.md":
             lost = lost_index_entries(read_text(norm), new_content)
@@ -653,6 +682,25 @@ def _self_test():
         fails += not ok
         total += 1
         sys.stdout.write(f"  [{'PASS' if ok else 'FAIL'}] mem-guard {label:18} lost={got}\n")
+
+    # --- preservation: Edit/MultiEdit must be projected onto the current text so the same guard
+    #     sees what the file will BECOME (an Edit dropping a '## ' header used to slip through) ---
+    proj_checks = [
+        ("write passthrough", {"content": "X"},                                                     "X"),
+        ("edit body",         {"old_string": "body\n## Lesson B", "new_string": "EDITED\n## Lesson B"}, []),
+        ("edit drops header", {"old_string": "## Lesson B\nbody\n", "new_string": ""},                 ["Lesson B"]),
+        ("multiedit drops",   {"edits": [{"old_string": "## Lesson A\n", "new_string": ""},
+                                          {"old_string": "## Lesson B\n", "new_string": "## Lesson B2\n"}]}, ["Lesson A", "Lesson B"]),
+        ("edit replace_all",  {"old_string": "body", "new_string": "b", "replace_all": True},          []),
+        ("unknown shape",     {"path": "x"},                                                          None),
+    ]
+    for label, ti, expect in proj_checks:
+        proj = projected_content(mem_old, ti)
+        got = proj if (expect is None or isinstance(expect, str)) else lost_sections(mem_old, proj)
+        ok = got == expect
+        fails += not ok
+        total += 1
+        sys.stdout.write(f"  [{'PASS' if ok else 'FAIL'}] edit-proj {label:18} got={got!r}\n")
 
     # --- preservation: _index.md digest append-only guard (flat '- ' lines, no '## ' headers) ---
     idx_old = "- fix-login-401 (2026-07-01): session token not invalidated on logout\n- add-cart-limit (2026-07-03): qty cap off-by-one\n"
