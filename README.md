@@ -93,7 +93,10 @@ Two consequences:
   extends the fence via `sdlc.config.json.paths.{code_roots,test_roots}` (preserved across `--force`).
 
 Three enforcement layers (defense in depth):
-1. **Subagent `tools` frontmatter** — only `developer` is granted `Edit`.
+1. **Subagent `tools` frontmatter** — every role declares its tool set (no `Task` on role agents; all
+   write-capable tools `Write`/`Edit` route to layer 3). `Edit` is granted to every role: it reaches no
+   path that `Write` can't already overwrite, and a one-line `Edit` is far safer than rewriting a whole
+   file.
 2. **`permissions.deny`** (Claude `settings.json`) — coarse blanket bans (e.g. editing the kit's own
    agents/commands/settings). Not role-aware by design.
 3. **PreToolUse guards** (`check-write-path.py` / `check-shell-command.py`) — role-aware,

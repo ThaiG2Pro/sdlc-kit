@@ -401,8 +401,8 @@ replaced by `/analyst` etc. spawning a fresh subagent with baton context;
    - **`doctor-claude.mjs`** (added to the Claude tool list in `init.mjs`) validates: required dirs +
      `CLAUDE.md`/`settings.json`; **every `@import` resolves relative to the file's own dir** (the
      check that would have caught the bug); all 7 commands + 5 subagents present; subagent frontmatter
-     valid and the **"only `developer` carries the `Edit` tool" security invariant** (regression guard
-     for defense-layer 1); `settings.json` valid JSON with hook scripts + the 4 tools installed; the
+     valid with `tools` declared and **`developer` carrying `Edit`** (regression guard for
+     defense-layer 1); `settings.json` valid JSON with hook scripts + the 4 tools installed; the
      `sdlc-orchestration-core` skill present; openspec CLI + workspace + symlinks; context completeness.
    - **Verified:** fresh `--target claude` install → `doctor-claude` reports HEALTHY (only the expected
      pre-onboarder "context not filled" WARN). Negative test: re-introducing the `@.claude/` prefix and

@@ -82,8 +82,12 @@ for (const [dir, expect, kind] of [['commands', EXPECT_COMMANDS, 'command'], ['a
   }
 }
 
-// 4. Subagent frontmatter valid + the SECURITY INVARIANT: only `developer` may carry the Edit tool.
-//    (Layer 1 of the 3 defense layers — a regression here silently lets a read-only role write code.)
+// 4. Subagent frontmatter valid + the tool invariant: every subagent declares `tools` (Layer 1 — the
+//    frontmatter is what keeps e.g. `Task` off the role agents), and `developer` carries Edit (it is
+//    the only role that writes code; without Edit it can't). Non-developer roles carry Edit too — it
+//    grants NOTHING beyond Write (same file_path, same PreToolUse hook → check-write-path.py, the
+//    role-aware layer 3 that actually fences code paths), and a surgical Edit is far less clobber-prone
+//    than rewriting a whole design.md / memory file to change one line.
 const agentsDir = join(cc, 'agents');
 if (existsSync(agentsDir)) {
   for (const name of EXPECT_AGENTS) {
@@ -97,9 +101,9 @@ if (existsSync(agentsDir)) {
     const tools = fm.tools.split(',').map((t) => t.trim());
     const hasEdit = tools.includes('Edit') || tools.includes('MultiEdit');
     if (name === 'developer' && !hasEdit) fail('SECURITY: developer subagent is missing the Edit tool — it cannot write code');
-    if (name !== 'developer' && hasEdit) fail(`SECURITY: ${name} subagent carries Edit — only developer may write code`);
+    if (name !== 'developer' && !hasEdit) warn(`subagent ${name} lacks Edit — it will rewrite whole files via Write to change one line`);
   }
-  ok('subagent tool invariant checked (only developer has Edit)');
+  ok('subagent tool invariant checked (tools declared; developer has Edit)');
 }
 
 // 5. settings.json valid + hooks/permissions point at scripts & tools that actually ship.

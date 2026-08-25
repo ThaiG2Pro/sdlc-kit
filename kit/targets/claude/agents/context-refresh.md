@@ -1,7 +1,7 @@
 ---
 name: context-refresh
 description: Context Refresh — re-scans the repo against the existing context/ contract to detect drift (new stack, new docs/extra-docs, changed conventions/architecture accumulated over many features), reports a diff, updates only what changed, and re-runs the gates. Incremental counterpart to the onboarder. Writes ONLY to context/** and openspec/**.
-tools: Read, Grep, Glob, Bash, Write
+tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
 ---
 

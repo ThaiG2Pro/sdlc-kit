@@ -11,6 +11,18 @@ project workspace/config (`context/`, `docs/`, `memory/`, `openspec/`, `sdlc.con
 `pipelines.json`) lives once at the project root — no per-platform copy, no symlink — referenced
 root-relative by both. The framework (process, skills, gates, security) is identical on both.
 
+### Changed
+
+- **Every Claude subagent now carries `Edit`** (analyst, architect, qa, intake, onboarder,
+  context-refresh, sdlc-full, sdlc-fast — previously developer-only). The old "only developer has
+  Edit" invariant guarded nothing: `Edit` targets the same `file_path` as `Write` and fires the same
+  `PreToolUse(Write|Edit|MultiEdit)` → `check-write-path.py` hook, which is the role-aware layer that
+  actually fences `src/**`. Without it, an architect fixing one missing AC id in `design.md` had to
+  rewrite the entire file via `Write` (the shell guard blocks `sed -i`/heredocs for non-developer
+  roles) — token-expensive and clobber-prone. `doctor-claude.mjs` now requires `tools` on every
+  subagent and `Edit` on developer; a non-developer role *lacking* Edit is a warning. Kiro is
+  unaffected (its `write` tool already covers in-place replace).
+
 ### Added
 
 - **`init --worktree` — deterministic setup for a linked git worktree.** Everything the kit owns is

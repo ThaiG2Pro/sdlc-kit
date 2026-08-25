@@ -332,7 +332,7 @@ context is fine before onboarding).
   reference, and the context map.
 - **`doctor-claude.mjs`** (Claude) validates what Claude actually relies on: that **`CLAUDE.md`
   `@import`s resolve** (relative to the file's own dir — the #1 silent-failure mode), all 7 commands
-  + 5 subagents exist, the **"only `developer` has the `Edit` tool" security invariant** holds, and
+  + 5 subagents exist, every subagent declares `tools` and **`developer` carries `Edit`**, and
   `settings.json` hooks point at installed scripts/tools.
 
 ## Command cheat-sheet

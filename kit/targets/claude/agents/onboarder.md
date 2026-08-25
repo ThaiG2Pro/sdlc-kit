@@ -1,7 +1,7 @@
 ---
 name: onboarder
 description: One-time project setup. Scans the repo, drafts the context/ contract (6 files), mirrors a context digest into openspec/config.yaml, and runs the completeness gate. Spawned for project adoption / when context drifts. Writes ONLY to context/** and openspec/**.
-tools: Read, Grep, Glob, Bash, Write
+tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
 ---
 

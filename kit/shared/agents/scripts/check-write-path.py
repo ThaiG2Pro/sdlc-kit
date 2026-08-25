@@ -261,9 +261,9 @@ def path_allowed(path: str, patterns) -> bool:
     return False
 
 
-# --- Preservation net: context/ and memory/ hold human-curated / accumulated knowledge. Only
-#     `developer` may carry Edit (security invariant), so every other role rewrites these via a FULL
-#     Write — one bad generation could wipe curated facts or lessons. Two deterministic backstops run
+# --- Preservation net: context/ and memory/ hold human-curated / accumulated knowledge. Roles may
+#     still reach for a FULL Write here (Edit exists for every Claude role, but a model can pick Write
+#     anyway) — one bad generation could wipe curated facts or lessons. Two deterministic backstops run
 #     in main() AFTER a write is judged allowed: (1) snapshot the prior file so any clobber is one
 #     `cp` from recovery; (2) for memory/*.md, BLOCK a write that would delete an existing "## "
 #     section (append-only discipline, like the cross-spec bridge). "ko phá những gì được lưu". ---
