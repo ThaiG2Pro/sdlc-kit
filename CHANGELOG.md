@@ -13,6 +13,18 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Changed
 
+- **Per-spawn context is now role-scoped on Claude.** `.claude/CLAUDE.md` no longer `@import`s
+  `context/{stack,conventions,glossary}.md` — that block was prepended to EVERY spawn (orchestrator
+  and each role, ≈12 KB / ~3k tokens) while every role's Inputs already told it to Read the same
+  files, so it was paid twice. It is replaced by a role × file table; each role prompt's Inputs now
+  lists only its own files (analyst: project+glossary; architect: stack+architecture+conventions;
+  developer: stack+conventions+architecture; qa: stack+conventions; `legacy-ref` / `project` /
+  `steering/sdlc-workflow` on demand). At `scope=tiny` every role reads only the CPP baton +
+  `priority_reading` (+ `stack.md` for dev/qa) — added to `sdlc-orchestration-core` §Scope, and the
+  SessionStart hook prints a one-line **Context Budget** for the active scope. The same hook now
+  shows the `memory/<role>/_index.md` digest (last 3 lines) instead of the retired flat
+  `memory/<role>.md`. `doctor-claude` no longer warns on zero `@import`s. Kiro is unchanged — its
+  `context-map.json` was already per-role and RAG-indexed.
 - **Every Claude subagent now carries `Edit`** (analyst, architect, qa, intake, onboarder,
   context-refresh, sdlc-full, sdlc-fast — previously developer-only). The old "only developer has
   Edit" invariant guarded nothing: `Edit` targets the same `file_path` as `Write` and fires the same

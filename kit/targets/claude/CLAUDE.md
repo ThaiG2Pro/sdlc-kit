@@ -26,22 +26,28 @@ workspace** — the pipeline guards do not touch it.
 > a role subagent's `agent_type` ⇒ its role policy; `developer` ⇒ writes code. A **bare main session**
 > (no `agent_type`) is your unrestricted default — so do the SDLC pipeline inside the agent, not here.
 
-## Essential project context (loaded every spawn)
+## Project context — read by ROLE, not `@import`ed
 
-<!-- Only non-verbose context that changes per-project. Steering files (security, sdlc-workflow, 
-rules-registry) are role-specific reads referenced in agent docs, not defaults. Context lives ONCE
-at the project root (./context/) — shared by both platforms, no symlink. -->
-@../context/stack.md
-@../context/conventions.md
-@../context/glossary.md
+<!-- Deliberately NO `@import` lines: this file is prepended to EVERY spawn (orchestrator + each
+one-shot role), so an @import here is charged on all of them — measured ≈12 KB / ~3k tokens per spawn
+for stack+conventions+glossary, and every role's Inputs already told it to Read the same files, so it
+was paid twice. Context lives ONCE at the project root (./context/) — shared by both platforms. -->
 
-## Optional context (agents read as needed)
+Each role reads only its column; nothing here is loaded unless a role opens it.
 
-Agents may reference these directly:
-- `context/project.md` — for project overview
-- `context/architecture.md` — for design/dev phases
-- `context/legacy-ref.md` — for legacy code areas
-- `.claude/steering/{security,sdlc-workflow,rules-registry}.md` — role-specific guidance
+| file | analyst | architect | developer | qa | note |
+|---|:-:|:-:|:-:|:-:|---|
+| `context/project.md` | ✓ | – | – | – | others: only if the change's domain is unfamiliar |
+| `context/glossary.md` | ✓ | – | – | – | the change's `_glossary.md` is the working copy |
+| `context/stack.md` | – | ✓ | ✓ | ✓ | dev/qa: the ACTUAL build/test/lint commands |
+| `context/conventions.md` | – | ✓ | ✓ | ✓ | analyst: only when writing INT-tagged requirements |
+| `context/architecture.md` | – | ✓ | ✓ | – | analyst/qa: only for INT-tagged / integration tests |
+| `context/legacy-ref.md` | ◐ | ◐ | ◐ | ◐ | ◐ = only when the change touches a legacy area |
+| `.claude/steering/security.md` | ✓ | ✓ | – | – | developer/qa get it via the security skills |
+| `.claude/steering/sdlc-workflow.md` | – | – | – | – | process is already in each role prompt; open only when unsure of a gate |
+
+**At `scope=tiny`** every role reads ONLY: the CPP baton, `_state.json.next_action.priority_reading`,
+and (dev/qa) `context/stack.md` — nothing else from this table unless `priority_reading` names it.
 
 ## Notes
 

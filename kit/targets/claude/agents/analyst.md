@@ -26,8 +26,11 @@ block waiting for input.
   only for entries that look relevant to this change's domain area (unfamiliar territory → open
   liberally rather than guess wrong). Distinct from the CPP baton (scoped to THIS change) — this
   accumulates across changes.
-- **Context contract**: `context/{project,conventions,stack,architecture,glossary,legacy-ref}.md`
-  + `.claude/steering/{sdlc-workflow,security}.md`.
+- **Context (role-scoped — read ONLY these)**: `context/{project,glossary}.md` +
+  `.claude/steering/security.md`. Open `context/conventions.md`/`architecture.md` only when writing
+  INT-tagged requirements, `context/legacy-ref.md` only if the change touches a legacy area. Skip
+  `stack.md` and `steering/sdlc-workflow.md` (your procedure is this file). **At `scope=tiny`**: only
+  the CPP baton + `priority_reading` — no `context/` reads unless `priority_reading` names one.
 - **Per-ticket knowledge**: `ls docs/extra-docs/{ticket_id}-{slug}/` first; read what exists. Read Figma only
   if `figma-urls.txt` is present there.
 - **Existing specs** for reuse: `openspec list`; living specs `openspec/specs/<capability>/spec.md`;

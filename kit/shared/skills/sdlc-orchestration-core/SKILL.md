@@ -107,6 +107,10 @@ At `scope=tiny`:
 - **developer** — intermediate checkpoints run only affected tests; the FINAL checkpoint always runs
   with coverage (width comes from `test_scope`, not `scope`).
 - **all roles** — role-memory reads may stop at the `_index.md` digest.
+- **all roles — context budget**: read ONLY the CPP baton + whatever `next_action.priority_reading`
+  names (+ `context/stack.md` for developer/qa, for the real test commands). No other `context/*.md`,
+  no `steering/*.md`, no golden example unless `priority_reading` lists it. The orchestrator MUST
+  therefore make `priority_reading` specific (file paths, not "read the context").
 - **every artifact, universally** — every mandatory section still exists, with the MINIMUM content
   that satisfies it: 1 line/bullet, never restate the CPP baton, never pad "None" into a paragraph.
   Golden examples show STRUCTURE, never length — a tiny change's baton (`_handoff.md` +

@@ -138,24 +138,31 @@ if na.get('agent'):
         for item in wi[:5]:
             print(f"  ⚠ {item}")
 
-# 6. Role memory (last 2 entries) — memory/ lives ONCE at the project root (no symlink); both
-#    platforms read it via the root path. "một gốc duy nhất".
-memory_path = f'memory/{agent_name}.md'
-if os.path.isfile(memory_path):
-    with open(memory_path) as mf:
-        mem_content = mf.read()
-    import re as _re
-    sections = _re.split(r'(?=^## )', mem_content, flags=_re.MULTILINE)
-    sections = [s for s in sections if s.strip() and s.startswith('## ')]
-    last_two = sections[-2:] if len(sections) >= 2 else sections
-    if last_two:
+# 5b. Context budget — tell the role, in one line, how much it may read this spawn. The role prompt
+#     carries the full per-role table; at scope=tiny that collapses to baton + priority_reading.
+scope = state.get('scope') or 'standard'
+print()
+if scope == 'tiny':
+    print("=== Context Budget: scope=tiny ===")
+    print("  Read ONLY: CPP baton + next_action.priority_reading (+ context/stack.md for developer/qa).")
+    print("  Skip every other context/*.md, steering/*.md and golden example.")
+else:
+    print(f"=== Context Budget: scope={scope} ===")
+    print("  Read only your role's column of the context table (CLAUDE.md / your Inputs) — not all of context/.")
+
+# 6. Role memory digest — memory/<role>/_index.md, one line per past change (the legacy flat
+#    memory/<role>.md is hard-blocked by the write guard and no longer written). Show the last 3
+#    lines so the role sees the digest is there without opening the fragment files. memory/ lives
+#    ONCE at the project root (no symlink); both platforms read it via the root path.
+index_path = f'memory/{agent_name}/_index.md'
+if os.path.isfile(index_path):
+    with open(index_path) as mf:
+        entries = [l.rstrip() for l in mf if l.lstrip().startswith('- ')]
+    if entries:
         print()
-        print("=== Role Memory (recent) ===")
-        for sec in last_two:
-            lines = sec.strip().splitlines()[:8]
-            for line in lines:
-                print(f"  {line}")
-            print()
+        print(f"=== Role Memory digest ({len(entries)} entr{'y' if len(entries) == 1 else 'ies'}; last 3) ===")
+        for line in entries[-3:]:
+            print(f"  {line[:160]}")
 
 # 7. Terminology snapshot (top 5 terms)
 terms = state.get('terminology', {})

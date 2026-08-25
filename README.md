@@ -14,7 +14,7 @@ the platform at install time (`--target kiro|claude|both`); the framework (proce
 security model) is identical on both. The project's **workspace + config** — `./openspec/`,
 `./memory/`, `./context/`, `./docs/`, `./sdlc.config.json`, `./pipelines.json` — lives **once at the
 project root, with no per-platform copy and no symlink**. Both platforms reference it **root-relative**
-(Claude: `@../context/*` in `CLAUDE.md`, `openspec/…`/`docs/…` via the Read tool; Kiro: `file://./<entry>`
+(Claude: `context/*.md` + `openspec/…`/`docs/…` via the Read tool, per role; Kiro: `file://./<entry>`
 resources wired by the mapper), so the two targets never drift, a kiro↔claude switch never loses state,
 and **removing one platform never breaks the other** (there are no cross-platform links to dangle). No
 project domain is baked into the agents.
@@ -25,7 +25,7 @@ project domain is baked into the agents.
 | Launch the orchestrator | the `sdlc-full` agent (`ctrl+0` / select it) | `claude --agent sdlc-full <slug>` |
 | Delegate a phase to a role | "use the {role} agent" (CLI) · `/agent swap` (IDE) | spawn the role subagent (Task tool) |
 | Code-write guard identity | agent name via `argv[1]` | `agent_type` in the PreToolUse hook |
-| Context wiring | `context-map.json` + mapper | `@import` in `CLAUDE.md`; skills auto-discovered |
+| Context wiring | `context-map.json` + mapper | role × file table in `CLAUDE.md`, each role Reads its own files; skills auto-discovered |
 
 On **both**, the orchestrator is a **dedicated agent** (`sdlc-full`/`sdlc-fast`) that drives the
 pipeline, delegates each phase to its role agent, and owns the gates — it **never writes code** (only
@@ -153,8 +153,9 @@ module/directory touched instead of the whole app. See `sdlc-orchestration-core`
 
 ## How context maps to each agent (Kiro only)
 
-> Claude does not use a context map — `CLAUDE.md` `@import`s the context files directly and
-> skills are auto-discovered. This section applies to **Kiro** only.
+> Claude does not use a context map — `CLAUDE.md` holds a role × file table and each role prompt
+> Reads only its own `context/*.md` files; skills are auto-discovered. This section applies to
+> **Kiro** only.
 
 `.kiro/context-map.json` declares, **per agent**, which skills + context files + project
 doc folders it consumes. The mapper regenerates each agent's `resources[]` from it,

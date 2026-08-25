@@ -35,8 +35,10 @@ already exist on disk — check, and continue from the next sub-phase rather tha
   CPP baton (scoped to THIS change) — this accumulates across changes.
 - **Change workspace**: `proposal.md`, `specs/<capability>/spec.md` (ACs/BRs/INTs), `_progress.md`.
   Verify S2 is done + SPEC LOCK passed (`openspec status --change "<name>" --json`).
-- **Context**: `context/{project,conventions,stack,architecture,legacy-ref}.md` +
-  `.claude/steering/{sdlc-workflow,security}.md`.
+- **Context (role-scoped — read ONLY these)**: `context/{stack,architecture,conventions}.md` +
+  `.claude/steering/security.md`. Open `context/legacy-ref.md` only if the change touches a legacy
+  area, `context/project.md` only if the domain is unfamiliar. Skip `steering/sdlc-workflow.md`
+  (your procedure is this file). **At `scope=tiny`**: only the CPP baton + `priority_reading`.
 - **Reuse**: `openspec list` + archived `design.md` + living specs + every file under
   `openspec/_cross-spec-context/*.md` for exported services/constraints. List dependencies in
   design.md §Architecture Overview.

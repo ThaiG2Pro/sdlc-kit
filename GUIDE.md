@@ -135,8 +135,9 @@ resuming a pipeline from a *different* clone/worktree needs the change dir's `_`
 `./memory/` + `./docs/` + config (all root-only, no symlink), strips any stale per-platform
 copy/symlink a prior install left behind, and installs the `<platform>/tools/` engines. On
 **Kiro** it also **wires context → agents** via the mapper (root-relative `file://./…` resources); on
-**Claude** there is no wiring step — context is `@import`ed (`@../context/*`) in `CLAUDE.md` and skills
-are auto-discovered.
+**Claude** there is no wiring step — `CLAUDE.md` carries a role × file table and each role prompt Reads
+only its own `context/*.md` files (nothing is `@import`ed, so no context is prepended to every spawn);
+skills are auto-discovered.
 
 > ⚠️ On **Claude**, agents/commands/hooks load only at session start. After `init` (or a `--force`
 > update), open a **new Claude Code session** before the slash commands take effect.
@@ -282,8 +283,8 @@ Run the **onboarder** (Kiro: `ctrl+9` agent · Claude: `/onboarder`). It:
 2. **Asks only for gaps** (domain, API/status policy, boundaries, glossary, legacy/parity).
 3. **Writes** the shared root `./context/*.md` (one copy, read by both platforms).
 4. **Wires** context → agents — on Kiro via the `context-mapper` skill (root-relative `file://./context/…`
-   resources); on Claude the context files are `@import`ed (`@../context/*`) in `CLAUDE.md`, so there is
-   nothing to re-wire.
+   resources); on Claude each role prompt names the `context/*.md` files it Reads (role-scoped, no
+   `@import`), so there is nothing to re-wire.
 
 You can also edit `./context/*.md` by hand (on Kiro, re-run
 `node .kiro/tools/context-map.mjs` afterwards). When the project has moved on since onboarding —

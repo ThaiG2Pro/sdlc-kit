@@ -65,7 +65,7 @@ if (claudeMd) {
     imports++;
     if (!existsSync(join(base, m[1]))) { fail(`CLAUDE.md @import does not resolve → @${m[1]} (relative to ${base})`); broken++; }
   }
-  if (imports === 0) warn('CLAUDE.md has no @import lines — context/steering not wired');
+  if (imports === 0) ok('CLAUDE.md has no @import lines — context is read per-role, not prepended to every spawn');
   else if (broken === 0) ok(`all ${imports} CLAUDE.md @import(s) resolve`);
 }
 

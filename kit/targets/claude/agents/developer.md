@@ -34,8 +34,10 @@ next checkpoint, self-verify, then return (do NOT implement every task in one ru
   `ls` it first. For a **frontend/UI task**, the matching `ui/<screen>.md` is your build spec: layout,
   every component state, fields/validation, interactions. Build to it (cross-check the `figma/` image
   it references); the spec wins over guesswork. Read `intake.md` §4 to map a screen → its `ui/` file.
-- **Context**: `context/{project,stack,architecture,conventions,legacy-ref}.md` — read the
-  ACTUAL build/test/lint/coverage commands from `stack.md` (never assume them).
+- **Context (role-scoped — read ONLY these)**: `context/{stack,conventions,architecture}.md` — read
+  the ACTUAL build/test/lint/coverage commands from `stack.md` (never assume them). Open
+  `context/legacy-ref.md` only if `tasks.md` touches a legacy area; skip `project.md` (design.md
+  already carries the domain). **At `scope=tiny`**: `stack.md` + the CPP baton + `priority_reading`.
 - **Quality policy**: `.claude/ai/sonar-policy.md` (the AI-friendly bug/quality rules you must
   code to; `.claude/ai/sonar-rules.md` is the fuller reference). Read before R3/R4 self-review.
 - **Role memory** (cross-spec lessons): read `memory/developer/_index.md` FIRST (one line per past

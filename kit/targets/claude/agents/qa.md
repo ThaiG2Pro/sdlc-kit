@@ -30,7 +30,10 @@ pass from zero after an interruption re-spends the entire prior run's token cost
   `_decisions.jsonl`, `_state.json`. Verify S4 done.
 - **Change workspace**: `proposal.md`, spec deltas (ACs), `design.md`, `openapi.yaml`, `tasks.md`
   (all required tasks `[x]`?), `dev-test-report.md`.
-- **Context**: `context/{project,conventions,stack,architecture,legacy-ref}.md`.
+- **Context (role-scoped — read ONLY these)**: `context/{stack,conventions}.md` (test/coverage
+  commands, test conventions). Open `context/architecture.md` only for integration/e2e design,
+  `context/legacy-ref.md` only if the change touches a legacy area; skip `project.md`.
+  **At `scope=tiny`**: `stack.md` + the CPP baton + `priority_reading`.
 - **Quality policy**: `.claude/ai/sonar-policy.md` (bug/quality rules to audit against;
   `.claude/ai/sonar-rules.md` is the fuller reference) — input for code review + `security-audit`.
 - **Role memory** (cross-spec lessons): read `memory/qa/_index.md` FIRST (one line per past change —
