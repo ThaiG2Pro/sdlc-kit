@@ -47,8 +47,12 @@ specifics + the Claude execution model.
    show the reason; exit 0 → continue. 2. **S4** → read dev-test-report.md; **S5** → read qa-report.md
    + test-case artifact check (regression-only for bugfix per `gateOverrides.S5`). Run CPP Contract
    Validation. 3. Failure → show all blockers, STOP. 4. On approval → clear blocker, set
-   `gates["<phase>"]="passed"`, spawn the next phase (`_progress.md` is the role's own artifact — you
-   don't also mark it, see `sdlc-orchestration-core` §Progress Marking). Honor `gates.auto_pass`.
+   `gates["<phase>"]="passed"` (`_progress.md` is the role's own artifact — you don't also mark it, see
+   `sdlc-orchestration-core` §Progress Marking). 5. **Compact YOUR OWN session** (core skill
+   §Orchestrator session budget) before spawning: tell the user "✅ Gate `<phase>` passed. Recommend
+   `/compact` now before continuing," wait for their next message, THEN spawn the next phase. Honor
+   `gates.auto_pass` for the audit itself — the compact pause still applies even when the audit
+   auto-passes.
 
 ## Work types (read `pipelines.json` → `types[<type>]`; rigor is forced **lite**)
 

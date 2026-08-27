@@ -13,6 +13,17 @@ root-relative by both. The framework (process, skills, gates, security) is ident
 
 ### Changed
 
+- **Claude orchestrator (`sdlc-full`/`sdlc-fast`) now pauses for `/compact` at every gate.** Each phase
+  is already a fresh one-shot subagent spawn (S1–S6 delegate to analyst/architect/developer/qa; developer
+  further splits S4 into one checkpoint segment per run) — so no single subagent's context ever balloons.
+  But the **orchestrator's own session** is long-lived across the whole S1→S6 pipeline, and its Task-tool
+  + gate-audit output was accumulating there unbounded — the actual source of runs reaching 200–300k
+  tokens, not any individual phase. `baton-compact.mjs` only shrinks the baton *files* subagents re-read;
+  it never touched this. Added a new step to both flows' Gate execution (after baton-compact, before
+  spawning the next phase): tell the user to run `/compact`, and wait for their next message before
+  delegating onward. Documented as `sdlc-orchestration-core` §Orchestrator session budget — there is no
+  programmatic self-compaction in Claude Code, so this rides the pause every gate already has for
+  `approve`. Kiro is unaffected — it has no persistent orchestrator session (roles are swapped manually).
 - **Per-spawn context is now role-scoped on Claude.** `.claude/CLAUDE.md` no longer `@import`s
   `context/{stack,conventions,glossary}.md` — that block was prepended to EVERY spawn (orchestrator
   and each role, ≈12 KB / ~3k tokens) while every role's Inputs already told it to Read the same

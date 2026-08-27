@@ -77,7 +77,11 @@ Per the core skill's Gate Audit Map, in order:
    from re-paying for the last one; it only archives what nothing reads (see the core skill §Baton
    budget). If it reports something it can't fix mechanically — an oversized `_handoff.md`, too many
    decision entries — pass that to the next subagent's prompt so it fixes it while REPLACING the file.
-   Then spawn the next phase's subagent.
+6. **Then compact YOUR OWN session** (core skill §Orchestrator session budget) — baton-compact only
+   shrinks what subagents re-read, not this conversation's own accumulated Task/Bash output. Tell the
+   user: "✅ Gate `<phase>` passed. Recommend `/compact` now before continuing." Wait for their next
+   message (compact+continue, or just continue) before spawning the next phase's subagent — never
+   auto-spawn past this pause.
 
 ## Work types (read `pipelines.json` → `types[<type>]`)
 

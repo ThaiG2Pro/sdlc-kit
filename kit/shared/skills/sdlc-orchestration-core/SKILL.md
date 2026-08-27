@@ -136,6 +136,29 @@ Which file something goes in follows from how often it is read:
 |---|---|
 | baton — the decision, the pointer, the warning | phase artifact — the analysis, the evidence, the repro |
 
+## Orchestrator session budget (Claude only — separate from the baton above)
+
+The baton budget above bounds what every *subagent* re-reads. It does not bound the **orchestrator's
+own conversation** — on Claude, `sdlc-full`/`sdlc-fast` runs as one long-lived top-level session across
+every phase (S1→S6), so each phase's Task-tool spawn output + gate-audit reads (`spec-auditor`,
+`cross-artifact-audit`, `dev-test-report.md`, `qa-report.md`, …) accumulates THERE, in the orchestrator's
+own transcript — never delegated away, never compacted by `baton-compact.mjs`. Left unmanaged this is
+what actually reaches 200–300k tokens across a full pipeline, not any one subagent (each subagent is a
+fresh one-shot spawn — see Invariant 1 — so it never carries this weight itself; per-role checkpoint
+resume, e.g. developer's "one checkpoint segment per run", already keeps subagent runs small).
+
+There is no programmatic self-compaction — `/compact` is a human-typed command. So: **every gate
+already pauses for the human's `approve`**; use that pause. After step 5 (baton-compact) in the
+flow file's Gate execution, before spawning the next phase's subagent, tell the user:
+
+> ✅ Gate `<phase>` passed. Recommend `/compact` now before continuing — this phase's tool output is
+> otherwise carried into every later phase's context for the rest of the pipeline.
+
+Then wait for their next message (their `/compact` + `continue`, or just `continue` if they decline)
+before delegating the next phase. Never skip straight to the next spawn without surfacing this — the
+human decides whether to compact, but the orchestrator must not silently let its own transcript grow
+unbounded across S1→S6.
+
 So a root-cause write-up goes in `dev-test-report.md`/`qa-report.md`/`design.md`, and
 `_decisions.jsonl` carries the one-line WHAT plus where to look. Same reasoning kills the duplicates:
 terms live in `_glossary.md` (not a `terminology` state key), watch-outs in `next_action.watch_items`
