@@ -7,7 +7,10 @@
     "kiro-sdlc-init": "bin/init.mjs"
   },
   "scripts": {
-    "init": "node bin/init.mjs"
+    "init": "node bin/init.mjs",
+    "setup": "python3 bin/sdlc-setup",
+    "demo": "python3 bin/sdlc-demo",
+    "test": "python3 -m unittest discover -s tests/engine"
   },
   "files": [
     "bin/",

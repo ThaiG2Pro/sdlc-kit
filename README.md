@@ -1,31 +1,63 @@
-# kiro-sdlc-kit
+# SDLC Kit — Multi-Target Agentic Engineering Kit
 
-A **project-agnostic, dual-target** SDLC kit for **Kiro** (IDE + CLI) *and* **Claude Code**. Drop a
-full S1→S6 pipeline (orchestrator + 4 role agents + 3 utility agents + 24 skills + steering rules + hooks) into
-any project with one command, then fill a small **context contract** so the agents understand
-*your* project.
+A **project-agnostic, multi-target** SDLC kit for **Google Antigravity (`agy`)**, **Claude Code**, and **Kiro** (IDE + CLI) backed by the **SDLC Context Engine** (persistent Model Context Protocol server + fast CLI). Drop a full S1→S6 pipeline (orchestrator + 4 role agents + 3 utility agents + 24 skills + steering rules + security hooks) into any project with one command, then fill a small **context contract** so the agents understand *your* project.
 
 > 📖 **Installing & using the kit?** → **[GUIDE.md](GUIDE.md)** (the User Guide / HDSD: install,
 > onboard, run a work item, pass gates, update). **This README is the architecture overview** — what
 > the kit is and how it's built.
 
-One source emits both targets — `kit/shared/**` overlaid by `kit/targets/<platform>/**`. You pick
-the platform at install time (`--target kiro|claude|both`); the framework (process, skills, gates,
-security model) is identical on both. The project's **workspace + config** — `./openspec/`,
-`./memory/`, `./context/`, `./docs/`, `./sdlc.config.json`, `./pipelines.json` — lives **once at the
-project root, with no per-platform copy and no symlink**. Both platforms reference it **root-relative**
-(Claude: `context/*.md` + `openspec/…`/`docs/…` via the Read tool, per role; Kiro: `file://./<entry>`
-resources wired by the mapper), so the two targets never drift, a kiro↔claude switch never loses state,
-and **removing one platform never breaks the other** (there are no cross-platform links to dangle). No
-project domain is baked into the agents.
+## 🚀 Quickstart in 60 Seconds
 
-| | **Kiro** (IDE + CLI) | **Claude Code** |
-|---|---|---|
-| Emits | `.kiro/` | `.claude/` |
-| Launch the orchestrator | the `sdlc-full` agent (`ctrl+0` / select it) | `claude --agent sdlc-full <slug>` |
-| Delegate a phase to a role | "use the {role} agent" (CLI) · `/agent swap` (IDE) | spawn the role subagent (Task tool) |
-| Code-write guard identity | agent name via `argv[1]` | `agent_type` in the PreToolUse hook |
-| Context wiring | `context-map.json` + mapper | role × file table in `CLAUDE.md`, each role Reads its own files; skills auto-discovered |
+Anyone can clone and try out the SDLC Kit in under a minute with **Zero external pip dependencies** (100% Python standard library):
+
+```bash
+# 1. Clone repository
+git clone git@github.com:ThaiG2Pro/sdlc-kit.git
+cd sdlc-kit
+
+# 2. Run automated setup (verifies prerequisites, inits DB, auto-configures MCP)
+./bin/sdlc-setup
+
+# 3. Run the interactive 3-second end-to-end lifecycle demo (S1 → S6)
+./bin/sdlc-demo
+
+# 4. Use with your AI agent of choice:
+#    • Antigravity (agy): Run `agy` in this repo — all 7 MCP tools are loaded natively!
+#    • Claude Code: claude --agent sdlc-full <change-slug>
+#    • Scaffold into your project: node bin/init.mjs --target agy
+```
+
+---
+
+## 🎯 Multi-Platform Architecture
+
+One source emits all three targets — `kit/shared/**` overlaid by `kit/targets/<platform>/**`. You pick the platform at install time (`--target agy|claude|kiro|all`); the framework (process, skills, gates, security model) is identical on all.
+
+| | **Google Antigravity (`agy`)** | **Claude Code** | **Kiro** (IDE + CLI) |
+|---|---|---|---|
+| **Emits** | `.agents/` + root `GEMINI.md` | `.claude/` | `.kiro/` |
+| **Launch Orchestrator** | Top-level `agy` session with `GEMINI.md` | `claude --agent sdlc-full <slug>` | `sdlc-full` agent (`ctrl+0`) |
+| **Delegate Phase** | `invoke_subagent` (Analyst/Architect/Dev/QA) | spawn role subagent (Task tool) | `/agent swap` (IDE) or CLI |
+| **Code-Write Guard** | `hooks.json` PreToolUse hook | `agent_type` in PreToolUse hook | agent name via `argv[1]` |
+| **Context Engine** | Native MCP Tools (`sdlc_*`) or Fast CLI | Native MCP Tools or Fast CLI | Native MCP Tools or Fast CLI |
+
+---
+
+## ⚡ High-Performance SDLC Context Engine
+
+Instead of having AI agents repeatedly read and write dozens of kilobytes of markdown baton files (`_handoff.md`, `_state.json`), the SDLC Kit is powered by a high-performance **SQLite Context Engine** with sub-millisecond query execution:
+
+- **Persistent MCP Server (`bin/sdlc-mcp`)**: Communicates over JSON-RPC stdio. Zero fork overhead, keeps SQLite connection hot in memory with WAL mode. **Average latency: 1.55ms (100x faster than process-spawning CLIs)**.
+- **Fast CLI (`bin/sdlc-ctx`)**: Optimized CLI with lazy imports, fast-path argument parsing, and atomic batch commands.
+- **7 Chunky Tools**:
+  1. `sdlc_manage_lifecycle`: Change init, transitions (S1→S6), gate inspection and approvals.
+  2. `sdlc_record_spec_bundle`: Atomic batch insertion of AC requirements, edge cases, STRIDE threats, and spec lock.
+  3. `sdlc_get_work_context`: Consolidated 1-call query delivering active task, mapped ACs, and reading order.
+  4. `sdlc_submit_task_result`: Complete tasks with mandatory test proof and commit logging.
+  5. `sdlc_audit_and_verify`: QA audit context inspection, batch test scenario recording, bug logging.
+  6. `sdlc_flex_patch`: In-flight amendments (patch schema, insert urgent task, supersede ADR).
+  7. `sdlc_inspect_query`: Swiss Army Knife for FTS5 full-text search, table inspection, and safe read-only SQL.
+
 
 On **both**, the orchestrator is a **dedicated agent** (`sdlc-full`/`sdlc-fast`) that drives the
 pipeline, delegates each phase to its role agent, and owns the gates — it **never writes code** (only

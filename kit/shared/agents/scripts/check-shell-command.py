@@ -250,7 +250,7 @@ def main() -> int:
 
     is_agy_hook = "toolCall" in data
     actor = resolve_actor(data)
-    cls = actor_class(actor)
+    cls = actor_class(actor, claude_host=IS_CLAUDE_HOST or is_agy_hook)
     ti = data.get("tool_input") or data.get("toolInput") or {}
     tc_args = data.get("toolCall", {}).get("args", {}) if is_agy_hook else {}
     command = ti.get("command") or ti.get("cmd") or tc_args.get("CommandLine") or data.get("command") or ""

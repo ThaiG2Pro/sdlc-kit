@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+"""
+SDLC Kit — Quickstart & Environment Setup Tool
+Zero external dependencies (pure Python standard library).
+
+Verifies prerequisites, initializes SQLite context engine, and automatically
+configures Model Context Protocol (MCP) servers for Antigravity (agy), Claude, and Cursor.
+"""
+
+import os
+import sys
+import json
+import sqlite3
+import shutil
+import subprocess
+
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+CYAN = "\033[96m"
+RED = "\033[91m"
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MCP_BIN = os.path.join(REPO_ROOT, "bin", "sdlc-mcp")
+CTX_BIN = os.path.join(REPO_ROOT, "bin", "sdlc-ctx")
+SESSION_DB = os.path.join(REPO_ROOT, ".sdlc", "session.db")
+
+
+def log(msg: str):
+    print(f"  {msg}")
+
+
+def log_ok(msg: str):
+    print(f"  {GREEN}✓{RESET} {msg}")
+
+
+def log_warn(msg: str):
+    print(f"  {YELLOW}⚠{RESET} {msg}")
+
+
+def log_err(msg: str):
+    print(f"  {RED}✗{RESET} {msg}")
+
+
+def header(title: str):
+    print(f"\n{BOLD}{CYAN}=== {title} ==={RESET}\n")
+
+
+def check_prerequisites():
+    header("1. Checking System Prerequisites")
+
+    # Python version
+    py_ver = sys.version_info
+    if py_ver >= (3, 8):
+        log_ok(f"Python {py_ver.major}.{py_ver.minor}.{py_ver.micro} (compatible >= 3.8)")
+    else:
+        log_err(f"Python {py_ver.major}.{py_ver.minor} is too old. Requires >= 3.8")
+        sys.exit(1)
+
+    # SQLite3 & FTS5
+    try:
+        conn = sqlite3.connect(":memory:")
+        conn.execute("CREATE VIRTUAL TABLE _test_fts USING fts5(content);")
+        conn.close()
+        log_ok("SQLite3 FTS5 full-text search engine is available")
+    except Exception as e:
+        log_err(f"SQLite3 FTS5 is not available: {e}")
+        sys.exit(1)
+
+    # Node.js
+    node_bin = shutil.which("node")
+    if node_bin:
+        try:
+            out = subprocess.check_output([node_bin, "--version"], text=True).strip()
+            log_ok(f"Node.js {out} found ({node_bin})")
+        except Exception:
+            log_warn("Node.js found but could not get version")
+    else:
+        log_warn("Node.js not found (required only if running bin/init.mjs to scaffold projects)")
+
+    # Executable permissions
+    for b in [MCP_BIN, CTX_BIN]:
+        if os.path.exists(b):
+            os.chmod(b, 0o755)
+            log_ok(f"Verified executable: {os.path.relpath(b, REPO_ROOT)}")
+
+
+def init_engine():
+    header("2. Initializing SDLC Context Engine")
+    sys.path.insert(0, os.path.join(REPO_ROOT, "kit", "shared", "engine"))
+    try:
+        from db import init_db
+        conn = init_db(SESSION_DB)
+        cursor = conn.cursor()
+        cursor.execute("SELECT count(*) FROM sqlite_master WHERE type='table';")
+        count = cursor.fetchone()[0]
+        conn.close()
+        log_ok(f"Database initialized: .sdlc/session.db ({count} tables & FTS5 indexes)")
+    except Exception as e:
+        log_err(f"Failed to initialize context engine: {e}")
+        sys.exit(1)
+
+
+def configure_mcp():
+    header("3. Configuring AI Agent MCP Integration")
+
+    home = os.path.expanduser("~")
+    configured_any = False
+
+    # 1. Google Antigravity (agy)
+    agy_config_path = os.path.join(home, ".gemini", "config", "mcp_config.json")
+    try:
+        os.makedirs(os.path.dirname(agy_config_path), exist_ok=True)
+        config_data = {}
+        if os.path.exists(agy_config_path) and os.path.getsize(agy_config_path) > 0:
+            with open(agy_config_path, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+
+        mcp_servers = config_data.get("mcpServers", {})
+        mcp_servers["sdlc-context"] = {
+            "command": MCP_BIN,
+            "args": [],
+            "env": {
+                "SDLC_DB_PATH": SESSION_DB
+            }
+        }
+        config_data["mcpServers"] = mcp_servers
+
+        with open(agy_config_path, "w", encoding="utf-8") as f:
+            json.dump(config_data, f, indent=2)
+        log_ok(f"Antigravity (agy): Registered 'sdlc-context' in {agy_config_path}")
+        configured_any = True
+    except Exception as e:
+        log_warn(f"Could not auto-configure Antigravity MCP: {e}")
+
+    # 2. Claude Desktop (if present)
+    claude_paths = [
+        os.path.join(home, ".config", "Claude", "claude_desktop_config.json"),
+        os.path.join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json")
+    ]
+    for cp in claude_paths:
+        if os.path.exists(os.path.dirname(cp)):
+            try:
+                cdata = {}
+                if os.path.exists(cp) and os.path.getsize(cp) > 0:
+                    with open(cp, "r", encoding="utf-8") as f:
+                        cdata = json.load(f)
+                c_servers = cdata.get("mcpServers", {})
+                c_servers["sdlc-context"] = {
+                    "command": MCP_BIN,
+                    "args": [],
+                    "env": {"SDLC_DB_PATH": SESSION_DB}
+                }
+                cdata["mcpServers"] = c_servers
+                with open(cp, "w", encoding="utf-8") as f:
+                    json.dump(cdata, f, indent=2)
+                log_ok(f"Claude Desktop: Registered 'sdlc-context' in {cp}")
+                configured_any = True
+            except Exception as e:
+                log_warn(f"Could not auto-configure Claude Desktop: {e}")
+
+    # Display configuration block for manual paste
+    print("\n  " + BOLD + "Manual MCP Configuration snippet (for Cursor / VS Code / Claude):" + RESET)
+    manual_snippet = {
+        "mcpServers": {
+            "sdlc-context": {
+                "command": MCP_BIN,
+                "args": [],
+                "env": {
+                    "SDLC_DB_PATH": SESSION_DB
+                }
+            }
+        }
+    }
+    print("  " + json.dumps(manual_snippet, indent=4).replace("\n", "\n  "))
+
+
+def show_summary():
+    header("4. Ready to Roll! 🚀")
+    print(f"""  Everything is configured and ready to use!
+
+  {BOLD}Try out the Fast CLI:{RESET}
+    {CYAN}bin/sdlc-ctx --help{RESET}
+    {CYAN}bin/sdlc-demo{RESET}  (Runs an interactive 5-second end-to-end SDLC lifecycle demo)
+
+  {BOLD}Use with AI Agents:{RESET}
+    • {BOLD}Google Antigravity (agy):{RESET} Run {CYAN}agy{RESET} in this repo. Tools are loaded automatically!
+    • {BOLD}Claude Code:{RESET} Use {CYAN}claude --agent sdlc-full <change-name>{RESET}
+    • {BOLD}Scaffold into any project:{RESET} {CYAN}node bin/init.mjs --target agy{RESET}
+""")
+
+
+if __name__ == "__main__":
+    print(f"\n{BOLD}SDLC Kit Setup (Zero-Dependency SQLite Context Engine + MCP){RESET}")
+    print("─" * 60)
+    check_prerequisites()
+    init_engine()
+    configure_mcp()
+    show_summary()

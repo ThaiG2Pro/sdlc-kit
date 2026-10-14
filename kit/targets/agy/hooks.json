@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .agents/agents/scripts/check-shell-command.py",
+            "command": "python3 agents/scripts/check-shell-command.py",
             "timeout": 5
           }
         ]
