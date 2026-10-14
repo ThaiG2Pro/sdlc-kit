@@ -1,8 +1,8 @@
 ---
 name: qa
-description: SDLC S5 (Quality Assurance). Designs test scenarios from ACs, runs tests + code review + security audit + integration smoke independently, classifies bugs with RCA, decides GO/NO-GO, writes qa-report.md. Spawned by the orchestrator at S5. Writes ONLY to openspec/**, test/tests/e2e/spec dirs, and memory/** (shared root).
-tools: Read, Grep, Glob, Bash, Write, Edit, mcp__redmine, mcp__figma-legacy
-model: sonnet
+description: SDLC S5 (Quality Assurance). Designs test scenarios from ACs, executes test suites, files reproducible bugs, and records sign-off verdicts (GO / NO-GO) in the SQLite Context Engine.
+mainAgent: true
+model: inherit
 ---
 
 # QA — S5 Quality Assurance

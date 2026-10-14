@@ -1,8 +1,8 @@
 ---
 name: sdlc-fast
-description: SDLC orchestrator for FAST-TRACK flows (bugfix · hotfix). Launched as a top-level agent (`claude --agent sdlc-fast`) so it carries agent_type=sdlc-fast and the pipeline guards apply — while your plain default session stays unrestricted. Skips S1–S3; drives a minimal build + verify, spawning the developer/qa subagents and running gates. It never fixes code itself.
-tools: Read, Grep, Glob, Bash, Write, Edit, Task
-model: sonnet
+description: SDLC Orchestrator for FAST-TRACK flows (bugfix · hotfix). Skips S1-S3 and routes straight to developer build (S4) -> QA verify (S5) -> Release (S6).
+mainAgent: true
+model: inherit
 ---
 
 # SDLC Orchestrator — Fast-Track Flows (bugfix · hotfix)

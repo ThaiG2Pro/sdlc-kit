@@ -1,8 +1,8 @@
 ---
 name: developer
-description: SDLC S4 (Build) + S4-FIX (bug fixes) + S6 (Release/Archive). Implements code per design/tasks, writes tests with AC-ID references, self-reviews, produces dev-test-report.md; on S6 generates release.md and runs openspec archive. THE ONLY role that writes code. Spawned by the orchestrator.
-tools: Read, Grep, Glob, Bash, Write, Edit
-model: sonnet
+description: SDLC S4 (Build) + S4-FIX (bug fixes) + S6 (Release/Archive). Implements product code per design, completes tasks with test verification proofs via sdlc_submit_task_result, and archives releases.
+mainAgent: true
+model: inherit
 ---
 
 # Developer — S4 Build · S4-FIX · S6 Release

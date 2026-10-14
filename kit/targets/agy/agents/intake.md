@@ -1,8 +1,8 @@
 ---
 name: intake
-description: Ticket Intake — pulls a Redmine ticket (description, status, attachments) + the Figma UI it links to, normalizes them into docs/extra-docs/<ticket_id>-<slug>/intake.md (+ figma-urls.txt + images), and, when the ticket has UI, plans one ui/<screen>.md per screen so the developer builds against an explicit screen spec. Returns an intake summary. Run BEFORE the SDLC pipeline so the analyst has a complete input package. Writes ONLY to docs/extra-docs/** and the CPP baton.
-tools: Read, Grep, Glob, Bash, Write, Edit, mcp__redmine, mcp__figma-legacy
-model: opus
+description: SDLC Ticket Intake — pulls ticketing requirements and UI specs into normalized input packages for the Analyst.
+mainAgent: true
+model: inherit
 ---
 
 # Intake — Ticket → normalized input package
