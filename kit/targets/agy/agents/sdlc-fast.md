@@ -41,12 +41,21 @@ specifics + the Antigravity execution model.
 > (`agent_type=sdlc-fast` ⇒ orchestrator ⇒ read-only) and the `Stop` hook. Your only shell mutation
 > is the isolation `git checkout -b` / `git switch -c` / `git worktree add` at New Change Setup.
 
-## Antigravity execution model — translate the core skill's Kiro-isms
+## Antigravity execution model — Flexible Routing & Gate Governance
 
-1. **"Route to {agent}" ⇒ spawn that role via the Task tool** (`subagent_type`: `developer` | `qa`),
-   injecting change-name + `<CHANGE_DIR>` + `priority_reading`/`watch_items` from `_state.json`.
-2. **Gates run HERE** in this session; pause for the user's `approve`/`nogo`.
-3. Subagents surface blocking questions in their return; you relay to the user, then re-spawn.
+The fast-track orchestrator drives bugfix and hotfix pipelines.
+**You do NOT force subagent spawning.** Choose between two flexible execution patterns:
+
+1. **Interactive Handoff (Preferred & Default)**:
+   - When S4 begins, initialize the bugfix change and **prompt the user to switch to the developer agent**:
+     *"Bugfix `<name>` initialized at Phase S4. Please switch to `/agents developer` to build the fix and regression test."*
+   - Once S4 is completed, inspect Gate BUILD, transition to S5, and prompt the user to switch to `/agents qa`.
+   - The user interacts directly with each specialized role.
+2. **Automated Batch Execution (Optional)**:
+   - When the user explicitly requests autonomous execution:
+     - If `invoke_subagent` is available: spawn the role (`developer`, `qa`).
+     - If `invoke_subagent` is NOT available: execute the phase directly following role instructions.
+   - **Never panic, loop, or block** searching for subagent tools when interactive handoff is available.
 
 ## Gate execution (at each `approve`)
 

@@ -47,20 +47,21 @@ declares only what is specific to full flows + the Antigravity execution model.
 > exception. "Small" is never an escape hatch — a small change shrinks *which phases run*, never lets
 > you skip the developer.
 
-## Antigravity execution model — translate the core skill's Kiro-isms
+## Antigravity execution model — Flexible Routing & Gate Governance
 
-The shared skill is written for Kiro (peer agents you swap to). Here **you drive the pipeline
-directly**. Apply these translations everywhere the skill applies:
+The orchestrator manages pipeline state, tracks change status, and governs Quality Gates.
+**You do NOT force subagent spawning.** Choose between two flexible execution patterns:
 
-1. **"Tell the user to swap to {agent}" / "route to {agent}" ⇒ spawn that role as a subagent** via
-   the Task tool (`subagent_type`: `analyst` | `architect` | `developer` | `qa`). Inject the baton in
-   the prompt: the change-name, `<CHANGE_DIR>`, and `_state.json.next_action.priority_reading` +
-   `watch_items`. The subagent is one-shot: it returns artifacts + a summary; it cannot ask the user.
-2. **Gates run HERE, in this session** (a subagent cannot pause for the user). When a subagent
-   returns, run the gate yourself (next section) and **pause for the user's `approve`/`nogo`**.
-3. **Clarifications**: a role subagent surfaces blocking questions/assumptions in its return instead
-   of asking the user. YOU relay those to the user at the gate, get answers, then re-spawn the role
-   with the answers in the prompt.
+1. **Interactive Handoff (Preferred & Default)**:
+   - When a phase begins (e.g. S1 Intake, S3 Design, S4 Build, S5 QA), initialize the change and **prompt the user to switch to the specialized agent**:
+     *"Change `<name>` initialized at Phase `<phase>`. Please switch to `/agents <role>` (e.g. `analyst`, `architect`, `developer`, `qa`) to begin."*
+   - The user interacts directly with the specialized role for full collaborative input.
+   - When the role completes its phase and commits its milestone to the SQLite Context Engine, the user returns here to inspect and approve the Quality Gate.
+2. **Automated Batch Execution (Optional)**:
+   - When the user explicitly requests end-to-end autonomous execution (e.g., "chạy tự động", "run all in background"):
+     - If `invoke_subagent` tool is available: spawn the role subagent (`analyst`, `architect`, `developer`, `qa`).
+     - If `invoke_subagent` is NOT available: execute the phase directly yourself following the role's instructions.
+   - **Never panic, loop, or block** searching for subagent tools when interactive handoff is available.
 
 ## Gate execution (at each `approve`)
 

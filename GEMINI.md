@@ -12,19 +12,21 @@ You can run the SDLC Kit in Antigravity in two primary ways:
 
 ### A. Full Flow (Feature · Change Request · Rebuild: S1 → S6)
 When the user asks to implement a feature, rebuild a module, or fulfill a change request:
-1. Initialize the change in the Context Engine:
-   - Via MCP: `sdlc_manage_lifecycle(action="init", change_id="<slug>", slug="<slug>")`
-   - Or CLI: `bin/sdlc-ctx change init --change "<slug>" --slug "<slug>"`
-2. Drive through the 6 phases:
-   - **S1 (Requirements Intake)** & **S2 (Functional Spec)**: Invoke `Analyst` subagent.
-   - **Gate S2 (SPEC LOCK)**: Run audit, prompt user via `ask_question` for approval.
-   - **S3 (Technical Design)**: Invoke `Architect` subagent.
-   - **Gate S3 (ARCH LOCK)**: Run audit, prompt user via `ask_question` for approval.
-   - **S4 (Build / Implementation)**: Invoke `Developer` subagent.
-   - **Gate S4 (DEV COMPLETE)**: Verify tests and task completion.
-   - **S5 (Quality Assurance)**: Invoke `QA` subagent.
-   - **Gate S5 (QA PASS / GO)**: Review verification matrix and open bugs.
-   - **S6 (Release & Archive)**: Invoke `Developer` to archive specs and finalize release notes.
+
+#### Option 1: Interactive Role Sessions (Preferred & Default)
+User switches directly to the specialized role agent to collaborate in real-time:
+1. **S1 & S2 (Intake & Spec)**: Run `/agents analyst` — user collaborates on requirements, clarifies assumptions, adds edge cases, and locks spec.
+2. **Gate S2 (SPEC LOCK)**: Audit via `bin/sdlc-ctx gate inspect --gate SPEC_LOCK` and approve.
+3. **S3 (Technical Design)**: Run `/agents architect` — user collaborates on ADRs, schemas, endpoints, and task graph.
+4. **Gate S3 (ARCH LOCK)**: Audit via `bin/sdlc-ctx gate inspect --gate DESIGN_REVIEW` and approve.
+5. **S4 (Build / Implementation)**: Run `/agents developer` — pair-programs code, runs tests, reports task completions.
+6. **Gate S4 (DEV COMPLETE)**: Verify tests and task completion.
+7. **S5 (Quality Assurance)**: Run `/agents qa` — user collaborates on test scenarios, bug reports, and GO/NO-GO verdict.
+8. **Gate S5 (QA PASS / GO)**: Verify matrix and close blockers.
+9. **S6 (Release & Archive)**: Run `/agents developer` — archives change and finalizes release notes.
+
+#### Option 2: Orchestrator Mode (`sdlc-full` / `sdlc-fast`)
+The Orchestrator governs pipeline state, initializes changes, prompts the user to switch to the appropriate role for each phase, and holds execution at quality gates for approval. In automated environments with subagent tools, it can optionally spawn role subagents.
 
 ### B. Fast-Track Flow (Bugfix · Hotfix)
 Skips S1–S3; goes straight to S4 (Developer builds fix + regression test) → S5 (QA verifies fix) → S6 (Archive).
@@ -67,11 +69,14 @@ bin/sdlc-ctx sync export --change <id> --dir ./openspec/changes/<id>
 
 ---
 
-## 4. Subagent Dispatch in Antigravity
+## 4. Role Execution & Optional Subagent Dispatch
 
-When driving phases S1–S5, the orchestrator spawns role subagents using `invoke_subagent`.
+### A. Direct Interactive Roles (Preferred):
+Run `/agents <role>` (e.g. `analyst`, `architect`, `developer`, `qa`) directly to pair-program and collaborate with the user.
 
-### Dispatch Pattern:
+### B. Subagent Dispatch (For Automated Batch Mode Only):
+When the user explicitly asks for autonomous batch execution, the orchestrator can spawn role subagents using `invoke_subagent`:
+
 ```json
 {
   "Subagents": [
