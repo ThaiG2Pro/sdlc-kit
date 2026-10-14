@@ -48,6 +48,10 @@ Phân loại kết quả:
 ### Bug report format
 
 Lưu: `openspec/changes/<change>/qa/bugs/{BUG_ID}/report.md`
+Đồng thời ghi vào SQLite Context Engine:
+```bash
+bin/sdlc-ctx qa report-bug --change-id "<change>" --bug-id "{BUG_ID}" --title "{Tên bug ngắn}" --severity "{Severity}" --ac-id "{AC-ID}" --description "{mô tả}"
+```
 
 ```markdown
 # {BUG_ID} — {Tên bug ngắn}
@@ -86,6 +90,12 @@ Duplicate detection: query open bugs trước khi post.
 - Có thể trùng → tạo mới, note "Possible duplicate: #ID"
 
 ### Quality Sign-off
+
+Kiểm tra với Context Engine:
+```bash
+bin/sdlc-ctx gate inspect --change-id "<change>" --gate QA
+```
+Engine tự động kiểm tra invariant: 0 Critical / High bugs open.
 
 Lưu: `openspec/changes/<change>/qa/quality_signoff.md`
 
@@ -166,6 +176,11 @@ Output: `openspec/changes/<change>/qa/retest_scope.md`
 Bug: {BUG_ID} | Fix type: {type}
 TC verify fix: {TC-ID}
 TC direct impact: {list} ({X} TCs, ~{X} phút)
+```
+
+Khi verify thành công, update bug status trong Context Engine:
+```bash
+bin/sdlc-ctx bug retest --bug-id "{BUG_ID}" --status "verified" --verification-notes "Verified fix against {TC-ID}"
 ```
 
 ### Mode 2 — Regression (per milestone, trước release)

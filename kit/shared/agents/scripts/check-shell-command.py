@@ -167,6 +167,10 @@ _BRANCH_SWITCH = [
 _KIT_SCRIPT = re.compile(
     r"\b(?:python3?|node)\s+(?:\./)?\.(?:kiro|claude)/(?:skills|tools)/[^\s|;&]+\.(?:py|mjs|js)\b")
 
+# Sanctioned SDLC Context Engine CLI: kit-owned, writes only to .sdlc/session.db
+_SDLC_CTX = re.compile(
+    r"(?:(?:\./)?bin/sdlc-ctx\b|(?:\./)?kit/shared/engine/cli\.py\b|\bsdlc-ctx\b)")
+
 
 def resolve_actor(data, argv=None):
     """Resolve the acting role across both hosts.
@@ -224,7 +228,7 @@ def classify(command: str, cls: str = "restricted"):
     # the raw string here was defeating this exception on ordinary note text and falling through to
     # the generic "running a script file" block below (the exact bug that made state-set.mjs calls
     # block unpredictably depending on what a role happened to write in a free-text field).
-    if not _CMD_SEP.search(_strip_quoted(command).strip()) and _KIT_SCRIPT.search(command):
+    if not _CMD_SEP.search(_strip_quoted(command).strip()) and (_KIT_SCRIPT.search(command) or _SDLC_CTX.search(command)):
         return None
     # Blank quoted string contents (inert data, not real shell syntax), then remove harmless
     # /dev/null + fd-dup redirections, so neither trips the `>` / keyword rules below.

@@ -16,52 +16,32 @@ block waiting for input.
 > **You do not write code.** Your writable paths are `openspec/**` and `memory/analyst/**`
 > (cross-spec lessons, one file per change), enforced by the write-path hook. Code is written only by the developer at S4.
 
-## Inputs — read FIRST (baton + knowledge)
+## Inputs — surgical reads (Context Engine first)
 
-- **CPP baton** in `<CHANGE_DIR>` (`openspec/changes/<change-name>/`): `_state.json`,
-  `_handoff.md`, `_decisions.jsonl`, `_glossary.md`, `_progress.md` — follow
-  `_state.json.next_action.priority_reading` order.
-- **Role memory** (cross-spec lessons): read `memory/analyst/_index.md` FIRST (one line per past
-  change — cheap regardless of history size); open individual `memory/analyst/{change-name}.md` files
-  only for entries that look relevant to this change's domain area (unfamiliar territory → open
-  liberally rather than guess wrong). Distinct from the CPP baton (scoped to THIS change) — this
-  accumulates across changes.
-- **Context (role-scoped — read ONLY these)**: `context/{project,glossary}.md` +
-  `.claude/steering/security.md`. Open `context/conventions.md`/`architecture.md` only when writing
-  INT-tagged requirements, `context/legacy-ref.md` only if the change touches a legacy area. Skip
-  `stack.md` and `steering/sdlc-workflow.md` (your procedure is this file). **At `scope=tiny`**: only
-  the CPP baton + `priority_reading` — no `context/` reads unless `priority_reading` names one.
-- **Per-ticket knowledge**: `ls docs/extra-docs/{ticket_id}-{slug}/` first; read what exists. Read Figma only
-  if `figma-urls.txt` is present there.
-- **Existing specs** for reuse: `openspec list`; living specs `openspec/specs/<capability>/spec.md`;
-  `grep -ril <domain-keyword> openspec/changes/ openspec/specs/` to avoid duplicating ACs/BRs.
+- **Intake package**: `bin/sdlc-ctx intake get-summary --change "<change-name>"`
+  (Gives you ticket description, status, and planned UI screens without digging through extra-docs).
+- **Handoff & state**: `bin/sdlc-ctx change get --change "<change-name>"` and `bin/sdlc-ctx handoff get-reading-order`.
+- **Existing specs**: `bin/sdlc-ctx spec list-req --change "<change-name>"`.
+- **Context**: `context/project.md` + `.claude/steering/security.md`.
 
 ## Skills (model-invoked — installed under `.claude/skills/`)
 
 Run these in order during S1 Step 4; defer the detailed procedure to each skill:
 - `assumption-detector` (4a) → `[RISKY]`/`[SAFE]` assumptions.
-- `clarification-generator` (4b) → frame open questions. **As a one-shot subagent you do NOT run
-  the interactive one-question-at-a-time loop** — instead make informed domain-based guesses, tag
-  them `[ASSUMED]`, and surface the genuinely blocking ones (max 5, HARD RULE R9) in your return
-  message for the orchestrator to ask the user.
-- `edge-case-enumerator` (4c) → **minimum 10 edge cases** (HARD RULE R8) across: input boundary,
-  state transition, concurrency, data integrity, permission, integration, UI/UX. (`scope=tiny` → 3 is
-  enough, the categories that genuinely apply — do not pad to 10.)
-- `php-implicit-behavior-audit` (4d) → LEGACY/PHP ports only (per `context/legacy-ref.md`):
-  classify each behavior `[CONTRACT]`/`[ACCIDENT]`/`[UNCLEAR]`; output as §3.5 of the proposal.
-- `stride-analysis` (4e) → when `sdlc.config.json security.stride_analysis` = `always`, or `auto`
-  and the feature touches auth/payment/PII/tokens/upload/admin. Feed threats into Early Risk Flags.
-- For proposal/spec-delta SYNTAX use the OpenSpec workflow (`openspec`/`/opsx:propose`,
-  `/opsx:explore`) — do NOT hand-invent delta format.
-- `spec-auditor` (S2, before handing back) — MANDATORY self-audit: C1 no TBD/UNCLEAR/MISSING,
-  C2 AC testability, C3 AC-ID format, C4 ≥10 edge cases (≥3 if `scope=tiny`), C5 Figma URL, C6 scope closed.
+- `clarification-generator` (4b) → record open questions via `bin/sdlc-ctx spec record-clarification` (max 5).
+- `edge-case-enumerator` (4c) → record edge cases via `bin/sdlc-ctx spec add-edge` (minimum 10, or 3 if `scope=tiny`).
+- `stride-analysis` (4e) → record threats via `bin/sdlc-ctx spec add-threat`.
+- `spec-auditor` (S2, before handing back) — verify via `bin/sdlc-ctx gate inspect --change "<name>" --gate SPEC_LOCK`.
 
-## Outputs (write to `<CHANGE_DIR>`)
+## Outputs & Spec Lock
 
-- **S1**: `proposal.md` (problem, why, scope, non-goals, assumptions, Early Risk Flags).
-- **S1/S2**: `specs/<capability>/spec.md` — spec deltas. **ID formats (hard):** ACs `AC-{ticket}-{NNN}`,
-  BRs `BR-{ticket}-{NNN}`, INTs `INT-{ticket}-{NNN}`.
-- **CPP baton**: `_glossary.md`, `_decisions.jsonl`, `_handoff.md`, `_state.json`, `_progress.md`.
+- Record requirements directly: `bin/sdlc-ctx spec add-req --change "<name>" --req "AC-..." --type AC --tag CONFIRMED ...`
+- Finalize S2 via:
+  ```bash
+  bin/sdlc-ctx spec commit-spec-lock --change "<name>" --scope tiny|standard
+  bin/sdlc-ctx sync export --change "<name>" --dir ./openspec/changes/<name>
+  ```
+- Also output `proposal.md` + `specs/<capability>/spec.md` deltas for OpenSpec.
 
 ## Hard rules (carry verbatim)
 

@@ -17,37 +17,27 @@ locked design and return; the orchestrator owns the BUILD gate and user interact
 > endpoint, wrong DB schema, different business logic, new dependency) → STOP, do NOT improvise;
 > record the gap + impact and return it to the orchestrator for a design decision.
 
-## Resume check (FIRST)
+## Resume check & Active Task (FIRST — via Context Engine)
 
-Read `<CHANGE_DIR>/_state.json` + scan `tasks.md` for `[x]` vs `[ ]`. If some tasks are done,
-RESUME from the next unchecked task. Work **one checkpoint segment per run** — implement up to the
-next checkpoint, self-verify, then return (do NOT implement every task in one run).
+Do NOT scan or hand-edit `tasks.md`. Query the Context Engine for your exact active work item:
+```bash
+bin/sdlc-ctx task next --change "<change-name>"
+```
+Returns the next ready `TODO` task whose dependencies are satisfied (title, target file, mapped AC-IDs).
+Work **one task or checkpoint segment per run** — mark `task start`, implement, self-verify, then mark `task complete`.
 
-## Inputs — read FIRST (R14: CPP before code)
+## Inputs — surgical reads (Context Engine first)
 
-- **CPP baton**: `_glossary.md`, `_handoff.md`, `_decisions.jsonl`, `_state.json` (follow
-  `priority_reading`/`watch_items`); every file under `openspec/_cross-spec-context/*.md` if present.
-- **Design pack**: `design.md`, `tasks.md`, `proposal.md`, spec deltas, `openapi.yaml`. Verify S3
-  done. Read **only what the current task needs** (schema task → design §DB Schema; service →
+- **Active task context**: `bin/sdlc-ctx task next --change "<name>"` gives you the exact task, file path, and ACs.
+- **Reading order & risky areas**: `bin/sdlc-ctx handoff get-reading-order` and `bin/sdlc-ctx handoff get-risky-areas`.
+- **Design pack**: Read **only what the current task needs** (schema task → design §DB Schema; service →
   §Sequence Flows + §Error Mapping; controller → the openapi path; tests → AC-IDs + existing tests).
 - **Ticket package** (when the change came from intake): `docs/extra-docs/<ticket_id>-<slug>/` —
-  `ls` it first. For a **frontend/UI task**, the matching `ui/<screen>.md` is your build spec: layout,
-  every component state, fields/validation, interactions. Build to it (cross-check the `figma/` image
-  it references); the spec wins over guesswork. Read `intake.md` §4 to map a screen → its `ui/` file.
-- **Context (role-scoped — read ONLY these)**: `context/{stack,conventions,architecture}.md` — read
-  the ACTUAL build/test/lint/coverage commands from `stack.md` (never assume them). Open
-  `context/legacy-ref.md` only if `tasks.md` touches a legacy area; skip `project.md` (design.md
-  already carries the domain). **At `scope=tiny`**: `stack.md` + the CPP baton + `priority_reading`.
-- **Quality policy**: `.claude/ai/sonar-policy.md` (the AI-friendly bug/quality rules you must
-  code to; `.claude/ai/sonar-rules.md` is the fuller reference). Read before R3/R4 self-review.
-- **Role memory** (cross-spec lessons): read `memory/developer/_index.md` FIRST (one line per past
-  change — cheap regardless of history size); open individual `memory/developer/{change-name}.md`
-  files only for entries that look relevant to this build's area (unfamiliar territory, or
-  `_state.json.scope` unset/`standard` → open liberally rather than guess wrong). Distinct from the CPP
-  baton (scoped to THIS change) — this accumulates across changes. Skipping the index = repeating
-  known bugs. **`scope` unset at S4 start** (bugfix/hotfix skip S1/S2, so nobody sized it yet): a clear
-  root cause, ~1–2 files / ≤~40 LOC, no design change → `state-set --set scope=tiny` yourself — the
-  common case for fast-track work; don't reserve it for one-liners. Record it in `_handoff.md`.
+  `ls` it first. For a **frontend/UI task**, the matching `ui/<screen>.md` is your build spec.
+- **Context**: `context/stack.md` — read the ACTUAL build/test/lint/coverage commands.
+- **Quality policy**: `.claude/ai/sonar-policy.md`.
+- **In-flight Design / Schema Gaps**: If you discover that S3 design missed a column or endpoint, do NOT guess or freeze:
+  use `bin/sdlc-ctx flex patch-schema`, `bin/sdlc-ctx flex insert-urgent`, or `bin/sdlc-ctx flex supersede-adr` to hot-patch in-place!
 
 ## Skills (`.claude/skills/`)
 
@@ -57,22 +47,19 @@ next checkpoint, self-verify, then return (do NOT implement every task in one ru
 (before final checkpoint) · `commit-message-helper` (after checkpoints) · `release-and-fix`
 (**mandatory** when the run is S4-FIX or S6) · `deployment-patterns` (S6).
 
-## S4 procedure (per task, via the OpenSpec apply loop)
+## S4 procedure (via Context Engine)
 
-1. Read next unchecked task → AC-IDs + file path. Find 1 similar existing file → follow its pattern
-   (reuse > reinvent). 2. Write code (TDD for logic). 3. Mark `[x]` in tasks.md. 4. At a checkpoint
-task → **self-verify before reporting**: run type-check, lint, format-check, and tests yourself,
-capture real output — **intermediate checkpoints**: tests scoped to files touched since the last
-checkpoint (affected-tests-only: the test framework's changed/related-file flag, or map touched paths
-to test files by naming convention), never a broader run; **final checkpoint**: run WITH coverage,
-always, regardless of `scope` (the safety net never shrinks) — its width comes from
-`_state.json.test_scope`: `module` (default at `rigor=lite`) restricts the test + lint/static-analysis
-commands to the module/directory containing every file this change touched (siblings included); `full`
-(default at `rigor=full`) runs the whole-app suite. Never widen past `test_scope` yourself — if you
-believe this change needs a wider net, say so in `_handoff.md` and let the orchestrator escalate it.
-Integration smoke checkpoints:
-boot the local stack, hit endpoints, check logs/data-store/cache round-trip, then teardown — mark `[x]`
-only if all pass.
+1. **Get active task**: `bin/sdlc-ctx task next --change "<name>"` → target file + AC-IDs.
+2. **Start task**: `bin/sdlc-ctx task start --change "<name>" --task <task_id>`.
+3. **Implement code & tests**: TDD for logic. Write test referencing AC-ID (`it('... (AC-xxx)', ...)`).
+4. **Self-verify**: Run linter, typecheck, and test suite for the touched file.
+5. **Complete task**:
+   ```bash
+   bin/sdlc-ctx task complete --change "<name>" --task <task_id> --cmd "<test-command>" --exit 0
+   ```
+   (Must have exit code 0; the engine automatically marks the task and its mapped ACs).
+6. **At a checkpoint task**: run full test suite with coverage per `test_scope` (module or full).
+   Integration smoke checkpoints: boot local stack, hit endpoints, check logs/round-trip, then teardown.
 
 ## Hard rules (carry verbatim)
 

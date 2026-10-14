@@ -43,16 +43,19 @@ specifics + the Claude execution model.
 
 ## Gate execution (at each `approve`)
 
-1. **STEP 0:** `node .claude/tools/pipeline-guard.mjs --gate <current_phase>` — exit 1 → STOP and
-   show the reason; exit 0 → continue. 2. **S4** → read dev-test-report.md; **S5** → read qa-report.md
-   + test-case artifact check (regression-only for bugfix per `gateOverrides.S5`). Run CPP Contract
-   Validation. 3. Failure → show all blockers, STOP. 4. On approval → clear blocker, set
-   `gates["<phase>"]="passed"` (`_progress.md` is the role's own artifact — you don't also mark it, see
-   `sdlc-orchestration-core` §Progress Marking). 5. **Compact YOUR OWN session** (core skill
-   §Orchestrator session budget) before spawning: tell the user "✅ Gate `<phase>` passed. Recommend
-   `/compact` now before continuing," wait for their next message, THEN spawn the next phase. Honor
-   `gates.auto_pass` for the audit itself — the compact pause still applies even when the audit
-   auto-passes.
+1. **STEP 0 (deterministic, mandatory):** `bin/sdlc-ctx gate inspect --change "<name>" --gate <current_phase>`.
+   `can_pass == false` → STOP, display its violation list; do not approve without an authorized `--force-reason`.
+2. Phase checks:
+   - **S4**: dev-test-report.md appended + all tasks completed in engine (`bin/sdlc-ctx task list --change-id "<name>"`).
+   - **S5**: regression-only verification matrix (`bin/sdlc-ctx qa verification-matrix --change-id "<name>"`), 0 open Critical/High bugs.
+3. Any failure → present ALL blockers, STOP.
+4. On approval:
+   ```bash
+   bin/sdlc-ctx gate pass --change "<name>" --gate <current_phase> --approver human
+   bin/sdlc-ctx change transition --change "<name>" --phase <next_phase>
+   bin/sdlc-ctx sync export --change "<name>" --dir ./openspec/changes/<name>
+   ```
+5. **Session compact pause**: tell the user "✅ Gate `<phase>` passed. Recommend `/compact` now before continuing," wait for their next message, THEN spawn the next phase. Honor `gates.auto_pass` for the audit itself — the compact pause still applies even when the audit auto-passes.
 
 ## Work types (read `pipelines.json` → `types[<type>]`; rigor is forced **lite**)
 
@@ -61,23 +64,16 @@ specifics + the Claude execution model.
 | `bugfix` | `bugfix <slug>` · "fix bug …" | S4 → S5 → S6 | clear root cause, no design change. **S5 = regression-only** (`gateOverrides.S5`). Spec delta only if behavior changes. |
 | `hotfix` | "hotfix <slug>" | S4 + S6 | emergency. **S4 = minimal** fix + one regression test (`gateOverrides.S4`); **S6 = deploy + mandatory post-deploy verification**. Branch `hotfix/<ticket>-<slug>`. Backfill spec delta + S5 retroactively if behavior changed. |
 
-Both start at **S4** → first subagent is `developer`. Both still bracket with the OpenSpec lifecycle
-(`openspec new change` at start; `openspec archive` at S6, run by the developer). Fast-track skips
-S1–S3, so `spec-auditor`/`cross-artifact-audit` do NOT run; `sdlc-orchestration-core` (every phase) and
-`sprint-retro` (after S6 archive) do apply.
+Both start at **S4** → first subagent is `developer`. Both bracket with the OpenSpec lifecycle (`openspec new change` at start; `openspec archive` at S6, run by the developer). Fast-track skips S1–S3, so `spec-auditor`/`cross-artifact-audit` do NOT run; `sdlc-orchestration-core` (every phase) and `sprint-retro` (after S6 archive) do apply.
 
 ## Escalation (scope grows → hand to full)
 
-If the scope grows beyond a localized fix (touches design, adds a capability, needs requirements
-work), **STOP and escalate**: tell the user "Scope exceeds fast-track — relaunch with
-**`claude --agent sdlc-full`** as a `cr`/`feature`." Update `_state.json.type` only on confirmation.
+If the scope grows beyond a localized fix (touches design, adds a capability, needs requirements work), **STOP and escalate**: tell the user "Scope exceeds fast-track — relaunch with **`claude --agent sdlc-full`** as a `cr`/`feature`."
 
 ## Flow-ownership guard (run at start and every continue/approve)
 
-After resolving the active change, check `_state.json.type`:
+After resolving the active change (`bin/sdlc-ctx change get --change "<name>"`), check change type:
 - ∈ {bugfix, hotfix} → proceed.
-- ∈ {feature, cr, rebuild} → **STOP.** Tell the user: "Change `<name>` is type `<type>` (full flow) —
-  relaunch with **`claude --agent sdlc-full`** to drive it."
+- ∈ {feature, cr, rebuild} → **STOP.** Tell the user: "Change `<name>` is type `<type>` (full flow) — relaunch with **`claude --agent sdlc-full`** to drive it."
 
-→ For setup, routing, state, gates, CPP, disputes: **follow `sdlc-orchestration-core`** (with the Claude
-translations above).
+→ For setup, routing, state, gates, CPP, disputes: **follow `sdlc-orchestration-core`** (with the Claude translations above).

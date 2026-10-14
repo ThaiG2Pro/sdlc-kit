@@ -88,6 +88,11 @@ Two passes: (1) completeness — no remaining `<!-- TODO`, no unsubstituted `{{T
 shape). **Exit 1 if anything unfilled/shallow.** If exit 1 → keep drafting; re-run. Report the
 checklist (✅/❌ per item) in your return.
 
+Once passed, index the context contract into the SQLite Context Engine for high-speed semantic search:
+```bash
+for f in context/*.md; do [ -f "$f" ] && bin/sdlc-ctx knowledge index-file --file-path "$f" --doc-type "context"; done
+```
+
 > **Claude note:** on Claude there is no per-agent JSON `resources[]` to wire (that is Kiro's
 > context-mapper step). Role subagents reference `context/*.md` by path, and `CLAUDE.md`
 > `@import`s the always-on context — so "wiring" is static. Project-doc → role routing (Kiro's

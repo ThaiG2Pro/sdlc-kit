@@ -18,9 +18,18 @@ Audit ONLY `proposal.md` + the spec deltas. Does NOT touch design.md, openapi.ya
 > **deterministic**: the same proposal + spec deltas → the same finding set, with stable AC-ID /
 > check-ID keys. Don't introduce run-to-run variation. At `rigor=lite` it runs exactly once.
 
-## Input
-- `openspec/changes/<change>/proposal.md`
-- spec deltas under `openspec/changes/<change>/specs/{capability}/spec.md`
+## Input & Execution
+- Run engine gate verification:
+  ```bash
+  bin/sdlc-ctx gate inspect --change-id "<change>" --gate SPEC_LOCK
+  ```
+- Inspect structured requirements & acceptance criteria:
+  ```bash
+  bin/sdlc-ctx spec list-req --change-id "<change>"
+  ```
+- Exported/synced OpenSpec markdown:
+  - `openspec/changes/<change>/proposal.md`
+  - spec deltas under `openspec/changes/<change>/specs/{capability}/spec.md`
 
 ## Checks
 

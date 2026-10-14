@@ -58,30 +58,21 @@ directly**. Apply these translations everywhere the skill applies:
 ## Gate execution (at each `approve`)
 
 Per the core skill's Gate Audit Map, in order:
-1. **STEP 0 (deterministic, mandatory):** `node .claude/tools/pipeline-guard.mjs --gate <current_phase>`.
-   Exit 1 → STOP, show its reason (OUT OF ORDER / FENCE-JUMP / MISSING ARTIFACTS); do not audit, do not
-   approve. Exit 0 → continue.
+1. **STEP 0 (deterministic, mandatory):** `bin/sdlc-ctx gate inspect --change "<name>" --gate <current_phase>`.
+   `can_pass == false` → STOP, display its violation list; do not approve without an authorized `--force-reason`.
 2. Run the phase audit: **S2** → `spec-auditor` + `openspec change validate "<name>"`; **S3** →
    `cross-artifact-audit` (0 CRITICAL) + `openspec change validate`; **S4** → read dev-test-report.md;
-   **S5** → read qa-report.md + the test-case artifact check (if `_state.json.testcase_export ∈
-   {xlsx,md}`, `openspec/changes/<change>/qa/testcases.{xlsx|md|csv}` MUST exist with ≥1 row, else BLOCK).
-   Run CPP Contract Validation at every gate.
-3. Any failure → present ALL blockers, do NOT update `_state.json`, STOP. On a clean audit, honor
-   `gates.auto_pass` (default false ⇒ require explicit `approve`).
-4. On approval: clear the blocker, set `gates["<phase>"]="passed"`, (S3 only) append the Cross-Spec
-   Context block, run the convergence loop when `rigor=full` and the gate is a convergence gate — all
-   per the core skill (`_progress.md` is the role's own artifact — you don't also mark it, see
-   `sdlc-orchestration-core` §Progress Marking).
-5. **Then compact the baton**, before spawning anything: `node .claude/tools/baton-compact.mjs --change
-   <name> --apply`. The baton is re-read in full by every later spawn, so this is what stops each phase
-   from re-paying for the last one; it only archives what nothing reads (see the core skill §Baton
-   budget). If it reports something it can't fix mechanically — an oversized `_handoff.md`, too many
-   decision entries — pass that to the next subagent's prompt so it fixes it while REPLACING the file.
-6. **Then compact YOUR OWN session** (core skill §Orchestrator session budget) — baton-compact only
-   shrinks what subagents re-read, not this conversation's own accumulated Task/Bash output. Tell the
-   user: "✅ Gate `<phase>` passed. Recommend `/compact` now before continuing." Wait for their next
-   message (compact+continue, or just continue) before spawning the next phase's subagent — never
-   auto-spawn past this pause.
+   **S5** → verify via `bin/sdlc-ctx gate inspect --gate QA` (0 Critical/High bugs open).
+3. Any failure → present ALL blockers, STOP. On a clean audit, honor `gates.auto_pass` (default false ⇒ require explicit `approve`).
+4. On approval:
+   ```bash
+   bin/sdlc-ctx gate pass --change "<name>" --gate <current_phase> --approver human
+   bin/sdlc-ctx change transition --change "<name>" --phase <next_phase>
+   bin/sdlc-ctx sync export --change "<name>" --dir ./openspec/changes/<name>
+   ```
+   (Dual-layer export keeps Git diff and OpenSpec Markdown perfectly up to date).
+5. **No 24KB baton bloat**: subagents query state directly from the SQLite Context Engine via `bin/sdlc-ctx`.
+6. **Then compact YOUR OWN session**: Tell the user: "✅ Gate `<phase>` passed. Recommend `/compact` now before continuing." Wait for their confirmation before spawning the next phase's subagent.
 
 ## Work types (read `pipelines.json` → `types[<type>]`)
 

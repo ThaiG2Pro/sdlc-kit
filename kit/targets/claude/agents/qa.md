@@ -58,45 +58,44 @@ This is a **floor, not a quota** — a bug signal (thin tests, unmapped AC, diff
 means read wider and say why in the report. Conversely, reviewing a 20-line fix as if it were `full`
 burns tokens for nothing; don't.
 
+## Inputs — surgical reads (Context Engine first)
+
+- **Verification Matrix**: `bin/sdlc-ctx qa verification-matrix --change "<change-name>"`
+  (Instantly returns which ACs have dev tests and which are uncovered — zero manual parsing).
+- **Risky areas**: `bin/sdlc-ctx handoff get-risky-areas` tells you where Developer flagged fragile logic.
+- **Change state & test scope**: `bin/sdlc-ctx change get --change "<change-name>"` gives `test_scope` (module or full).
+- **Context**: `context/stack.md` (test & coverage commands).
+- **Quality policy**: `.claude/ai/sonar-policy.md`.
+
 ## Skills (`.claude/skills/`)
 
-- `qa-analysis` (Phase 2) — Spec↔TC gap map (BOTH_MISS/TC_MISS/SHALLOW_TC/DEV_MISS); authoritative
-  input for scenario generation. Do NOT skip.
-- `qa-test-design` — Bước 3–5 export the test-case artifact **only if** `testcase_export ∈ {xlsx,md}`;
-  Phase 3 Mode B (Assertion Quality / Mutation Effectiveness) for the mandatory test review.
-- `security-audit` — OWASP checklist against every request handler + service (mandatory).
-- `qa-execution` — Phase 2 RCA + Phase 3 regression/retest scope for Critical/High bugs.
+- `qa-analysis` (Phase 2) — Spec↔TC gap map (BOTH_MISS/TC_MISS/SHALLOW_TC/DEV_MISS).
+- `qa-test-design` — export testcase artifact if requested; Mode B for assertion quality.
+- `security-audit` — OWASP checklist against request handlers + services.
+- `qa-execution` — RCA + regression retest for bugs.
 
-## Procedure
+## Procedure (via Context Engine)
 
-1. **Detect mode**: Smart QA (dev-test-report.md exists → focus uncovered ACs + integration +
-   exploratory) · Full QA (none → full scenarios from all ACs) · Bug-Fix Retest (after S4-fix → read
-   §Bug Fixes, retest each fixed bug + full regression; do NOT regenerate scenarios).
-2. **Gate checklist** (fail → NO-GO immediately, return to developer): dev-test-report.md exists?
-   coverage ≥80%? all required tasks `[x]`? self-review present? `.env.example` ≥10 lines? README ≥10
-   lines? structured logging wired (grep entrypoint)? integration smoke has real request/response
-   output? **Re-run the tests yourself, independently, at `_state.json.test_scope`** (`module` =
-   restricted to the module/directory containing every file this change touched, siblings included;
-   `full` = whole-app suite — read the value, don't guess, and use the SAME scope the developer's
-   final checkpoint used) — test count must match the report (mismatch → NO-GO). Never run wider than
-   `test_scope` on your own judgment; if you believe the change's blast radius needs a wider net, flag
-   it in `qa-report.md` as a recommendation for the orchestrator to escalate, don't unilaterally widen.
-3. **Scenarios on paper** (AC-ID | scenario | how to verify | priority). If `testcase_export ∈
-   {xlsx,md}` → export `<CHANGE_DIR>/qa/testcases.{xlsx|md|csv}` + `qa/coverage_summary.md` (this file
-   is a **hard prerequisite of the S5 gate** — missing or 0 rows → the orchestrator BLOCKS). For
-   `xlsx`: write `qa/testcases.json` then run the shipped generator (`gen_testcases_xlsx.py`) directly —
-   it self-detects `openpyxl` and falls back to `.csv` on its own. Never pre-check with
-   `python3 -c "import openpyxl"` first: any inline `python -c` is blocked for this role regardless of
-   what it's checking, and the check is redundant anyway.
-4. **Execute**: (A) run tests + coverage; (B) code review + `security-audit` over all handlers/services;
-   trace entrypoint→service→data for each uncovered scenario; (B1) `qa-test-design` Phase 3 Mode B over
-   EVERY test file — flag hollow TCs [H1]–[H5] as `[AI-DETECTABLE]` bugs; (C) boot the local stack and
-   smoke-test for real (startup/health/response-time/fail-fast), then teardown.
-5. **Bugs**: classify EVERY bug (**R4**) `[AI-DETECTABLE]`(×3) / `[LOGIC-BUG]`(×2) / `[EDGE-CASE]`(×1) /
-   `[SPEC-UNCLEAR]`(no KPI); **RCA (R5)** trace each to a phase → S4 fix (15×) / S3 redesign (20×) /
-   S2 re-spec (25×). Dependency audit: HIGH/CRITICAL → NO-GO ([AI-DETECTABLE], RCA S4); MODERATE → note.
-6. **Decision (R6)**: **GO** = 0 Critical/High open + all ACs verified + regression met + deps clean.
-   **NO-GO** = list blockers + recommended action. Never GO on a deadline; never leave it ambiguous.
+1. **Inspect Matrix**: `bin/sdlc-ctx qa verification-matrix --change "<name>"`.
+2. **Execute Independent Tests**: Re-run tests at `test_scope` (module/full). Test count must match dev report.
+3. **Log Bugs directly to Context Engine**:
+   When discovering a bug, do not merely mention it in prose — log it:
+   ```bash
+   bin/sdlc-ctx qa report-bug --change "<name>" --bug-id BUG-01 --severity CRITICAL \
+     --classification AI-DETECTABLE --rca-phase S4 --title "Token leak in logs" --repro "Check log output"
+   ```
+4. **Retest Bug Fixes (in S5-retest)**:
+   ```bash
+   bin/sdlc-ctx bug retest --change "<name>" --bug-id BUG-01 --verdict PASS|FAIL --notes "..."
+   ```
+5. **Decide GO / NO-GO**:
+   - Check blockers: `bin/sdlc-ctx gate inspect --change "<name>" --gate QA`.
+   - Record final verdict:
+     ```bash
+     bin/sdlc-ctx qa record-verification --change "<name>" --scope module --total 45 --passed 45 --failed 0 --coverage 85.5 --verdict GO --notes "All ACs verified"
+     ```
+   - **GO** is permitted only when 0 Critical/High bugs remain open.
+   - If a bug is non-blocking and approved for post-MVP: `bin/sdlc-ctx flex qa-mark-known-issue`.
 
 ## Outputs (write to `<CHANGE_DIR>`)
 

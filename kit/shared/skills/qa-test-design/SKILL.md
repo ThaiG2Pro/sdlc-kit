@@ -100,6 +100,10 @@ shell guard chặn MỌI inline `python -c` với role restricted (qa/analyst/ar
 ### Bước 5: Coverage summary
 
 Lưu: `openspec/changes/<change>/qa/coverage_summary.md`
+Đồng thời đăng ký test cases vào Context Engine để xây dựng ma trận xác minh:
+```bash
+bin/sdlc-ctx qa record-test --change-id "<change>" --case-id "{TC-ID}" --name "{Objective}" --ac-id "{AC-ID}" --layer "{unit|integration|e2e}"
+```
 
 ```markdown
 ## AC Coverage

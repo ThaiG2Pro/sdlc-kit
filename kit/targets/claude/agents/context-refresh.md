@@ -84,6 +84,10 @@ what demonstrably changed, never invent.
    node .claude/tools/context-check.mjs       # completeness (no TODO / no shallow fields)
    node .claude/tools/doctor-claude.mjs       # structural: @imports + commands + hooks + Edit invariant
    ```
+   After verification passes, re-index updated context files into SQLite FTS5:
+   ```bash
+   for f in context/*.md; do [ -f "$f" ] && bin/sdlc-ctx knowledge index-file --file-path "$f" --doc-type "context"; done
+   ```
 
 ## Return to the main session
 

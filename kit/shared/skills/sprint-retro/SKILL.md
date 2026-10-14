@@ -33,15 +33,18 @@ Cung cấp context nếu có:
 
 ### 1. Gate Compliance Check
 
-Kiểm tra từng SDLC gate đã được respect:
+Kiểm tra lịch sử và trạng thái từng SDLC gate qua Context Engine:
+```bash
+bin/sdlc-ctx gate list --change-id "{change-name}"
+```
 
 | Gate | Expected Output | Actual | Notes |
 |------|-----------------|--------|-------|
 | S1 → S2 | Requirement Pack với ACs | ✅/❌ | |
-| 🔒 S2 SPEC LOCK | spec-auditor PASS + `openspec change validate` + no "TBD" | ✅/❌ | |
-| 🔍 S3 DESIGN REVIEW | cross-artifact-audit 0 CRITICAL (sketch→full) | ✅/❌ | |
-| S4 → S5 | Tests pass + coverage ≥ `coverage.min` | ✅/❌ | |
-| S5 → S6 | QA GO + 0 Critical bugs | ✅/❌ | |
+| 🔒 S2 SPEC LOCK | spec-auditor PASS + `bin/sdlc-ctx gate inspect --gate SPEC_LOCK` | ✅/❌ | |
+| 🔍 S3 DESIGN REVIEW | cross-artifact-audit 0 CRITICAL + `bin/sdlc-ctx gate inspect --gate DESIGN_REVIEW` | ✅/❌ | |
+| S4 → S5 | Tests pass + coverage ≥ `coverage.min` + `bin/sdlc-ctx gate inspect --gate BUILD_VERIFY` | ✅/❌ | |
+| S5 → S6 | QA GO + 0 Critical bugs + `bin/sdlc-ctx gate inspect --gate QA` | ✅/❌ | |
 
 **Gate violations** = Late-stage changes = Cost multiplier applied.
 
@@ -154,19 +157,23 @@ advisory and easy to skip in the heat of a build — so the retro is the **safet
 nothing reusable is lost before the change is archived.
 
 For each Learned/Lacked item that is **reusable and not specific to this one change**, route it to the
-role most likely to re-encounter it and **WRITE** a new section to that role's file for THIS change:
+role most likely to re-encounter it and record it in Context Engine role memory:
 
-| Lesson type | File |
+```bash
+bin/sdlc-ctx role remember --role <role> --change-id "{change-name}" --title "{one-line lesson}" --content "{pattern + how to avoid it next time}"
+```
+
+Dual-layer sync will automatically mirror this into `memory/<role>/{change-name}.md` and update `memory/<role>/_index.md`:
+
+| Lesson type | Target Role |
 |---|---|
-| recurring bug pattern · validation/sync trap · framework gotcha | `memory/developer/{change-name}.md` |
-| hollow-assertion pattern · coverage gap · 5xx/validation bug pattern · smoke-checklist item | `memory/qa/{change-name}.md` |
-| recurring ADR trade-off · cross-feature constraint · design anti-pattern | `memory/architect/{change-name}.md` |
-| requirement-ambiguity pattern · domain edge case easy to miss · clarification trap | `memory/analyst/{change-name}.md` |
+| recurring bug pattern · validation/sync trap · framework gotcha | `developer` |
+| hollow-assertion pattern · coverage gap · 5xx/validation bug pattern · smoke-checklist item | `qa` |
+| recurring ADR trade-off · cross-feature constraint · design anti-pattern | `architect` |
+| requirement-ambiguity pattern · domain edge case easy to miss · clarification trap | `analyst` |
 
-Section format: `## {ISO-date} — {change-name}: {one-line lesson}` followed by 1–4 bullets (the pattern +
-how to avoid it next time). Also append one line to that role's `memory/<role>/_index.md`:
-`- {change-name} ({ISO-date}): {one-line lesson}` — the cheap digest every future run reads first
-before opening individual change files. Rules:
+Section format in markdown: `## {ISO-date} — {change-name}: {one-line lesson}` followed by 1–4 bullets (the pattern +
+how to avoid it next time). Rules:
 
 - **Append-only within the file.** If that role already wrote to `memory/<role>/{change-name}.md` earlier
   in THIS change's pipeline, READ it first — never delete or overwrite an existing `## ` section (the

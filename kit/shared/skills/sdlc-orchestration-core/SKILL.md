@@ -242,28 +242,31 @@ ASK if ambiguous. Then `openspec status --change "<name>" --json` + read `<CHANG
 ```
 no active change AND new:
   → Isolate: branch/worktree per git.isolation (§New Change Setup step 2)
+  → bin/sdlc-ctx change init --slug "<slug>" --type "<type>" --rigor "<rigor>"
   → openspec new change "<change-name>"
-  → Create CPP artifacts + _state.json with type + phases + isolation persisted
   → Delegate phase 1 to {first_phase_agent}
 
 active change AND continue:
-  → openspec status + _state.json → current phase + next legal action
+  → bin/sdlc-ctx change get --change "<change-name>" → current phase + next legal action
   → DELEGATE that phase to its role. Never read the phase docs and produce the deliverable
-    yourself (the write guard blocks you anyway). You seed the baton + report; the role writes.
+    yourself (the write guard blocks you anyway).
 
 active change AND approve:
-  → _state.json → current_phase
-  → STEP 0 (MANDATORY): node {{PLATFORM_DIR}}/tools/pipeline-guard.mjs --gate <current_phase>
-     exit 1 → STOP, show its reason (OUT OF ORDER / FENCE-JUMP / MISSING ARTIFACTS); no audit, no approve.
+  → bin/sdlc-ctx change get --change "<change-name>" → current_phase
+  → STEP 0 (MANDATORY): bin/sdlc-ctx gate inspect --change "<change-name>" --gate <current_phase>
+     can_pass == false → STOP, show violation blockers; no audit, no approve without authorized --force-reason.
   → run the pre-gate audit (§Gate Audit Map)
   → FAIL (incl. openspec change validate at S2/S3) → block, show blockers, STOP
-  → PASS → advance in ONE surgical call:
-     node {{PLATFORM_DIR}}/tools/state-set.mjs --set gates.<current_phase>=passed --set current_phase=<next> --unset blocker
-     then DELEGATE the next phase to its role. `_progress.md` is the role's artifact, not yours.
+  → PASS → advance surgically:
+     bin/sdlc-ctx gate pass --change "<change-name>" --gate <current_phase> --approver human
+     bin/sdlc-ctx change transition --change "<change-name>" --phase <next>
+     bin/sdlc-ctx sync export --change "<change-name>" --dir ./openspec/changes/<change-name>
+     then DELEGATE the next phase to its role.
 
-dispute → §Dispute Resolution
-nogo    → node {{PLATFORM_DIR}}/tools/state-set.mjs --set 'blocker=<reason>'; respawn the role
-status  → openspec list + status + _progress.md
+dispute → bin/sdlc-ctx orch dispute-bug ...
+nogo    → bin/sdlc-ctx gate block --change "<change-name>" --gate <current_phase> --reason "<reason>"; respawn role
+status  → bin/sdlc-ctx change get --change "<change-name>"
+flex    → bin/sdlc-ctx flex (patch-req / supersede-adr / split-task / preview-impact) for in-flight amendments
 ```
 
 **`nogo` targeting:** default = `current_phase`'s role (S2→analyst · S3→architect · S4→developer ·

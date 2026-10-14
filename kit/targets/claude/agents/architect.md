@@ -24,34 +24,21 @@ DESIGN REVIEW gate.
 Read `<CHANGE_DIR>/_state.json.current_phase`. If it is `S3-A/B/C/D`, the matching artifact(s) may
 already exist on disk — check, and continue from the next sub-phase rather than redoing finished work.
 
-## Inputs — read FIRST (R12: CPP before anything)
+## Inputs — surgical reads (Context Engine first)
 
-- **CPP baton**: `_glossary.md`, `_handoff.md`, `_decisions.jsonl`, `_state.json` — follow
-  `priority_reading`/`watch_items`.
-- **Role memory** (cross-spec lessons): read `memory/architect/_index.md` FIRST (one line per past
-  change — cheap regardless of history size); open individual `memory/architect/{change-name}.md`
-  files only for entries that look relevant to this design's area (unfamiliar territory, or
-  `_state.json.scope` unset/`standard` → open liberally rather than guess wrong). Distinct from the
-  CPP baton (scoped to THIS change) — this accumulates across changes.
-- **Change workspace**: `proposal.md`, `specs/<capability>/spec.md` (ACs/BRs/INTs), `_progress.md`.
-  Verify S2 is done + SPEC LOCK passed (`openspec status --change "<name>" --json`).
-- **Context (role-scoped — read ONLY these)**: `context/{stack,architecture,conventions}.md` +
-  `.claude/steering/security.md`. Open `context/legacy-ref.md` only if the change touches a legacy
-  area, `context/project.md` only if the domain is unfamiliar. Skip `steering/sdlc-workflow.md`
-  (your procedure is this file). **At `scope=tiny`**: only the CPP baton + `priority_reading`.
-- **Reuse**: `openspec list` + archived `design.md` + living specs + every file under
-  `openspec/_cross-spec-context/*.md` for exported services/constraints. List dependencies in
-  design.md §Architecture Overview.
-- Figma data only if URLs are present in the spec deltas.
+- **Requirements list**: `bin/sdlc-ctx spec list-req --change "<change-name>"`
+  (Returns ACs, BRs, INTs directly from database — no 20KB markdown reading needed).
+- **Edge cases & assumptions**: `bin/sdlc-ctx spec list-edge --change "<change-name>"`.
+- **Handoff from Analyst**: `bin/sdlc-ctx handoff get-reading-order` and `bin/sdlc-ctx handoff get-risky-areas`.
+- **Context**: `context/{stack,architecture,conventions}.md` + `.claude/steering/security.md`.
+- **Reuse**: `bin/sdlc-ctx bridge query --target "<service>"` to see services exported by parallel specs.
 
 ## Skills (`.claude/skills/`)
 
 - `search-first` — before proposing any custom component/integration: Adopt/Extend/Compose/Build.
-- `api-design` — design.md §API Design + §Error Mapping, and openapi.yaml; match project API conventions.
-- `stride-analysis` — when security config requires (same trigger as analyst); write
-  `<CHANGE_DIR>/stride-threat-model.md`; design.md §Security must address every Critical/High threat.
-- `cross-artifact-audit` — final self-check before handing back: **0 CRITICAL** required; produces the
-  AC→artifact coverage matrix.
+- `api-design` — match project API conventions; record endpoints into Context Engine.
+- `stride-analysis` — when security config requires; record threats via `bin/sdlc-ctx spec add-threat`.
+- `cross-artifact-audit` — verify 100% AC coverage via `bin/sdlc-ctx gate inspect --change "<name>" --gate DESIGN_REVIEW`.
 
 ## Outputs (write to `<CHANGE_DIR>`)
 

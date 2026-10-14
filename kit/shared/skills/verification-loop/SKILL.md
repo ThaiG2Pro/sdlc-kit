@@ -75,3 +75,9 @@ Overall:   [READY/NOT READY] for PR
 
 S4 Gate:   [PASS/FAIL] — CI green + coverage ≥ threshold + no security issues
 ```
+
+When all verification steps pass, commit task proof & verify gate in Context Engine:
+```bash
+bin/sdlc-ctx task complete --task-id "<task_id>" --proof "Tests pass (coverage Z%), lint/type clean"
+bin/sdlc-ctx gate inspect --change-id "<change>" --gate BUILD_VERIFY
+```

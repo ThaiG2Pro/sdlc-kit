@@ -21,12 +21,17 @@ description: >
 
 ## Execution
 
-### Step 1: Load Artifacts
-Read from CHANGE_DIR (`openspec/changes/<change>/`):
-- `proposal.md` + spec deltas — extract all AC-IDs, BR-IDs, INT-IDs from the Structured Extract / scenarios
-- `design.md` — extract API endpoints, DB tables, error mappings
-- `openapi.yaml` — extract paths, methods, request/response schemas
-- `tasks.md` — extract all task items with AC-ID references and file paths
+### Step 1: Load Artifacts & Contracts
+Query the Context Engine directly for canonical structured contracts:
+- `bin/sdlc-ctx gate inspect --change-id "<change>" --gate DESIGN_REVIEW` (validates invariant checks, orphan tasks, and unmapped ACs)
+- `bin/sdlc-ctx spec list-req --change-id "<change>"` (extract all AC-IDs, business rules, priorities)
+- `bin/sdlc-ctx design get-contract --change-id "<change>"` (extract endpoints, DB schemas, ADRs)
+- `bin/sdlc-ctx task list --change-id "<change>"` (extract tasks, AC references, file paths, dependencies)
+
+For human review or file parity, inspect CHANGE_DIR (`openspec/changes/<change>/`):
+- `proposal.md` + spec deltas
+- `design.md` + `openapi.yaml`
+- `tasks.md`
 
 ### Step 2: Build Coverage Matrix
 

@@ -61,7 +61,10 @@ ticket id is given, propose a slug from the subject and confirm it in your retur
    **§Interactions** (what each action does; navigation; success/error feedback) · **§Open questions**
    (anything the design doesn't answer — tag `[INFERRED]` for guesses). Skip this step (note why in
    §4) for tickets with no UI.
-8. **Self-check + return** (below).
+8. **Persist into Context Engine**:
+   - Register ticket: `bin/sdlc-ctx intake save-ticket --ticket-id "<ticket_id>" --slug "<slug>" --subject "<subject>" --description "<description>" --package-dir "docs/extra-docs/<ticket_id>-<slug>"`
+   - Register each UI screen: `bin/sdlc-ctx intake save-ui-screen --ticket-id "<ticket_id>" --screen-name "<screen>" --purpose "<purpose>" --route "<route>" --figma-url "<url>" --image-path "<path>"`
+9. **Self-check + return** (below).
 
 ## Outputs — under `docs/extra-docs/<ticket_id>-<slug>/`
 

@@ -19,18 +19,18 @@ Chạy trong 1 session để tiết kiệm context load.
 
 ## Input
 
-1. `openspec/changes/<change>/proposal.md` + spec deltas — đọc `_Structured Extract` trước
-2. `docs/extra-docs/{ticket}-{slug}/` — intake package (nếu tồn tại)
-3. `memory/qa/*.md` — bug patterns / lessons đã biết (mỗi file 1 change trước, đọc TOÀN BỘ)
-4. `dev-test-report.md` — nếu có (cho gap review)
+1. `bin/sdlc-ctx spec list-req --change-id <change>` — AC list, business rules, priorities
+2. `bin/sdlc-ctx intake get-summary --ticket-id <ticket>` hoặc `docs/extra-docs/{ticket}-{slug}/`
+3. `bin/sdlc-ctx role recall --role qa --change-id <change>` — bug patterns / lessons đã biết từ memory
+4. `dev-test-report.md` + `bin/sdlc-ctx qa verification-matrix --change-id <change>` (cho gap review)
 
 ## Phase 1 — Risk Scanning
 
 ### Bước 1: Map feature
 
 ```
-1. Đọc _Structured Extract → AC list, business rules, integration points
-2. Đọc memory/qa/*.md → có pattern bug quen nào cho domain này?
+1. Query bin/sdlc-ctx spec list-req → AC list, business rules, integration points
+2. Query bin/sdlc-ctx role recall --role qa → có pattern bug quen nào cho domain này?
 3. Liệt kê: actors, actions, states, integration points
 ```
 
@@ -112,10 +112,11 @@ Chạy SAU khi có test cases (từ dev-test-report.md hoặc QA test scenarios)
 
 ### Bước 2: Build TC coverage map
 
-Đọc theo thứ tự:
-1. `dev-test-report.md` → AC coverage từ Dev
-2. QA test scenarios (nếu đã generate)
-3. Build: `{AC-ID → [test files/IDs] hoặc []}`
+Query Context Engine & read reports:
+1. `bin/sdlc-ctx qa verification-matrix --change-id <change>` → Matrix coverage và test mapping
+2. `dev-test-report.md` → AC coverage từ Dev
+3. QA test scenarios (nếu đã generate)
+4. Build: `{AC-ID → [test files/IDs] hoặc []}`
 
 ### Bước 3: Check source code (nếu có access)
 
