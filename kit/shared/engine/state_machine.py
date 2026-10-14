@@ -584,6 +584,10 @@ class SDLCStateMachine:
         self.conn.commit()
         return {"gate_name": gate_name, "status": "BLOCKED", "reason": blocker_reason}
 
+    def gate_record_blocker(self, change_id: str, gate_name: str, blocker_type: str = "BLOCKER", details: str = "", actor: str = "orchestrator") -> Dict[str, Any]:
+        reason = f"[{blocker_type}] {details}" if details else blocker_type
+        return self.gate_mark_blocked(change_id, gate_name, reason, actor)
+
     def gate_list_history(self, change_id: str) -> List[Dict[str, Any]]:
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM gate_history WHERE change_id = ? ORDER BY id ASC;", (change_id,))

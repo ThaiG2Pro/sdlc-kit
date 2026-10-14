@@ -107,14 +107,14 @@ Usage:
   bin/sdlc-ctx <domain> <action> [options]
 
 Domains:
-  change     Lifecycle commands (init, get, transition, scope)
-  gate       Quality gate audits (inspect, pass, block)
-  task       Implementation tasks (next, start, complete, list)
-  spec       Requirements & Specs (add-req, list-req, commit-spec-lock, add-edge, list-edge, record-clarification, add-threat)
-  arch       Architecture & Design (record-adr, list-adrs, record-endpoint, record-schema)
-  flex       Surgical hot-patching (patch-req, deprecate-req, supersede-adr, split-task, preview-impact, override)
-  qa         Verification & Testing (verification-matrix, report-bug, record-test, record-verification)
-  bug        Defect management (retest, list)
+  change     Lifecycle commands (init, get, list, status, transition, scope)
+  gate       Quality gate audits (inspect, pass, block, history)
+  task       Implementation tasks (create, next, start, complete, list, get, inspect-work-context)
+  spec       Requirements & Specs (add-req, add-req-batch, list-req, commit-spec-lock, add-edge, list-edge, record-clarification, add-threat)
+  arch       Architecture & Design (record-adr, list-adrs, record-endpoint, list-endpoints, record-schema, list-schemas, list-components, commit-review)
+  flex       Surgical hot-patching (patch-req, deprecate-req, supersede-adr, split-task, preview-impact, override, qa-mark-known-issue)
+  qa         Verification & Testing (verification-matrix, list-scenarios, create-scenario, create-scenarios-batch, record-tests-batch, report-bug, record-verification)
+  bug        Defect management (list, get, report, fix, retest)
   handoff    Inter-phase baton (create, get-latest, get-reading-order, get-risky-areas)
   intake     Intake tickets & UI (save-ticket, save-ui-screen, get-summary)
   knowledge  Context indexing & FTS (index-file, search)
@@ -192,6 +192,8 @@ def main():
                     flags.get("blocker_type", "AUDIT_FAIL"),
                     flags.get("details", "")
                 ))
+            elif action in ("history", "list"):
+                output(sm.gate_list_history(change_id))
             else:
                 sys.stderr.write(f"Unknown gate action: {action}\n")
                 sys.exit(1)
@@ -221,10 +223,35 @@ def main():
                 if action == "next":
                     res = srv.task_get_next_active(change_id)
                     output(res or {"status": "NO_ACTIVE_TASKS"})
-                elif action in ("inspect-context", "work-context"):
+                elif action in ("inspect-work-context", "inspect-context", "work-context", "context", "get-work-context"):
                     output(srv.task_inspect_work_context(change_id, flags.get("task") or flags.get("task_id")))
                 elif action == "list":
-                    output(srv.task_list_all(change_id))
+                    output(srv.task_list_all(change_id, status=flags.get("status")))
+                elif action in ("get", "details"):
+                    output(srv.task_get_details(change_id, flags.get("task") or flags.get("task_id")))
+                elif action in ("create", "add"):
+                    mapped_acs = flags.get("acs", "[]")
+                    if isinstance(mapped_acs, str):
+                        try:
+                            mapped_acs = json.loads(mapped_acs)
+                        except Exception:
+                            mapped_acs = [mapped_acs]
+                    depends_on = flags.get("depends", "[]")
+                    if isinstance(depends_on, str):
+                        try:
+                            depends_on = json.loads(depends_on)
+                        except Exception:
+                            depends_on = [depends_on]
+                    output(srv.task_create(
+                        change_id=change_id,
+                        task_id=flags.get("task") or flags.get("task_id", "T1"),
+                        order=int(flags.get("order", flags.get("order_index", 1))),
+                        title=flags.get("title", ""),
+                        file=flags.get("file", flags.get("target_file", "")),
+                        mapped_acs=mapped_acs,
+                        depends_on=depends_on,
+                        is_checkpoint=bool(flags.get("checkpoint", False))
+                    ))
                 else:
                     sys.stderr.write(f"Unknown task action: {action}\n")
                     sys.exit(1)
@@ -348,7 +375,7 @@ def main():
                         chosen=flags.get("chosen", flags.get("decision", "")),
                         rationale=flags.get("rationale", "")
                     ))
-                elif action == "list-adrs":
+                elif action in ("list-adrs", "adrs"):
                     output(srv.design_list_adrs(change_id, status=flags.get("status")))
                 elif action == "record-endpoint":
                     output(srv.design_set_endpoint(
@@ -356,12 +383,20 @@ def main():
                         method=flags.get("method", "GET"),
                         path=flags.get("path", "/")
                     ))
+                elif action in ("list-endpoints", "endpoints"):
+                    output(srv.design_list_endpoints(change_id))
                 elif action == "record-schema":
                     output(srv.design_set_schema(
                         change_id=change_id,
                         table_name=flags.get("table", flags.get("model_name", "entity")),
                         columns=json.loads(flags.get("columns", "[]")) if isinstance(flags.get("columns"), str) else []
                     ))
+                elif action in ("list-schemas", "schemas"):
+                    output(srv.design_list_schemas(change_id))
+                elif action in ("list-components", "components"):
+                    output(srv.design_list_components(change_id))
+                elif action in ("commit-review", "review"):
+                    output(srv.design_commit_review(change_id))
                 else:
                     sys.stderr.write(f"Unknown arch action: {action}\n")
                     sys.exit(1)
@@ -371,6 +406,18 @@ def main():
                     output(srv.qa_get_verification_matrix(change_id))
                 elif action in ("inspect-context", "audit-context"):
                     output(srv.qa_inspect_audit_context(change_id))
+                elif action in ("list-scenarios", "list-tests", "scenarios"):
+                    output(srv.qa_list_test_scenarios(change_id, ac_id=flags.get("ac") or flags.get("req")))
+                elif action in ("create-scenario", "add-scenario"):
+                    output(srv.qa_create_test_scenario(
+                        change_id=change_id,
+                        scenario_id=flags.get("scenario") or flags.get("scenario_id", "TC-01"),
+                        mapped_ac=flags.get("ac") or flags.get("mapped_ac", "AC-01"),
+                        title=flags.get("title", ""),
+                        steps=flags.get("steps", ""),
+                        expected=flags.get("expected", ""),
+                        priority=flags.get("priority", "P1")
+                    ))
                 elif action == "create-scenarios-batch":
                     batch_data = load_json_input(flags)
                     if not batch_data or not isinstance(batch_data, list):
@@ -383,10 +430,10 @@ def main():
                         sys.stderr.write("ERROR: Batch data must be a JSON array of test run objects\n")
                         sys.exit(1)
                     output(srv.qa_record_tests_batch(change_id, batch_data))
-                elif action == "report-bug":
+                elif action in ("report-bug", "report"):
                     output(srv.qa_report_bug(
                         change_id=change_id,
-                        bug_id=flags.get("bug_id"),
+                        bug_id=flags.get("bug_id") or flags.get("bug"),
                         severity=flags.get("severity", "MEDIUM"),
                         classification=flags.get("classification", "LOGIC"),
                         rca_phase=flags.get("rca_phase", "S4"),
@@ -411,6 +458,36 @@ def main():
             elif domain == "bug":
                 if action == "list":
                     output(srv.qa_list_bugs(change_id, severity=flags.get("severity"), status=flags.get("status")))
+                elif action == "retest":
+                    from state_machine import SDLCStateMachine
+                    sm = SDLCStateMachine(conn)
+                    output(sm.bug_retest(
+                        change_id=change_id,
+                        bug_id=flags.get("bug") or flags.get("bug_id"),
+                        verdict=flags.get("verdict", "PASS"),
+                        qa_notes=flags.get("notes", flags.get("qa_notes", ""))
+                    ))
+                elif action in ("submit-fix", "fix"):
+                    from state_machine import SDLCStateMachine
+                    sm = SDLCStateMachine(conn)
+                    output(sm.bug_submit_fix(
+                        change_id=change_id,
+                        bug_id=flags.get("bug") or flags.get("bug_id"),
+                        fix_commit_or_diff=flags.get("diff", flags.get("commit", "manual fix")),
+                        regression_test_name=flags.get("test", flags.get("regression_test", "test_regression"))
+                    ))
+                elif action in ("report", "add", "report-bug"):
+                    output(srv.qa_report_bug(
+                        change_id=change_id,
+                        bug_id=flags.get("bug_id") or flags.get("bug"),
+                        severity=flags.get("severity", "MEDIUM"),
+                        classification=flags.get("classification", "LOGIC"),
+                        rca_phase=flags.get("rca_phase", "S4"),
+                        title=flags.get("title", ""),
+                        repro=flags.get("repro", flags.get("steps", ""))
+                    ))
+                elif action in ("get", "details"):
+                    output(srv.qa_get_bug_details(flags.get("bug") or flags.get("bug_id")))
                 else:
                     sys.stderr.write(f"Unknown bug action: {action}\n")
                     sys.exit(1)

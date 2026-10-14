@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS gate_history (
     passed_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- View alias: enables queries against `gates` to resolve to `gate_history`
+CREATE VIEW IF NOT EXISTS gates AS SELECT * FROM gate_history;
+
 CREATE TABLE IF NOT EXISTS blockers (
     blocker_id TEXT PRIMARY KEY,        -- BLK-01, BLK-02...
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -63,6 +66,8 @@ CREATE TABLE IF NOT EXISTS phase_progress (
     next_action TEXT,
     logged_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE VIEW IF NOT EXISTS progress_log AS SELECT * FROM phase_progress;
 
 CREATE TABLE IF NOT EXISTS phase_handoff (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,6 +97,11 @@ CREATE TABLE IF NOT EXISTS decision_ledger (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE VIEW IF NOT EXISTS decision_log AS SELECT decision_id AS id, * FROM decision_ledger;
+CREATE VIEW IF NOT EXISTS decisions AS SELECT decision_id AS id, * FROM decision_ledger;
+CREATE VIEW IF NOT EXISTS adrs AS SELECT decision_id AS id, * FROM decision_ledger WHERE type IN ('design', 'architectural');
+CREATE VIEW IF NOT EXISTS architecture_adrs AS SELECT decision_id AS id, * FROM decision_ledger WHERE type IN ('design', 'architectural');
+
 CREATE TABLE IF NOT EXISTS change_glossary (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -103,6 +113,9 @@ CREATE TABLE IF NOT EXISTS change_glossary (
     UNIQUE(change_id, term)
 );
 
+CREATE VIEW IF NOT EXISTS project_glossary AS SELECT * FROM change_glossary;
+CREATE VIEW IF NOT EXISTS glossary AS SELECT * FROM change_glossary;
+
 CREATE TABLE IF NOT EXISTS cross_spec_bridge (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -111,6 +124,9 @@ CREATE TABLE IF NOT EXISTS cross_spec_bridge (
     contract_summary TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE VIEW IF NOT EXISTS bridge_contracts AS SELECT * FROM cross_spec_bridge;
+CREATE VIEW IF NOT EXISTS bridge AS SELECT * FROM cross_spec_bridge;
 
 CREATE TABLE IF NOT EXISTS role_memory (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -157,6 +173,8 @@ CREATE TABLE IF NOT EXISTS project_knowledge (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE VIEW IF NOT EXISTS knowledge AS SELECT topic, topic AS title, content_json, version, last_updated_by, updated_at FROM project_knowledge;
+
 -- FTS5 table for fast local search
 CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts USING fts5(
     topic,
@@ -189,6 +207,8 @@ CREATE TABLE IF NOT EXISTS spec_edge_cases (
     mapped_ac_id TEXT REFERENCES spec_requirements(req_id)
 );
 
+CREATE VIEW IF NOT EXISTS edge_cases AS SELECT * FROM spec_edge_cases;
+
 CREATE TABLE IF NOT EXISTS spec_clarifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -220,6 +240,8 @@ CREATE TABLE IF NOT EXISTS design_schemas (
     UNIQUE(change_id, table_name)
 );
 
+CREATE VIEW IF NOT EXISTS schemas AS SELECT * FROM design_schemas;
+
 CREATE TABLE IF NOT EXISTS design_endpoints (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -232,6 +254,8 @@ CREATE TABLE IF NOT EXISTS design_endpoints (
     UNIQUE(change_id, method, path)
 );
 
+CREATE VIEW IF NOT EXISTS endpoints AS SELECT * FROM design_endpoints;
+
 CREATE TABLE IF NOT EXISTS design_components (
     component_id TEXT PRIMARY KEY,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -240,6 +264,8 @@ CREATE TABLE IF NOT EXISTS design_components (
     responsibility TEXT NOT NULL,
     dependencies_json TEXT              -- Array of component names
 );
+
+CREATE VIEW IF NOT EXISTS components AS SELECT component_id AS id, * FROM design_components;
 
 -- DOMAIN 7: TASK GRAPH & IMPLEMENTATION (Developer S4 / S6)
 CREATE TABLE IF NOT EXISTS task_graph (
@@ -292,6 +318,9 @@ CREATE TABLE IF NOT EXISTS qa_test_scenarios (
     execution_status TEXT NOT NULL DEFAULT 'UNTESTED' CHECK(execution_status IN ('UNTESTED', 'PASSED', 'FAILED', 'BLOCKED'))
 );
 
+CREATE VIEW IF NOT EXISTS test_scenarios AS SELECT scenario_id AS id, * FROM qa_test_scenarios;
+CREATE VIEW IF NOT EXISTS scenarios AS SELECT scenario_id AS id, * FROM qa_test_scenarios;
+
 CREATE TABLE IF NOT EXISTS qa_bugs (
     bug_id TEXT PRIMARY KEY,            -- BUG-01, BUG-02...
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -324,6 +353,8 @@ CREATE TABLE IF NOT EXISTS qa_verifications (
     verified_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE VIEW IF NOT EXISTS verifications AS SELECT * FROM qa_verifications;
+
 CREATE TABLE IF NOT EXISTS qa_hollow_tests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -344,3 +375,5 @@ CREATE TABLE IF NOT EXISTS state_audit_log (
     reason TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE VIEW IF NOT EXISTS audit_log AS SELECT * FROM state_audit_log;

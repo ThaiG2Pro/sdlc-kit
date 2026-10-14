@@ -293,9 +293,21 @@ def dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
             elif action == "commit_spec_lock":
                 return srv.spec_commit_spec_lock(change_id, args.get("scope", "standard"))
             elif action == "record_clarification":
-                return srv.spec_record_clarification(change_id, args.get("question", ""), "Impact", args.get("answer", ""))
+                return srv.spec_record_clarification(
+                    change_id,
+                    args.get("question", ""),
+                    args.get("impact", "Architecture"),
+                    args.get("answer", args.get("proposed_guess", ""))
+                )
             elif action == "add_threat":
-                return srv.spec_add_stride_threat(args.get("threat_id", "T-01"), change_id, "S", "Security threat", "Mitigation")
+                return srv.spec_add_stride_threat(
+                    threat_id=args.get("threat_id", "T-01"),
+                    change_id=change_id,
+                    category=args.get("category", "Spoofing"),
+                    description=args.get("description", args.get("desc", "Security threat")),
+                    mitigation_strategy=args.get("mitigation", args.get("mitigation_strategy", "Mitigation")),
+                    mapped_ac_id=args.get("mapped_ac_id", args.get("mapped_ac"))
+                )
             raise ValueError(f"Unknown spec action: {action}")
 
         elif name == "sdlc_get_work_context":
@@ -329,18 +341,24 @@ def dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
                 return srv.qa_record_tests_batch(change_id, args.get("test_runs", []))
             elif action == "report_bug":
                 return srv.qa_report_bug(
-                    change_id, args.get("bug_id", "BUG-01"),
+                    change_id,
+                    args.get("bug_id", "BUG-01"),
                     args.get("severity", "MEDIUM"),
-                    "LOGIC", "S4",
+                    args.get("classification", "LOGIC-BUG"),
+                    args.get("rca_phase", "S4"),
                     args.get("title", "Bug"),
-                    args.get("repro", "")
+                    args.get("repro", args.get("steps", ""))
                 )
             elif action == "record_verification":
                 return srv.qa_record_verification(
-                    change_id, "module", 0, 0, 0,
-                    float(args.get("coverage", 0.0)),
-                    args.get("verdict", "GO"),
-                    args.get("title", "")
+                    change_id,
+                    scope=args.get("scope", "module"),
+                    total=int(args.get("total", 0)),
+                    passed=int(args.get("passed", 0)),
+                    failed=int(args.get("failed", 0)),
+                    coverage=float(args.get("coverage", 0.0)),
+                    verdict=args.get("verdict", "GO"),
+                    notes=args.get("notes", args.get("title", ""))
                 )
             raise ValueError(f"Unknown qa action: {action}")
 
@@ -387,12 +405,17 @@ def dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
             elif action == "query_table":
                 table = args.get("table", "").strip()
                 allowed_tables = {
-                    "change_state", "phase_handoff", "decision_log", "progress_log",
-                    "project_glossary", "bridge_contracts", "project_knowledge",
-                    "spec_requirements", "spec_edge_cases", "spec_clarifications",
-                    "spec_stride_threats", "architecture_adrs", "design_schemas",
-                    "design_endpoints", "design_components", "task_graph",
-                    "dev_deviations", "qa_test_scenarios", "qa_bugs", "role_memory"
+                    "change_state", "changes", "phase_handoff", "decision_ledger", "decision_log",
+                    "decisions", "adrs", "architecture_adrs", "phase_progress", "progress_log",
+                    "change_glossary", "project_glossary", "glossary", "cross_spec_bridge",
+                    "bridge_contracts", "bridge", "project_knowledge", "knowledge",
+                    "spec_requirements", "requirements", "spec_edge_cases", "edge_cases",
+                    "spec_clarifications", "spec_stride_threats", "design_schemas", "schemas",
+                    "design_endpoints", "endpoints", "design_components", "components",
+                    "task_graph", "tasks", "dev_deviations", "qa_test_scenarios", "test_scenarios",
+                    "scenarios", "qa_bugs", "bugs", "qa_verifications", "verifications",
+                    "qa_hollow_tests", "gate_history", "gates", "blockers", "role_memory",
+                    "release_plans", "state_audit_log", "audit_log", "intake_packages", "intake_ui_screens"
                 }
                 if table not in allowed_tables:
                     raise ValueError(f"Table '{table}' not allowed. Allowed: {sorted(allowed_tables)}")
@@ -415,10 +438,11 @@ def dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
             elif action == "safe_sql":
                 sql = args.get("query", "").strip()
                 sql_upper = sql.upper()
-                if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
-                    raise ValueError("safe_sql only allows read-only SELECT or WITH statements.")
+                is_read_only_pragma = bool(re.match(r"^PRAGMA\s+(TABLE_INFO|INDEX_LIST|FOREIGN_KEY_LIST|DATABASE_LIST)\b", sql_upper))
+                if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH") or is_read_only_pragma):
+                    raise ValueError("safe_sql only allows read-only SELECT, WITH, or inspection PRAGMA statements.")
 
-                denied = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "DETACH", "PRAGMA", "REPLACE"]
+                denied = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "DETACH", "REPLACE"]
                 for d in denied:
                     if re.search(r"\b" + d + r"\b", sql_upper):
                         raise ValueError(f"safe_sql contains forbidden keyword: {d}")

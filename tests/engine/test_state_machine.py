@@ -160,6 +160,30 @@ class TestStateMachine(unittest.TestCase):
         self.assertIsNotNone(row)
         self.assertEqual(row["slug"], "user-auth")
 
+    def test_all_view_aliases_exist(self):
+        cursor = self.conn.cursor()
+        views = [
+            "changes", "tasks", "requirements", "bugs", "gates",
+            "adrs", "decisions", "decision_log", "progress_log",
+            "glossary", "project_glossary", "bridge", "bridge_contracts",
+            "knowledge", "edge_cases", "schemas", "endpoints", "components",
+            "test_scenarios", "scenarios", "verifications", "audit_log"
+        ]
+        for v in views:
+            cursor.execute(f"SELECT * FROM {v} LIMIT 0;")
+        # Also test knowledge has title
+        cursor.execute("SELECT title FROM knowledge LIMIT 0;")
+
+    def test_gate_record_blocker(self):
+        res = self.sm.gate_record_blocker(self.change_id, "SPEC_LOCK", "AUDIT_FAIL", "AC missing details")
+        self.assertEqual(res["status"], "BLOCKED")
+        self.assertIn("AUDIT_FAIL", res["reason"])
+
+    def test_flex_split_task_alias(self):
+        from kit.shared.engine.flexible import SDLCFlexibleEngine
+        self.assertTrue(hasattr(SDLCFlexibleEngine, "flex_split_task"))
+        self.assertTrue(hasattr(SDLCFlexibleEngine, "flex_task_split"))
+
 
 if __name__ == "__main__":
     unittest.main()

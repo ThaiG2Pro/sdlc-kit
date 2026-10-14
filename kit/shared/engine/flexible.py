@@ -285,6 +285,9 @@ class SDLCFlexibleEngine:
 
         return {"original_task": task_id, "subtasks_created": created_ids}
 
+    # Alias for compatibility with callers using flex_split_task
+    flex_split_task = flex_task_split
+
     def flex_task_insert_urgent(
         self,
         change_id: str,
