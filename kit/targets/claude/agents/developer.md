@@ -19,17 +19,21 @@ locked design and return; the orchestrator owns the BUILD gate and user interact
 
 ## Resume check & Active Task (FIRST — via Context Engine)
 
-Do NOT scan or hand-edit `tasks.md`. Query the Context Engine for your exact active work item:
+Do NOT scan or hand-edit `tasks.md`. Query the Context Engine for your consolidated chunky work context:
 ```bash
-bin/sdlc-ctx task next --change "<change-name>"
+bin/sdlc-ctx task inspect-context --change "<change-name>"
 ```
-Returns the next ready `TODO` task whose dependencies are satisfied (title, target file, mapped AC-IDs).
+Returns in ONE call:
+- Active task ready for execution (`task_id`, `target_file`, `mapped_acs`, `order`).
+- Full specification of all mapped AC requirements with Given-When-Then rules.
+- Recommended reading order & fragile/risky areas from the Architect handoff.
+- Relevant architecture ADRs, endpoints, and schemas.
+
 Work **one task or checkpoint segment per run** — mark `task start`, implement, self-verify, then mark `task complete`.
 
 ## Inputs — surgical reads (Context Engine first)
 
-- **Active task context**: `bin/sdlc-ctx task next --change "<name>"` gives you the exact task, file path, and ACs.
-- **Reading order & risky areas**: `bin/sdlc-ctx handoff get-reading-order` and `bin/sdlc-ctx handoff get-risky-areas`.
+- **Active work context**: `bin/sdlc-ctx task inspect-context --change "<name>"` delivers 100% of the active task, file path, mapped ACs, and handoff reading order in a single query.
 - **Design pack**: Read **only what the current task needs** (schema task → design §DB Schema; service →
   §Sequence Flows + §Error Mapping; controller → the openapi path; tests → AC-IDs + existing tests).
 - **Ticket package** (when the change came from intake): `docs/extra-docs/<ticket_id>-<slug>/` —

@@ -138,6 +138,85 @@ class TestServices(unittest.TestCase):
                     content = f.read()
                     self.assertIn(self.change_id, content)
 
+    def test_batch_operations(self):
+        # 1. Spec requirements batch
+        reqs = [
+            {"req_id": f"AC-{i:02d}", "title": f"AC Title {i}", "gwt": f"GWT {i}"}
+            for i in range(1, 11)
+        ]
+        res_reqs = self.srv.spec_add_requirements_batch(self.change_id, reqs)
+        self.assertEqual(res_reqs["inserted_count"], 10)
+        stored_reqs = self.srv.spec_list_requirements(self.change_id)
+        self.assertEqual(len(stored_reqs), 10)
+
+        # 2. Spec edge cases batch
+        edges = [
+            {"category": "BOUNDARY", "scenario": f"Edge {i}", "expected": "Handled", "mapped_ac": f"AC-{i:02d}"}
+            for i in range(1, 6)
+        ]
+        res_edges = self.srv.spec_add_edge_cases_batch(self.change_id, edges)
+        self.assertEqual(res_edges["inserted_count"], 5)
+        stored_edges = self.srv.spec_list_edge_cases(self.change_id)
+        self.assertEqual(len(stored_edges), 5)
+
+        # 3. QA scenarios & test execution batch
+        scenarios = [
+            {"scenario_id": f"TC-{i:02d}", "mapped_ac": f"AC-{i:02d}", "title": f"Test {i}", "steps": "Step", "expected": "Pass"}
+            for i in range(1, 6)
+        ]
+        res_scen = self.srv.qa_create_scenarios_batch(self.change_id, scenarios)
+        self.assertEqual(res_scen["inserted_count"], 5)
+
+        test_runs = [
+            {"scenario_id": f"TC-{i:02d}", "status": "PASS"}
+            for i in range(1, 6)
+        ]
+        res_runs = self.srv.qa_record_tests_batch(self.change_id, test_runs)
+        self.assertEqual(res_runs["updated_count"], 5)
+
+        # 4. Knowledge index batch
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for fname in ["stack.md", "architecture.md", "glossary.md"]:
+                with open(os.path.join(tmpdir, fname), "w", encoding="utf-8") as f:
+                    f.write(f"# Content for {fname}\nKey information here.")
+            idx_res = self.srv.knowledge_index_batch(tmpdir)
+            self.assertEqual(idx_res["indexed_count"], 3)
+            self.assertIn("stack", idx_res["topics"])
+            self.assertIn("architecture", idx_res["topics"])
+            self.assertIn("glossary", idx_res["topics"])
+
+    def test_chunky_composite_queries(self):
+        # Setup context
+        self.srv.handoff_create(
+            self.change_id, "S3", "S4", "architect",
+            key_decisions=["K1"], risky_areas=["Sensitive Token Storage"],
+            reading_order=["src/auth.ts", "src/models.ts"]
+        )
+        self.srv.design_add_adr(
+            self.change_id, "ADR-01", "Token Storage", "Need secure storage",
+            ["Cookie", "LocalStorage"], "Cookie", "HttpOnly security"
+        )
+        self.srv.spec_add_requirement(self.change_id, "AC-01", "AC", "CONFIRMED", "Login User", "Given user...")
+        self.srv.task_create(self.change_id, "T-10", 1, "Implement Auth", "src/auth.ts", ["AC-01"])
+
+        # Developer chunky query
+        dev_ctx = self.srv.task_inspect_work_context(self.change_id)
+        self.assertEqual(dev_ctx["task"]["task_id"], "T-10")
+        self.assertEqual(len(dev_ctx["requirements"]), 1)
+        self.assertEqual(dev_ctx["requirements"][0]["req_id"], "AC-01")
+        self.assertEqual(dev_ctx["handoff"]["reading_order"], ["src/auth.ts", "src/models.ts"])
+        self.assertEqual(dev_ctx["handoff"]["risky_areas"], ["Sensitive Token Storage"])
+        self.assertEqual(len(dev_ctx["architecture"]["adrs"]), 1)
+
+        # QA chunky query
+        qa_ctx = self.srv.qa_inspect_audit_context(self.change_id)
+        self.assertEqual(qa_ctx["change"]["change_id"], self.change_id)
+        self.assertIn("verification_matrix", qa_ctx)
+        self.assertIn("open_bugs", qa_ctx)
+        self.assertIn("risky_areas", qa_ctx)
+        self.assertIn("gate_status", qa_ctx)
+
 
 if __name__ == "__main__":
     unittest.main()
+

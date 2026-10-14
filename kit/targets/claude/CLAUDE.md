@@ -25,7 +25,13 @@ The orchestrator runs as a **dedicated agent** (`claude --agent sdlc-full` / `sd
 
 Instead of repeatedly reading 24KB+ of markdown baton files (`_handoff.md`, `_decisions.jsonl`, `_state.json`), all agents query and update state via `bin/sdlc-ctx`:
 - **State & Gates**: `bin/sdlc-ctx change get --change <id>`, `bin/sdlc-ctx gate inspect --change <id> --gate <name>`, `bin/sdlc-ctx gate pass --change <id> --gate <name>`
-- **Tasks**: `bin/sdlc-ctx task next --change <id>` (fetches only the current task with schema & ACs), `bin/sdlc-ctx task start`, `bin/sdlc-ctx task complete --cmd "<cmd>" --exit 0`
+- **Chunky Context Queries**:
+  - `bin/sdlc-ctx task inspect-context --change <id>`: Delivers active task + mapped ACs + reading order + risky areas + ADRs in 1 call.
+  - `bin/sdlc-ctx qa inspect-context --change <id>`: Delivers change state + gate audit + verification matrix + open bugs in 1 call.
+- **Batch Operations**:
+  - `bin/sdlc-ctx knowledge index-batch --dir context`: Indexes all context files in 1 atomic transaction.
+  - `bin/sdlc-ctx spec add-req-batch --change <id> --file <reqs.json>`: Inserts all ACs in 1 transaction.
+  - `bin/sdlc-ctx qa record-tests-batch --change <id> --file <tests.json>`: Records batch test run outcomes.
 - **Flexibility & In-flight Amendments**: `bin/sdlc-ctx flex patch-req`, `bin/sdlc-ctx flex supersede-adr`, `bin/sdlc-ctx flex split-task`, `bin/sdlc-ctx flex preview-impact`
 - **Dual-Layer Git Sync**: `bin/sdlc-ctx sync export --change <id> --dir <dir>` automatically renders clean OpenSpec Markdown artifacts for Git commits and PR reviews.
 

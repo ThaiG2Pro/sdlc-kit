@@ -90,7 +90,7 @@ checklist (✅/❌ per item) in your return.
 
 Once passed, index the context contract into the SQLite Context Engine for high-speed semantic search:
 ```bash
-for f in context/*.md; do [ -f "$f" ] && bin/sdlc-ctx knowledge index-file --file-path "$f" --doc-type "context"; done
+bin/sdlc-ctx knowledge index-batch --dir context --doc-type "context"
 ```
 
 > **Claude note:** on Claude there is no per-agent JSON `resources[]` to wire (that is Kiro's

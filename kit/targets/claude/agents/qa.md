@@ -60,10 +60,9 @@ burns tokens for nothing; don't.
 
 ## Inputs — surgical reads (Context Engine first)
 
+- **Consolidated Audit Context**: `bin/sdlc-ctx qa inspect-context --change "<change-name>"`
+  (Delivers in 1 call: change state & test scope, gate status, verification matrix, open bugs, and risky areas).
 - **Verification Matrix**: `bin/sdlc-ctx qa verification-matrix --change "<change-name>"`
-  (Instantly returns which ACs have dev tests and which are uncovered — zero manual parsing).
-- **Risky areas**: `bin/sdlc-ctx handoff get-risky-areas` tells you where Developer flagged fragile logic.
-- **Change state & test scope**: `bin/sdlc-ctx change get --change "<change-name>"` gives `test_scope` (module or full).
 - **Context**: `context/stack.md` (test & coverage commands).
 - **Quality policy**: `.claude/ai/sonar-policy.md`.
 
@@ -76,7 +75,7 @@ burns tokens for nothing; don't.
 
 ## Procedure (via Context Engine)
 
-1. **Inspect Matrix**: `bin/sdlc-ctx qa verification-matrix --change "<name>"`.
+1. **Inspect Consolidated Audit Context**: `bin/sdlc-ctx qa inspect-context --change "<name>"`.
 2. **Execute Independent Tests**: Re-run tests at `test_scope` (module/full). Test count must match dev report.
 3. **Log Bugs directly to Context Engine**:
    When discovering a bug, do not merely mention it in prose — log it:

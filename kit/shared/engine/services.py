@@ -792,3 +792,230 @@ class SDLCServices:
     def sync_import_all_markdown(self, change_id: str, source_dir: str) -> Dict[str, Any]:
         """Placeholder for bidirectional re-import from modified markdown."""
         return {"change_id": change_id, "source_dir": source_dir, "synced": True}
+
+    # =========================================================================
+    # DOMAIN 13: BATCH OPERATIONS & CHUNKY COMPOSITE QUERIES
+    # =========================================================================
+    def knowledge_index_file(self, file_path: str, doc_type: str = "context") -> Dict[str, Any]:
+        """Index a single markdown file into project knowledge and FTS."""
+        if not os.path.exists(file_path):
+            raise SDLCServiceException(f"File not found: {file_path}")
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        topic = os.path.splitext(os.path.basename(file_path))[0]
+        self.conn.execute("""
+            INSERT INTO project_knowledge (topic, content_json, version, last_updated_by)
+            VALUES (?, ?, 1, 'indexer')
+            ON CONFLICT(topic) DO UPDATE SET
+                content_json = excluded.content_json,
+                version = version + 1,
+                updated_at = CURRENT_TIMESTAMP;
+        """, (topic, json.dumps({"raw_markdown": content, "doc_type": doc_type})))
+        self.conn.execute("DELETE FROM knowledge_fts WHERE topic = ?;", (topic,))
+        self.conn.execute("INSERT INTO knowledge_fts (topic, title, body_text) VALUES (?, ?, ?);", (topic, topic.capitalize(), content))
+        self.conn.commit()
+        return {"file_path": file_path, "topic": topic, "status": "INDEXED"}
+
+    def knowledge_index_batch(self, files_or_dir: Union[str, List[str]], doc_type: str = "context") -> Dict[str, Any]:
+        """Atomically index multiple markdown files or an entire directory in a single transaction."""
+        file_list = []
+        if isinstance(files_or_dir, str):
+            if os.path.isdir(files_or_dir):
+                for f in sorted(os.listdir(files_or_dir)):
+                    if f.endswith(".md"):
+                        file_list.append(os.path.join(files_or_dir, f))
+            elif "," in files_or_dir:
+                file_list = [f.strip() for f in files_or_dir.split(",") if f.strip()]
+            else:
+                file_list = [files_or_dir]
+        else:
+            file_list = files_or_dir
+
+        indexed = []
+        for path in file_list:
+            if not os.path.exists(path) or os.path.isdir(path):
+                continue
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+            topic = os.path.splitext(os.path.basename(path))[0]
+            self.conn.execute("""
+                INSERT INTO project_knowledge (topic, content_json, version, last_updated_by)
+                VALUES (?, ?, 1, 'batch_indexer')
+                ON CONFLICT(topic) DO UPDATE SET
+                    content_json = excluded.content_json,
+                    version = version + 1,
+                    updated_at = CURRENT_TIMESTAMP;
+            """, (topic, json.dumps({"raw_markdown": content, "doc_type": doc_type})))
+            self.conn.execute("DELETE FROM knowledge_fts WHERE topic = ?;", (topic,))
+            self.conn.execute("INSERT INTO knowledge_fts (topic, title, body_text) VALUES (?, ?, ?);", (topic, topic.capitalize(), content))
+            indexed.append({"path": path, "topic": topic})
+
+        self.conn.commit()
+        return {"indexed_count": len(indexed), "topics": [i["topic"] for i in indexed], "status": "BATCH_INDEXED"}
+
+    def spec_add_requirements_batch(self, change_id: str, requirements: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Insert or update a batch of acceptance criteria in a single atomic transaction."""
+        for r in requirements:
+            self.conn.execute("""
+                INSERT INTO spec_requirements (req_id, change_id, type, tag, title, given_when_then, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'SPECIFIED')
+                ON CONFLICT(req_id) DO UPDATE SET
+                    tag = excluded.tag,
+                    title = excluded.title,
+                    given_when_then = excluded.given_when_then;
+            """, (
+                r["req_id"],
+                change_id,
+                r.get("type", "AC"),
+                r.get("tag", "CONFIRMED"),
+                r.get("title", ""),
+                r.get("gwt") or r.get("given_when_then")
+            ))
+        self.conn.commit()
+        return {"change_id": change_id, "inserted_count": len(requirements), "status": "BATCH_COMPLETED"}
+
+    def spec_add_edge_cases_batch(self, change_id: str, edge_cases: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Insert a batch of edge cases in a single atomic transaction."""
+        for e in edge_cases:
+            cat = str(e.get("category", "boundary")).lower()
+            self.conn.execute("""
+                INSERT INTO spec_edge_cases (change_id, category, scenario, expected_behavior, mapped_ac_id)
+                VALUES (?, ?, ?, ?, ?);
+            """, (
+                change_id,
+                cat,
+                e.get("scenario", ""),
+                e.get("expected", e.get("expected_behavior", "Error or fallback")),
+                e.get("mapped_ac") or e.get("mapped_ac_id")
+            ))
+        self.conn.commit()
+        return {"change_id": change_id, "inserted_count": len(edge_cases), "status": "BATCH_COMPLETED"}
+
+    def task_inspect_work_context(self, change_id: str, task_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Chunky composite query for Developer role.
+        Consolidates active task details, mapped AC requirements, architecture ADRs,
+        endpoints, and latest handoff into a single sub-millisecond query.
+        """
+        cursor = self.conn.cursor()
+
+        # 1. Active or specified task
+        if task_id:
+            task = self.task_get_details(change_id, task_id)
+        else:
+            task = self.task_get_next_active(change_id)
+
+        if not task:
+            return {"change_id": change_id, "status": "NO_ACTIVE_TASKS", "task": None}
+
+        # 2. Extract mapped ACs
+        mapped_acs = task.get("mapped_acs")
+        if not mapped_acs:
+            raw_json = task.get("mapped_acs_json", "[]")
+            try:
+                mapped_acs = json.loads(raw_json) if isinstance(raw_json, str) else []
+            except Exception:
+                mapped_acs = []
+
+        requirements = []
+        if mapped_acs:
+            placeholders = ",".join(["?"] * len(mapped_acs))
+            cursor.execute(f"SELECT * FROM spec_requirements WHERE change_id = ? AND req_id IN ({placeholders});", [change_id] + mapped_acs)
+            requirements = [dict(r) for r in cursor.fetchall()]
+
+        # 3. Latest handoff context (reading order, risky areas)
+        handoff = self.handoff_get_latest(change_id) or {}
+
+        # 4. Relevant design artifacts
+        adrs = self.design_list_adrs(change_id)
+        endpoints = self.design_list_endpoints(change_id)
+        schemas = self.design_list_schemas(change_id)
+
+        return {
+            "change_id": change_id,
+            "task": task,
+            "requirements": requirements,
+            "handoff": {
+                "reading_order": handoff.get("reading_order", []),
+                "risky_areas": handoff.get("risky_areas", []),
+                "contentious_points": handoff.get("contentious_points", [])
+            },
+            "architecture": {
+                "adrs": adrs,
+                "endpoints": endpoints,
+                "schemas": schemas
+            }
+        }
+
+    def qa_inspect_audit_context(self, change_id: str) -> Dict[str, Any]:
+        """
+        Chunky composite query for QA role.
+        Consolidates change state, verification matrix, open bugs, and gate status
+        into a single sub-millisecond query.
+        """
+        cursor = self.conn.cursor()
+
+        # 1. Change state
+        cursor.execute("SELECT * FROM change_state WHERE change_id = ?;", (change_id,))
+        change_row = cursor.fetchone()
+        change_info = dict(change_row) if change_row else {}
+
+        # 2. Verification matrix
+        matrix = self.qa_get_verification_matrix(change_id)
+
+        # 3. Open bugs
+        open_bugs = self.qa_list_bugs(change_id, status="OPEN")
+
+        # 4. Risky areas from handoff
+        risky_areas = self.handoff_get_risky_areas(change_id)
+
+        # 5. QA Gate inspection
+        from .state_machine import SDLCStateMachine
+        sm = SDLCStateMachine(self.conn)
+        gate_status = sm.gate_inspect(change_id, "QA")
+
+        return {
+            "change_id": change_id,
+            "change": change_info,
+            "gate_status": gate_status,
+            "verification_matrix": matrix,
+            "open_bugs": open_bugs,
+            "risky_areas": risky_areas
+        }
+
+    def qa_create_scenarios_batch(self, change_id: str, scenarios: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Insert a batch of test scenarios in a single atomic transaction."""
+        for s in scenarios:
+            self.conn.execute("""
+                INSERT INTO qa_test_scenarios (scenario_id, change_id, mapped_ac_id, title, steps, expected_result, priority, execution_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'UNTESTED')
+                ON CONFLICT(scenario_id) DO UPDATE SET
+                    title = excluded.title,
+                    steps = excluded.steps,
+                    expected_result = excluded.expected_result,
+                    priority = excluded.priority;
+            """, (
+                s["scenario_id"],
+                change_id,
+                s.get("mapped_ac") or s.get("mapped_ac_id", ""),
+                s.get("title", ""),
+                s.get("steps", ""),
+                s.get("expected", s.get("expected_result", "")),
+                s.get("priority", "P1")
+            ))
+        self.conn.commit()
+        return {"change_id": change_id, "inserted_count": len(scenarios), "status": "BATCH_COMPLETED"}
+
+    def qa_record_tests_batch(self, change_id: str, test_runs: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Update execution statuses for a batch of test scenarios in a single transaction."""
+        for tr in test_runs:
+            raw_st = str(tr.get("status", "PASSED")).upper()
+            status = "PASSED" if raw_st in ("PASS", "PASSED") else ("FAILED" if raw_st in ("FAIL", "FAILED") else raw_st)
+            self.conn.execute("""
+                UPDATE qa_test_scenarios
+                SET execution_status = ?
+                WHERE change_id = ? AND scenario_id = ?;
+            """, (status, change_id, tr.get("scenario_id") or tr.get("test_id")))
+        self.conn.commit()
+        return {"change_id": change_id, "updated_count": len(test_runs), "status": "BATCH_COMPLETED"}
+

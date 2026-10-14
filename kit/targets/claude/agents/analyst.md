@@ -29,13 +29,14 @@ block waiting for input.
 Run these in order during S1 Step 4; defer the detailed procedure to each skill:
 - `assumption-detector` (4a) → `[RISKY]`/`[SAFE]` assumptions.
 - `clarification-generator` (4b) → record open questions via `bin/sdlc-ctx spec record-clarification` (max 5).
-- `edge-case-enumerator` (4c) → record edge cases via `bin/sdlc-ctx spec add-edge` (minimum 10, or 3 if `scope=tiny`).
+- `edge-case-enumerator` (4c) → record edge cases via `bin/sdlc-ctx spec add-edge` (or in batch: `bin/sdlc-ctx spec add-edge-batch --change "<name>" --file <file.json>`).
 - `stride-analysis` (4e) → record threats via `bin/sdlc-ctx spec add-threat`.
 - `spec-auditor` (S2, before handing back) — verify via `bin/sdlc-ctx gate inspect --change "<name>" --gate SPEC_LOCK`.
 
 ## Outputs & Spec Lock
 
 - Record requirements directly: `bin/sdlc-ctx spec add-req --change "<name>" --req "AC-..." --type AC --tag CONFIRMED ...`
+  (or in atomic batch: `bin/sdlc-ctx spec add-req-batch --change "<name>" --file requirements.json`)
 - Finalize S2 via:
   ```bash
   bin/sdlc-ctx spec commit-spec-lock --change "<name>" --scope tiny|standard

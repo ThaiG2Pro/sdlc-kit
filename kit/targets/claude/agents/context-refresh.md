@@ -86,7 +86,7 @@ what demonstrably changed, never invent.
    ```
    After verification passes, re-index updated context files into SQLite FTS5:
    ```bash
-   for f in context/*.md; do [ -f "$f" ] && bin/sdlc-ctx knowledge index-file --file-path "$f" --doc-type "context"; done
+   bin/sdlc-ctx knowledge index-batch --dir context --doc-type "context"
    ```
 
 ## Return to the main session

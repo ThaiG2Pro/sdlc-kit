@@ -123,6 +123,14 @@ SERVICES_METHODS = [
     "memory_search",
     "sync_export_all_markdown",
     "sync_import_all_markdown",
+    "knowledge_index_file",
+    "knowledge_index_batch",
+    "spec_add_requirements_batch",
+    "spec_add_edge_cases_batch",
+    "task_inspect_work_context",
+    "qa_inspect_audit_context",
+    "qa_create_scenarios_batch",
+    "qa_record_tests_batch",
 ]
 
 FLEXIBLE_METHODS = [
@@ -189,7 +197,7 @@ class TestMethodsCatalog(unittest.TestCase):
 
     def test_total_method_count(self):
         total_methods = len(STATE_MACHINE_METHODS) + len(SERVICES_METHODS) + len(FLEXIBLE_METHODS)
-        self.assertEqual(total_methods, 115)  # 26 + 74 + 15 = 115 methods
+        self.assertEqual(total_methods, 123)  # 26 + 82 + 15 = 123 methods (including 8 batch/chunky methods)
 
 
 if __name__ == "__main__":

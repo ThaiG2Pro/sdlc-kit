@@ -19,6 +19,22 @@ if ENGINE_DIR not in sys.path:
     sys.path.insert(0, ENGINE_DIR)
 
 
+def load_json_input(flags: Dict[str, Any]) -> Any:
+    file_path = flags.get("file") or flags.get("input_file")
+    if file_path:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raw_json = flags.get("json") or flags.get("data")
+    if raw_json:
+        return json.loads(raw_json)
+    if not sys.stdin.isatty():
+        try:
+            return json.load(sys.stdin)
+        except Exception:
+            return None
+    return None
+
+
 def output(data: Any, as_json: bool = True):
     if as_json:
         print(json.dumps(data, indent=2, default=str))
@@ -193,6 +209,8 @@ def main():
                 if action == "next":
                     res = srv.task_get_next_active(change_id)
                     output(res or {"status": "NO_ACTIVE_TASKS"})
+                elif action in ("inspect-context", "work-context"):
+                    output(srv.task_inspect_work_context(change_id, flags.get("task") or flags.get("task_id")))
                 elif action == "list":
                     output(srv.task_list_all(change_id))
                 else:
@@ -253,6 +271,18 @@ def main():
                         title=flags.get("title", ""),
                         gwt=flags.get("gwt")
                     ))
+                elif action == "add-req-batch":
+                    batch_data = load_json_input(flags)
+                    if not batch_data or not isinstance(batch_data, list):
+                        sys.stderr.write("ERROR: Batch data must be a JSON array of requirement objects\n")
+                        sys.exit(1)
+                    output(srv.spec_add_requirements_batch(change_id, batch_data))
+                elif action == "add-edge-batch":
+                    batch_data = load_json_input(flags)
+                    if not batch_data or not isinstance(batch_data, list):
+                        sys.stderr.write("ERROR: Batch data must be a JSON array of edge case objects\n")
+                        sys.exit(1)
+                    output(srv.spec_add_edge_cases_batch(change_id, batch_data))
                 elif action == "list-req":
                     output(srv.spec_list_requirements(change_id, type=flags.get("type"), tag=flags.get("tag")))
                 elif action == "commit-spec-lock":
@@ -327,6 +357,20 @@ def main():
             elif domain == "qa":
                 if action == "verification-matrix":
                     output(srv.qa_get_verification_matrix(change_id))
+                elif action in ("inspect-context", "audit-context"):
+                    output(srv.qa_inspect_audit_context(change_id))
+                elif action == "create-scenarios-batch":
+                    batch_data = load_json_input(flags)
+                    if not batch_data or not isinstance(batch_data, list):
+                        sys.stderr.write("ERROR: Batch data must be a JSON array of scenario objects\n")
+                        sys.exit(1)
+                    output(srv.qa_create_scenarios_batch(change_id, batch_data))
+                elif action == "record-tests-batch":
+                    batch_data = load_json_input(flags)
+                    if not batch_data or not isinstance(batch_data, list):
+                        sys.stderr.write("ERROR: Batch data must be a JSON array of test run objects\n")
+                        sys.exit(1)
+                    output(srv.qa_record_tests_batch(change_id, batch_data))
                 elif action == "report-bug":
                     output(srv.qa_report_bug(
                         change_id=change_id,
@@ -389,6 +433,18 @@ def main():
                     output(srv.intake_get_summary(flags.get("ticket_id") or change_id))
                 else:
                     sys.stderr.write(f"Unknown intake action: {action}\n")
+                    sys.exit(1)
+
+            elif domain == "knowledge":
+                if action == "index-file":
+                    output(srv.knowledge_index_file(flags.get("file_path") or flags.get("file"), flags.get("doc_type", "context")))
+                elif action == "index-batch":
+                    target = flags.get("dir") or flags.get("files") or flags.get("file") or flags.get("path")
+                    output(srv.knowledge_index_batch(target or "./context", flags.get("doc_type", "context")))
+                elif action == "search":
+                    output(srv.knowledge_search(flags.get("query", "")))
+                else:
+                    sys.stderr.write(f"Unknown knowledge action: {action}\n")
                     sys.exit(1)
 
             elif domain == "role":

@@ -40,17 +40,22 @@ npx playwright test tests/e2e/{feature}/ --reporter=list,html
 ```
 
 Phân loại kết quả:
-- PASS → không xử lý
+- PASS → cập nhật kết quả test
 - FAIL → tạo bug report + post Redmine
 - SKIP → ghi nhận
 - FLAKY (fail lần 1, pass retry) → ghi flaky log, không tạo bug
+
+Cập nhật kết quả test hàng loạt trong 1 transaction:
+```bash
+bin/sdlc-ctx qa record-tests-batch --change "<change>" --file <results.json>
+```
 
 ### Bug report format
 
 Lưu: `openspec/changes/<change>/qa/bugs/{BUG_ID}/report.md`
 Đồng thời ghi vào SQLite Context Engine:
 ```bash
-bin/sdlc-ctx qa report-bug --change-id "<change>" --bug-id "{BUG_ID}" --title "{Tên bug ngắn}" --severity "{Severity}" --ac-id "{AC-ID}" --description "{mô tả}"
+bin/sdlc-ctx qa report-bug --change "<change>" --bug-id "{BUG_ID}" --title "{Tên bug ngắn}" --severity "{Severity}"
 ```
 
 ```markdown
