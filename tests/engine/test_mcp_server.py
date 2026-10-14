@@ -31,8 +31,8 @@ class TestMCPServer(unittest.TestCase):
         os.environ.pop("SDLC_DB_PATH", None)
 
     def test_tools_catalog_schema(self):
-        """Verify exactly 6 high-level Chunky Tools exist and conform to MCP Schema."""
-        self.assertEqual(len(TOOLS), 6)
+        """Verify exactly 7 high-level Chunky Tools exist and conform to MCP Schema."""
+        self.assertEqual(len(TOOLS), 7)
         tool_names = [t["name"] for t in TOOLS]
         expected_tools = [
             "sdlc_manage_lifecycle",
@@ -40,7 +40,8 @@ class TestMCPServer(unittest.TestCase):
             "sdlc_get_work_context",
             "sdlc_submit_task_result",
             "sdlc_audit_and_verify",
-            "sdlc_flex_patch"
+            "sdlc_flex_patch",
+            "sdlc_inspect_query"
         ]
         self.assertEqual(tool_names, expected_tools)
         for t in TOOLS:
@@ -89,6 +90,54 @@ class TestMCPServer(unittest.TestCase):
         self.assertIn("verification_matrix", res_qa)
         self.assertIn("open_bugs", res_qa)
 
+    def test_inspect_query_swiss_army_knife(self):
+        """Test the 7th tool (sdlc_inspect_query) for flexible ad-hoc inspection and safe SQL."""
+        cid = f"CHG-INSPECT-{uuid.uuid4().hex[:6]}"
+        dispatch_tool("sdlc_manage_lifecycle", {
+            "action": "init",
+            "change_id": cid,
+            "slug": "inspect-demo"
+        })
+        dispatch_tool("sdlc_record_spec_bundle", {
+            "change_id": cid,
+            "requirements": [
+                {"req_id": "AC-INSPECT-01", "title": "Check inspection", "gwt": "Given inspect"}
+            ]
+        })
+
+        # 1. query_table inspection
+        rows = dispatch_tool("sdlc_inspect_query", {
+            "action": "query_table",
+            "table": "spec_requirements",
+            "filters": {"change_id": cid}
+        })
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["req_id"], "AC-INSPECT-01")
+
+        # 2. safe_sql read
+        sql_rows = dispatch_tool("sdlc_inspect_query", {
+            "action": "safe_sql",
+            "query": f"SELECT req_id, title FROM spec_requirements WHERE change_id = '{cid}';"
+        })
+        self.assertEqual(len(sql_rows), 1)
+        self.assertEqual(sql_rows[0]["req_id"], "AC-INSPECT-01")
+
+        # 3. safe_sql forbidden statement check
+        with self.assertRaises(ValueError) as ctx_denied:
+            dispatch_tool("sdlc_inspect_query", {
+                "action": "safe_sql",
+                "query": f"DELETE FROM spec_requirements WHERE change_id = '{cid}';"
+            })
+        self.assertIn("safe_sql", str(ctx_denied.exception))
+
+        # 4. invalid table rejection
+        with self.assertRaises(ValueError) as ctx_tbl:
+            dispatch_tool("sdlc_inspect_query", {
+                "action": "query_table",
+                "table": "sqlite_master"
+            })
+        self.assertIn("not allowed", str(ctx_tbl.exception))
+
     def test_stdio_json_rpc_subshell_interaction(self):
         """Test persistent MCP server process communicating via stdio JSON-RPC 2.0 lines."""
         cid = f"CHG-STDIO-{uuid.uuid4().hex[:6]}"
@@ -133,7 +182,7 @@ class TestMCPServer(unittest.TestCase):
             tools_resp_line = proc.stdout.readline()
             tools_resp = json.loads(tools_resp_line)
             self.assertEqual(tools_resp["id"], 2)
-            self.assertEqual(len(tools_resp["result"]["tools"]), 6)
+            self.assertEqual(len(tools_resp["result"]["tools"]), 7)
 
             # 3. tools/call: init change
             call_req = json.dumps({

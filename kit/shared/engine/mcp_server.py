@@ -17,6 +17,7 @@ import os
 import sys
 import json
 import signal
+import re
 from typing import Dict, Any, Optional
 
 # Reserve clean raw stdout for JSON-RPC ONLY
@@ -179,8 +180,60 @@ TOOLS = [
             },
             "required": ["action", "change_id", "item_id"]
         }
+    },
+    {
+        "name": "sdlc_inspect_query",
+        "description": "Flexible Swiss Army Knife query engine: execute full-text search (FTS5) across indexed context/ADRs/glossary, inspect individual tables with filters, look up cross-service bridge contracts, or execute safe read-only SQL queries.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "search_knowledge",
+                        "search_decisions",
+                        "lookup_glossary",
+                        "query_table",
+                        "query_bridge",
+                        "safe_sql"
+                    ],
+                    "description": "Inspection action to perform."
+                },
+                "query": {
+                    "type": "string",
+                    "description": "Search term for search_knowledge/decisions, or read-only SQL query for safe_sql."
+                },
+                "topic": {
+                    "type": "string",
+                    "description": "Optional topic filter for search_knowledge (e.g. 'stack', 'conventions', 'architecture')."
+                },
+                "change_id": {
+                    "type": "string",
+                    "description": "Optional change ID to scope queries to."
+                },
+                "term": {
+                    "type": "string",
+                    "description": "Glossary term to look up."
+                },
+                "table": {
+                    "type": "string",
+                    "description": "Target table name for query_table (e.g. 'architecture_adrs', 'design_schemas', 'design_endpoints', 'spec_requirements', 'task_graph', 'qa_bugs')."
+                },
+                "filters": {
+                    "type": "object",
+                    "description": "Key-value equality filters for query_table (e.g. {'req_id': 'AC-01'})."
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 50,
+                    "description": "Maximum number of rows to return (default 50, max 100)."
+                }
+            },
+            "required": ["action"]
+        }
     }
 ]
+
 
 
 # =============================================================================
@@ -219,7 +272,14 @@ def dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
             raise ValueError(f"Unknown lifecycle action: {action}")
 
         elif name == "sdlc_record_spec_bundle":
-            action = args["action"]
+            action = args.get("action")
+            if not action:
+                if "requirements" in args:
+                    action = "add_requirements"
+                elif "edge_cases" in args:
+                    action = "add_edge_cases"
+                else:
+                    action = "add_requirements"
             if action == "add_requirements":
                 return srv.spec_add_requirements_batch(change_id, args.get("requirements", []))
             elif action == "add_edge_cases":
@@ -296,6 +356,73 @@ def dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
             elif action == "qa_mark_known_issue":
                 return flex.flex_qa_mark_known_issue(change_id, item_id, args.get("reason", "Approved known issue"), args.get("approver", "tech-lead"))
             raise ValueError(f"Unknown flex action: {action}")
+
+        elif name == "sdlc_inspect_query":
+            action = args["action"]
+            limit = min(int(args.get("limit", 50)), 100)
+
+            if action == "search_knowledge":
+                return srv.knowledge_search(args.get("query", ""), args.get("topic"))
+
+            elif action == "search_decisions":
+                return srv.decision_search(change_id or "GLOBAL", args.get("query", ""))
+
+            elif action == "lookup_glossary":
+                term = args.get("term", "")
+                return {
+                    "term": term,
+                    "definition": srv.glossary_lookup(change_id or "GLOBAL", term)
+                }
+
+            elif action == "query_bridge":
+                target = args.get("query") or args.get("target") or args.get("service", "")
+                return srv.bridge_query_dependencies(target)
+
+            elif action == "query_table":
+                table = args.get("table", "").strip()
+                allowed_tables = {
+                    "change_state", "phase_handoff", "decision_log", "progress_log",
+                    "project_glossary", "bridge_contracts", "project_knowledge",
+                    "spec_requirements", "spec_edge_cases", "spec_clarifications",
+                    "spec_stride_threats", "architecture_adrs", "design_schemas",
+                    "design_endpoints", "design_components", "task_graph",
+                    "dev_deviations", "qa_test_scenarios", "qa_bugs", "role_memory"
+                }
+                if table not in allowed_tables:
+                    raise ValueError(f"Table '{table}' not allowed. Allowed: {sorted(allowed_tables)}")
+
+                filters = args.get("filters", {})
+                where_clauses = []
+                params = []
+                for k, v in filters.items():
+                    if not k.replace("_", "").isalnum():
+                        continue
+                    where_clauses.append(f"{k} = ?")
+                    params.append(v)
+
+                where_sql = f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+                sql = f"SELECT * FROM {table}{where_sql} LIMIT {limit};"
+                cursor = conn.cursor()
+                cursor.execute(sql, params)
+                return [dict(r) for r in cursor.fetchall()]
+
+            elif action == "safe_sql":
+                sql = args.get("query", "").strip()
+                sql_upper = sql.upper()
+                if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
+                    raise ValueError("safe_sql only allows read-only SELECT or WITH statements.")
+
+                denied = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "DETACH", "PRAGMA", "REPLACE"]
+                for d in denied:
+                    if re.search(r"\b" + d + r"\b", sql_upper):
+                        raise ValueError(f"safe_sql contains forbidden keyword: {d}")
+
+                cursor = conn.cursor()
+                cursor.execute(sql)
+                rows = cursor.fetchmany(limit)
+                return [dict(r) for r in rows]
+
+            raise ValueError(f"Unknown inspect action: {action}")
 
         raise ValueError(f"Unknown tool name: {name}")
 
