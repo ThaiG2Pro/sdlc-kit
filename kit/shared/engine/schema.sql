@@ -201,7 +201,7 @@ CREATE VIEW IF NOT EXISTS requirements AS SELECT req_id AS id, * FROM spec_requi
 CREATE TABLE IF NOT EXISTS spec_edge_cases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
-    category TEXT NOT NULL CHECK(category IN ('boundary', 'state_transition', 'concurrency', 'data_integrity', 'permission', 'integration', 'ui_ux')),
+    category TEXT NOT NULL CHECK(category IN ('boundary', 'state_transition', 'concurrency', 'data_integrity', 'permission', 'integration', 'ui_ux', 'business_rule')),
     scenario TEXT NOT NULL,
     expected_behavior TEXT NOT NULL,
     mapped_ac_id TEXT REFERENCES spec_requirements(req_id)

@@ -379,13 +379,51 @@ class SDLCServices:
         row = cursor.fetchone()
         return dict(row) if row else None
 
+    @staticmethod
+    def _normalize_edge_case_category(raw: Optional[str]) -> str:
+        valid = {'boundary', 'state_transition', 'concurrency', 'data_integrity', 'permission', 'integration', 'ui_ux', 'business_rule'}
+        c = str(raw or 'boundary').lower().strip().replace(' ', '_').replace('-', '_').replace('/', '_')
+        if c in valid:
+            return c
+        if 'bound' in c or 'input' in c:
+            return 'boundary'
+        if 'state' in c:
+            return 'state_transition'
+        if 'concur' in c:
+            return 'concurrency'
+        if 'data' in c or 'integrity' in c:
+            return 'data_integrity'
+        if 'perm' in c or 'sec' in c or 'auth' in c:
+            return 'permission'
+        if 'integ' in c or 'fail' in c or 'ext' in c:
+            return 'integration'
+        if 'ui' in c or 'ux' in c or 'front' in c:
+            return 'ui_ux'
+        if 'biz' in c or 'business' in c or 'rule' in c:
+            return 'business_rule'
+        return 'boundary'
+
+    @staticmethod
+    def _normalize_stride_category(raw: Optional[str]) -> str:
+        mapping = {
+            's': 'Spoofing', 'spoofing': 'Spoofing',
+            't': 'Tampering', 'tampering': 'Tampering',
+            'r': 'Repudiation', 'repudiation': 'Repudiation',
+            'i': 'Information_Disclosure', 'info': 'Information_Disclosure', 'information_disclosure': 'Information_Disclosure',
+            'd': 'Denial_of_Service', 'dos': 'Denial_of_Service', 'denial_of_service': 'Denial_of_Service',
+            'e': 'Elevation_of_Privilege', 'eop': 'Elevation_of_Privilege', 'elevation_of_privilege': 'Elevation_of_Privilege',
+        }
+        key = str(raw or 's').lower().strip().replace('-', '_').replace(' ', '_')
+        return mapping.get(key, 'Spoofing')
+
     def spec_add_edge_case(self, change_id: str, category: str, scenario: str, expected_behavior: str, mapped_ac_id: Optional[str] = None) -> Dict[str, Any]:
+        norm_cat = self._normalize_edge_case_category(category)
         self.conn.execute("""
             INSERT INTO spec_edge_cases (change_id, category, scenario, expected_behavior, mapped_ac_id)
             VALUES (?, ?, ?, ?, ?);
-        """, (change_id, category, scenario, expected_behavior, mapped_ac_id))
+        """, (change_id, norm_cat, scenario, expected_behavior, mapped_ac_id))
         self.conn.commit()
-        return {"scenario": scenario, "category": category, "status": "STORED"}
+        return {"scenario": scenario, "category": norm_cat, "status": "STORED"}
 
     def spec_list_edge_cases(self, change_id: str) -> List[Dict[str, Any]]:
         cursor = self.conn.cursor()
@@ -421,10 +459,11 @@ class SDLCServices:
         return {"clarification_id": clarification_id, "status": "ANSWERED"}
 
     def spec_add_stride_threat(self, threat_id: str, change_id: str, category: str, description: str, mitigation_strategy: str, mapped_ac_id: Optional[str] = None) -> Dict[str, Any]:
+        norm_cat = self._normalize_stride_category(category)
         self.conn.execute("""
             INSERT INTO spec_stride_threats (threat_id, change_id, category, description, mitigation_strategy, mapped_ac_id)
             VALUES (?, ?, ?, ?, ?, ?);
-        """, (threat_id, change_id, category, description, mitigation_strategy, mapped_ac_id))
+        """, (threat_id, change_id, norm_cat, description, mitigation_strategy, mapped_ac_id))
         self.conn.commit()
         return {"threat_id": threat_id, "status": "STORED"}
 
@@ -880,7 +919,7 @@ class SDLCServices:
     def spec_add_edge_cases_batch(self, change_id: str, edge_cases: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Insert a batch of edge cases in a single atomic transaction."""
         for e in edge_cases:
-            cat = str(e.get("category", "boundary")).lower()
+            cat = self._normalize_edge_case_category(e.get("category"))
             self.conn.execute("""
                 INSERT INTO spec_edge_cases (change_id, category, scenario, expected_behavior, mapped_ac_id)
                 VALUES (?, ?, ?, ?, ?);
