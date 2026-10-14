@@ -8,8 +8,9 @@ import sqlite3
 from typing import Optional, Generator
 from contextlib import contextmanager
 
-DEFAULT_DB_PATH = os.path.join(os.getcwd(), ".sdlc", "session.db")
+DEFAULT_DB_PATH = os.environ.get("SDLC_DB_PATH", os.path.join(os.getcwd(), ".sdlc", "session.db"))
 SCHEMA_SQL_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
+
 
 
 def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
@@ -20,10 +21,10 @@ def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
     if db_path != ":memory:":
         os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
 
-    conn = sqlite3.connect(db_path, timeout=5.0)
+    conn = sqlite3.connect(db_path, timeout=10.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
-    conn.execute("PRAGMA busy_timeout = 5000;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
     conn.execute("PRAGMA cache_size = -64000;")  # 64MB RAM page cache
     conn.execute("PRAGMA temp_store = MEMORY;")  # In-memory temporary tables & sorts
 
@@ -31,6 +32,7 @@ def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
         conn.execute("PRAGMA journal_mode = WAL;")
         conn.execute("PRAGMA synchronous = NORMAL;")  # Optimal & safe with WAL
         conn.execute("PRAGMA mmap_size = 268435456;")  # 256MB memory-mapped I/O
+        conn.execute("PRAGMA wal_autocheckpoint = 1000;")  # Checkpoint every 1000 pages (~4MB)
     return conn
 
 

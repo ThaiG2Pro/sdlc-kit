@@ -41,7 +41,9 @@
       "Edit(memory/**)",
       "mcp__redmine",
       "mcp__figma-legacy",
-      "mcp__bookstack"
+      "mcp__bookstack",
+      "mcp__sdlc-context-engine",
+      "Bash(bin/sdlc-mcp:*)"
     ]
   },
   "hooks": {

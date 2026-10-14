@@ -672,7 +672,10 @@ class SDLCServices:
         return matrix
 
     def qa_report_bug(self, change_id: str, bug_id: str, severity: str, classification: str, rca_phase: str, title: str, repro: str) -> Dict[str, Any]:
-        from .state_machine import SDLCStateMachine
+        try:
+            from .state_machine import SDLCStateMachine
+        except ImportError:
+            from state_machine import SDLCStateMachine
         sm = SDLCStateMachine(self.conn)
         return sm.bug_open(change_id, bug_id, title, severity, classification, rca_phase, repro)
 
@@ -905,8 +908,25 @@ class SDLCServices:
         else:
             task = self.task_get_next_active(change_id)
 
+        handoff = self.handoff_get_latest(change_id) or {}
+        adrs = self.design_list_adrs(change_id)
         if not task:
-            return {"change_id": change_id, "status": "NO_ACTIVE_TASKS", "task": None}
+            return {
+                "change_id": change_id,
+                "status": "NO_ACTIVE_TASKS",
+                "task": None,
+                "requirements": [],
+                "handoff": {
+                    "reading_order": handoff.get("reading_order", []),
+                    "risky_areas": handoff.get("risky_areas", []),
+                    "contentious_points": handoff.get("contentious_points", [])
+                },
+                "architecture": {
+                    "adrs": adrs,
+                    "endpoints": self.design_list_endpoints(change_id),
+                    "schemas": self.design_list_schemas(change_id)
+                }
+            }
 
         # 2. Extract mapped ACs
         mapped_acs = task.get("mapped_acs")
@@ -970,7 +990,10 @@ class SDLCServices:
         risky_areas = self.handoff_get_risky_areas(change_id)
 
         # 5. QA Gate inspection
-        from .state_machine import SDLCStateMachine
+        try:
+            from .state_machine import SDLCStateMachine
+        except ImportError:
+            from state_machine import SDLCStateMachine
         sm = SDLCStateMachine(self.conn)
         gate_status = sm.gate_inspect(change_id, "QA")
 

@@ -167,9 +167,9 @@ _BRANCH_SWITCH = [
 _KIT_SCRIPT = re.compile(
     r"\b(?:python3?|node)\s+(?:\./)?\.(?:kiro|claude)/(?:skills|tools)/[^\s|;&]+\.(?:py|mjs|js)\b")
 
-# Sanctioned SDLC Context Engine CLI: kit-owned, writes only to .sdlc/session.db
+# Sanctioned SDLC Context Engine CLI & MCP: kit-owned, writes only to .sdlc/session.db
 _SDLC_CTX = re.compile(
-    r"(?:(?:\./)?bin/sdlc-ctx\b|(?:\./)?kit/shared/engine/cli\.py\b|\bsdlc-ctx\b)")
+    r"(?:(?:\./)?bin/sdlc-(?:ctx|mcp)\b|(?:\./)?kit/shared/engine/(?:cli|mcp_server)\.py\b|\bsdlc-(?:ctx|mcp)\b)")
 
 
 def resolve_actor(data, argv=None):
