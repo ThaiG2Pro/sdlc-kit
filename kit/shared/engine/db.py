@@ -16,7 +16,7 @@ SCHEMA_SQL_PATH = os.path.join(os.path.dirname(__file__), "schema.sql")
 def get_connection(db_path: Optional[str] = None) -> sqlite3.Connection:
     """Create and configure a SQLite connection with Foreign Keys and Row factory."""
     if db_path is None:
-        db_path = DEFAULT_DB_PATH
+        db_path = os.environ.get("SDLC_DB_PATH", DEFAULT_DB_PATH)
 
     if db_path != ":memory:":
         os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)

@@ -1,7 +1,7 @@
 {
   "name": "kiro-sdlc-kit",
-  "version": "1.1.0",
-  "description": "Reusable dual-target SDLC kit for Kiro IDE and Claude Code — S1–S6 orchestrator + analyst/architect/developer/qa roles, 24 skills, steering rules, hooks. One source emits .kiro/ and/or .claude/; init into any project with one command (--target kiro|claude|both).",
+  "version": "1.2.0",
+  "description": "Reusable multi-target SDLC kit for Google Antigravity (agy), Claude Code, and Kiro IDE — S1–S6 orchestrator + analyst/architect/developer/qa roles, 24 skills, steering rules, hooks, and high-performance SQLite Context Engine + MCP server. Init into any project with one command (--target agy|claude|kiro|all).",
   "type": "module",
   "bin": {
     "kiro-sdlc-init": "bin/init.mjs"

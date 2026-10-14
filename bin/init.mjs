@@ -26,7 +26,7 @@ const KIT_VERSION = (() => {
 })();
 
 // Per-platform output directory under the user's project.
-const TARGET_DIRS = { kiro: '.kiro', claude: '.claude' };
+const TARGET_DIRS = { kiro: '.kiro', claude: '.claude', agy: '.agents' };
 const KNOWN_TARGETS = Object.keys(TARGET_DIRS);
 
 // ---- args ----
@@ -151,7 +151,7 @@ const GI_END = '# <<< kiro-sdlc-kit <<<';
 // from descending into it, which kills every `!` negation below it (even ones in a higher-precedence
 // layer) and silently hides teammates' NEW `.kiro/specs/` docs — a real, observed data-loss near-miss.
 // `!.kiro/specs/` re-opens the one subtree teams commit (legacy Kiro spec format, still in active use).
-const GITIGNORE_PATTERNS = ['.claude/', '.kiro/*', '!.kiro/specs/', '/sdlc.config.json', '/pipelines.json', 'memory/*/_index.md', '/context/'];
+const GITIGNORE_PATTERNS = ['.claude/', '.kiro/*', '!.kiro/specs/', '.agents/', '/sdlc.config.json', '/pipelines.json', 'memory/*/_index.md', '/context/'];
 
 // PERSONAL-layer block for `--global-ignore` — written to the machine-level git ignore file, never
 // to any repo. The "3-layer" rationale: a repo's .gitignore is version-controlled, so a kit block
@@ -204,36 +204,39 @@ const GLOBAL_IGNORE_PATTERNS = [
 // stale <platform>/<name> symlink or migrated dir a PRIOR symlink-based install left behind.
 const SHARED_ROOT_NAMES = ['context', 'docs', 'openspec', 'memory', ...SHARED_ROOT_FILES];
 
-// Normalize a --target value ('kiro' | 'claude' | 'both' | 'kiro,claude') into a deduped list.
+// Normalize a --target value ('kiro' | 'claude' | 'agy' | 'all' | 'both' | 'kiro,claude,agy') into a deduped list.
 // Returns null when no value was given (caller decides: interactive menu vs. non-interactive default).
 function parseTargetList(s) {
   if (s == null) return null;
   const v = String(s).trim().toLowerCase();
   if (v === '') return null;
-  if (v === 'both' || v === 'all') return ['kiro', 'claude'];
+  if (v === 'all') return ['agy', 'claude', 'kiro'];
+  if (v === 'both') return ['kiro', 'claude'];
   const parts = v.split(',').map((x) => x.trim()).filter(Boolean);
   for (const p of parts) {
     if (!KNOWN_TARGETS.includes(p)) {
-      die(`unknown --target "${p}". Use one of: kiro, claude, both (or kiro,claude).`);
+      die(`unknown --target "${p}". Use one of: agy, claude, kiro, all, both (or agy,claude,kiro).`);
     }
   }
-  // preserve a stable order: kiro before claude
   return KNOWN_TARGETS.filter((t) => parts.includes(t));
 }
 
 async function promptTarget(rl) {
   log('\n  Which platform(s) should this kit target?');
-  log('    1) Both (Kiro + Claude Code)   [default]');
-  log('    2) Kiro IDE only');
+  log('    1) All (Antigravity + Claude Code + Kiro)   [default]');
+  log('    2) Antigravity (agy) only');
   log('    3) Claude Code only');
+  log('    4) Kiro IDE only');
   const ans = (await rl.question('  Choice [1]: ')).trim().toLowerCase();
   const map = {
-    '': ['kiro', 'claude'], '1': ['kiro', 'claude'], 'both': ['kiro', 'claude'],
-    '2': ['kiro'], 'kiro': ['kiro'],
+    '': ['agy', 'claude', 'kiro'], '1': ['agy', 'claude', 'kiro'], 'all': ['agy', 'claude', 'kiro'],
+    '2': ['agy'], 'agy': ['agy'], 'antigravity': ['agy'],
     '3': ['claude'], 'claude': ['claude'],
+    '4': ['kiro'], 'kiro': ['kiro'],
+    'both': ['kiro', 'claude'],
   };
   const sel = map[ans];
-  if (!sel) { log(`  (unrecognized "${ans}" — defaulting to Both)`); return ['kiro', 'claude']; }
+  if (!sel) { log(`  (unrecognized "${ans}" — defaulting to All)`); return ['agy', 'claude', 'kiro']; }
   return sel;
 }
 
@@ -369,6 +372,7 @@ function applyTarget(ctx, vals) {
   const TOOLS_BY_PLATFORM = {
     kiro: ['context-map.mjs', 'context-check.mjs', 'doctor.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs', 'state-set.mjs', 'state-schema.mjs', 'baton-compact.mjs'],
     claude: ['context-check.mjs', 'doctor-claude.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs', 'state-set.mjs', 'state-schema.mjs', 'baton-compact.mjs'],
+    agy: ['context-check.mjs', 'apply-stack.mjs', 'pipeline-guard.mjs', 'cpp-guard.mjs', 'state-set.mjs', 'state-schema.mjs', 'baton-compact.mjs'],
   };
   for (const tool of TOOLS_BY_PLATFORM[platform] || []) {
     const toolSrc = join(KIT_ROOT, 'bin', 'lib', tool);
@@ -377,6 +381,17 @@ function applyTarget(ctx, vals) {
       mkdirSync(dirname(toolDst), { recursive: true });
       copyFileSync(toolSrc, toolDst);
       log(`  ✓ installed ${label}/tools/${tool}`);
+    }
+  }
+
+  // Antigravity (agy): establish project root GEMINI.md for immediate auto-discovery
+  if (platform === 'agy') {
+    const geminiSrc = join(TARGETS_SRC, 'agy', 'GEMINI.md');
+    if (existsSync(geminiSrc)) {
+      const geminiDst = join(TARGET, 'GEMINI.md');
+      const content = applyTokens(readFileSync(geminiSrc, 'utf8'), platformVals);
+      writeFileSync(geminiDst, content);
+      log(`  ✓ established root GEMINI.md for Antigravity`);
     }
   }
   // NOTE (kiro): context→agents wiring (applyContextMap) runs AFTER openspec init in main(),
@@ -815,6 +830,15 @@ function printNextSteps(targets, hasOpenspec) {
     log('     • Before a work item: /intake <slug> <ticket-id> pulls a Redmine ticket + its Figma UI into docs/extra-docs/<ticket_id>-<slug>/ for the analyst. /context-refresh re-syncs context when it drifts.');
     log('     • Security: only the developer subagent writes code — enforced by the agent_type-keyed PreToolUse hooks in .claude/settings.json.');
     log('     • New/changed agents, commands, settings & hooks take effect on the NEXT session (or /agents reload) — not mid-session.');
+  }
+  if (targets.includes('agy')) {
+    log('   [agy] Open the project in Antigravity (agy):');
+    log('     • Master rules: ./GEMINI.md at root (auto-discovered on session start)');
+    log('     • MCP Integration: configure ~/.gemini/config/mcp_config.json to point to bin/sdlc-mcp');
+    log('     • Fast CLI: bin/sdlc-ctx change init · bin/sdlc-ctx task inspect-work-context');
+    log('     • Subagents (.agents/agents/): analyst · architect · developer · qa · onboarder · intake');
+    log('     • Progressive Skills (.agents/skills/): 24 SDLC skills automatically available on-demand');
+    log('     • Interactive Gates: orchestrator prompts via ask_question at SPEC LOCK, ARCH LOCK, BUILD, QA');
   }
   log('   • Start work: drive the OpenSpec lifecycle (propose → apply → archive) in openspec/changes/.');
   if (!hasOpenspec) log('   ⚠ Install the openspec CLI first (see warning above) — the workspace needs it.\n');

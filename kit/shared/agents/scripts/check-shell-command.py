@@ -159,13 +159,13 @@ _BRANCH_SWITCH = [
 ]
 
 # Kit-OWNED helper scripts a restricted role IS allowed to run via an interpreter: they live under
-# the platform dir (.kiro//.claude/) in skills/ or tools/, are kit-managed (regenerated on --force,
+# the platform dir (.kiro//.claude//.agents/) in skills/ or tools/, are kit-managed (regenerated on --force,
 # never authorable by any role's write-fence), and only emit artifacts into the role's own fence
 # (e.g. gen_testcases_xlsx.py → openspec/**/qa/testcases.xlsx). This is what lets qa produce its XLSX
 # the SANCTIONED way while a one-off script it authored itself stays blocked. Must contain no shell
 # chaining/substitution (checked alongside in classify via _CMD_SEP-free single command).
 _KIT_SCRIPT = re.compile(
-    r"\b(?:python3?|node)\s+(?:\./)?\.(?:kiro|claude)/(?:skills|tools)/[^\s|;&]+\.(?:py|mjs|js)\b")
+    r"\b(?:python3?|node)\s+(?:\./)?\.(?:kiro|claude|agents)/(?:skills|tools)/[^\s|;&]+\.(?:py|mjs|js)\b")
 
 # Sanctioned SDLC Context Engine CLI & MCP: kit-owned, writes only to .sdlc/session.db
 _SDLC_CTX = re.compile(
@@ -247,11 +247,26 @@ def main() -> int:
     except Exception:
         sys.stderr.write("BLOCKED: check-shell-command could not parse hook input (fail-closed).\n")
         return 2
+
+    is_agy_hook = "toolCall" in data
     actor = resolve_actor(data)
     cls = actor_class(actor)
     ti = data.get("tool_input") or data.get("toolInput") or {}
-    command = ti.get("command") or ti.get("cmd") or data.get("command") or ""
+    tc_args = data.get("toolCall", {}).get("args", {}) if is_agy_hook else {}
+    command = ti.get("command") or ti.get("cmd") or tc_args.get("CommandLine") or data.get("command") or ""
     reason = classify(command, cls)
+
+    if is_agy_hook:
+        if reason:
+            who = actor or "the orchestrator"
+            sys.stdout.write(json.dumps({
+                "decision": "deny",
+                "reason": f"BLOCKED: {who} may not write via the shell — {reason}."
+            }) + "\n")
+        else:
+            sys.stdout.write(json.dumps({"decision": "allow"}) + "\n")
+        return 0
+
     if reason:
         who = actor or "the main session (orchestrator)"
         sys.stderr.write(

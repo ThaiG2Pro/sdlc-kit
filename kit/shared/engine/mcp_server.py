@@ -41,7 +41,7 @@ def log_debug(msg: str):
 
 
 def get_db(db_path: Optional[str] = None):
-    target = db_path or DEFAULT_DB_PATH
+    target = db_path or os.environ.get("SDLC_DB_PATH", DEFAULT_DB_PATH)
     if not (os.path.exists(target) and os.path.getsize(target) > 0):
         return init_db(target)
     return get_connection(target)
