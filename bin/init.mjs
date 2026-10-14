@@ -6,7 +6,7 @@
 // One source (kit/shared + kit/targets/<platform>) emits each target.
 // Zero runtime dependencies (Node >= 18 built-ins only).
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, lstatSync, copyFileSync, cpSync, rmSync, rmdirSync, renameSync, symlinkSync, readlinkSync, realpathSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, statSync, lstatSync, copyFileSync, cpSync, rmSync, rmdirSync, renameSync, symlinkSync, readlinkSync, realpathSync, chmodSync } from 'node:fs';
 import { join, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
@@ -83,6 +83,7 @@ function die(s) { stdout.write('✗ ' + s + '\n'); exit(1); }
 function walk(dir, base = dir, out = []) {
   if (!existsSync(dir)) return out;
   for (const name of readdirSync(dir)) {
+    if (name === '__pycache__' || name === '.DS_Store' || name.endsWith('.pyc')) continue;
     const full = join(dir, name);
     const st = statSync(full);
     if (st.isDirectory()) walk(full, base, out);
@@ -151,7 +152,7 @@ const GI_END = '# <<< kiro-sdlc-kit <<<';
 // from descending into it, which kills every `!` negation below it (even ones in a higher-precedence
 // layer) and silently hides teammates' NEW `.kiro/specs/` docs — a real, observed data-loss near-miss.
 // `!.kiro/specs/` re-opens the one subtree teams commit (legacy Kiro spec format, still in active use).
-const GITIGNORE_PATTERNS = ['.claude/', '.kiro/*', '!.kiro/specs/', '.agents/', '/sdlc.config.json', '/pipelines.json', 'memory/*/_index.md', '/context/'];
+const GITIGNORE_PATTERNS = ['.claude/', '.kiro/*', '!.kiro/specs/', '.agents/', '.sdlc/', '/sdlc.config.json', '/pipelines.json', 'memory/*/_index.md', '/context/'];
 
 // PERSONAL-layer block for `--global-ignore` — written to the machine-level git ignore file, never
 // to any repo. The "3-layer" rationale: a repo's .gitignore is version-controlled, so a kit block
@@ -168,6 +169,8 @@ const GLOBAL_IGNORE_PATTERNS = [
   '.claude',                 // no trailing slash: matches a symlinked .claude too
   '.kiro/*',                 // contents, NOT the dir — keeps the negation below alive
   '!.kiro/specs/',           // team-committed Kiro spec docs stay visible
+  '.agents/',
+  '.sdlc/',                  // local SQLite session database and runtime state
   '.snapshots',              // kit-generated pre-write backups (regenerable)
   '/sdlc.config.json',
   '/pipelines.json',
@@ -600,6 +603,41 @@ function scaffoldRootConfig(vals) {
   if (n) log(`  ✓ config → ./{${SHARED_ROOT_FILES.join(', ')}} (shared root, read root-relative by each platform)`);
 }
 
+// Copy SDLC executables (sdlc-ctx, sdlc-mcp, sdlc-setup, sdlc-demo) into TARGET/bin/
+// and trigger automatic environment verification + SQLite database initialization.
+function scaffoldBinariesAndEngine(targets) {
+  const targetBinDir = join(TARGET, 'bin');
+  mkdirSync(targetBinDir, { recursive: true });
+
+  const binaries = ['sdlc-ctx', 'sdlc-mcp', 'sdlc-setup', 'sdlc-demo'];
+  let installed = 0;
+  for (const b of binaries) {
+    const src = join(KIT_ROOT, 'bin', b);
+    const dst = join(targetBinDir, b);
+    if (src !== dst && existsSync(src)) {
+      copyFileSync(src, dst);
+      try { chmodSync(dst, 0o755); } catch { /* ignore on windows */ }
+      installed++;
+    } else if (existsSync(src)) {
+      try { chmodSync(src, 0o755); } catch { /* ignore on windows */ }
+      installed++;
+    }
+  }
+  log(`  ✓ executables → ./bin/{${binaries.join(', ')}} (${installed} installed, executable)`);
+
+  // Run bin/sdlc-setup to verify environment, initialize .sdlc/session.db and register MCP
+  try {
+    const setupDst = join(targetBinDir, 'sdlc-setup');
+    if (existsSync(setupDst)) {
+      log('\n  Running SDLC Context Engine verification & MCP setup:');
+      execSync(`python3 "${setupDst}"`, { cwd: TARGET, stdio: 'inherit' });
+    }
+  } catch (e) {
+    log(`  ! note: automatic setup helper exited: ${e.message}`);
+    log('    You can run `python3 bin/sdlc-setup` anytime to configure your IDE MCP integration.');
+  }
+}
+
 // --- linked-worktree setup ------------------------------------------------------------------
 // Two categories, split by "what happens if this exists twice":
 //
@@ -948,6 +986,7 @@ async function main() {
       log(`    ⌫ strip     stale per-platform ${TARGET_DIRS[c.platform]}/{${SHARED_ROOT_NAMES.join(', ')}} (symlink or dir) — these are now root-only`);
     }
     log(`\n  ${doGitignore ? '✎ gitignore  add/refresh kit block → ' + GITIGNORE_PATTERNS.join(', ') : '· gitignore  left untouched (--no-gitignore)'}`);
+    log('    + executables ./bin/{sdlc-ctx, sdlc-mcp, sdlc-setup, sdlc-demo}');
     log(`\n  (shared workspace + config — ./{${SHARED_ROOT_NAMES.join(', ')}} — live ONCE at the project root, no symlink; both platforms reference them root-relative.`);
     log('   openspec init, tools, the root ./context + ./{sdlc.config,pipelines}.json scaffold, and the context→agents mapper also run on apply.)');
     log('  Re-run without --check (add --force on an existing install) to apply.\n');
@@ -980,6 +1019,9 @@ async function main() {
   // Optionally manage the project's .gitignore (kit-owned framework + config block). Project-wide,
   // so run ONCE after all targets are applied.
   if (doGitignore) updateGitignore();
+
+  // Install SDLC Context Engine executables into ./bin/ and initialize SQLite database + MCP
+  scaffoldBinariesAndEngine(targets);
 
   // OpenSpec workspace (spec-driven backend) — project-global, run ONCE for all selected targets.
   let hasOpenspec = false;

@@ -17,4 +17,28 @@ else
   PY_BIN="python3"
 fi
 
-exec "$PY_BIN" -S "$REPO_ROOT/kit/shared/engine/mcp_server.py" "$@"
+# Locate engine mcp_server.py across supported platform directories and kit development source
+ENGINE_MCP=""
+for candidate in \
+  "$REPO_ROOT/.agents/engine/mcp_server.py" \
+  "$REPO_ROOT/.claude/engine/mcp_server.py" \
+  "$REPO_ROOT/.kiro/engine/mcp_server.py" \
+  "$REPO_ROOT/kit/shared/engine/mcp_server.py" \
+  "$REPO_ROOT/engine/mcp_server.py"; do
+  if [ -f "$candidate" ]; then
+    ENGINE_MCP="$candidate"
+    break
+  fi
+done
+
+if [ -z "$ENGINE_MCP" ]; then
+  echo "Error: SDLC Context Engine MCP Server (mcp_server.py) not found in $REPO_ROOT" >&2
+  echo "Checked: .agents/engine, .claude/engine, .kiro/engine, kit/shared/engine" >&2
+  exit 1
+fi
+
+if [ -z "$SDLC_DB_PATH" ]; then
+  export SDLC_DB_PATH="$REPO_ROOT/.sdlc/session.db"
+fi
+
+exec "$PY_BIN" -S "$ENGINE_MCP" "$@"

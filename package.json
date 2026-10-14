@@ -4,7 +4,8 @@
   "description": "Reusable multi-target SDLC kit for Google Antigravity (agy), Claude Code, and Kiro IDE — S1–S6 orchestrator + analyst/architect/developer/qa roles, 24 skills, steering rules, hooks, and high-performance SQLite Context Engine + MCP server. Init into any project with one command (--target agy|claude|kiro|all).",
   "type": "module",
   "bin": {
-    "kiro-sdlc-init": "bin/init.mjs"
+    "kiro-sdlc-init": "bin/init.mjs",
+    "sdlc-init": "bin/init.mjs"
   },
   "scripts": {
     "init": "node bin/init.mjs",

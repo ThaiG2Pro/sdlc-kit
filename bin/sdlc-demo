@@ -21,7 +21,19 @@ BOLD = "\033[1m"
 RESET = "\033[0m"
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(REPO_ROOT, "kit", "shared", "engine"))
+candidates = [
+    os.path.join(REPO_ROOT, ".agents", "engine"),
+    os.path.join(REPO_ROOT, ".claude", "engine"),
+    os.path.join(REPO_ROOT, ".kiro", "engine"),
+    os.path.join(REPO_ROOT, "kit", "shared", "engine"),
+    os.path.join(REPO_ROOT, "engine"),
+]
+engine_dir = next((c for c in candidates if os.path.isfile(os.path.join(c, "db.py"))), None)
+if not engine_dir:
+    sys.stderr.write(f"Error: SDLC Context Engine not found in {REPO_ROOT}\n")
+    sys.exit(1)
+
+sys.path.insert(0, engine_dir)
 
 from db import get_connection
 from state_machine import SDLCStateMachine

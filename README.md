@@ -6,25 +6,44 @@ A **project-agnostic, multi-target** SDLC kit for **Google Antigravity (`agy`)**
 > onboard, run a work item, pass gates, update). **This README is the architecture overview** — what
 > the kit is and how it's built.
 
-## 🚀 Quickstart in 60 Seconds
+## 🚀 Quickstart
 
-Anyone can clone and try out the SDLC Kit in under a minute with **Zero external pip dependencies** (100% Python standard library):
+### 1. Install into Your Existing Project (Recommended)
+
+Drop the entire SDLC pipeline and Context Engine into any repository in seconds with **Zero external pip dependencies** (100% Python standard library):
 
 ```bash
-# 1. Clone repository
+cd /path/to/my-project
+
+# Option A: Via npx (from npm package)
+npx kiro-sdlc-init --target agy
+
+# Option B: From local clone
+node /path/to/sdlc-kit/bin/init.mjs . --target agy
+```
+
+This single command automatically:
+- Scaffolds `.agents/` (Antigravity), rules, 24 skills, and subagents (`analyst`, `architect`, `developer`, `qa`).
+- Copies executables into `bin/sdlc-ctx`, `bin/sdlc-mcp`, `bin/sdlc-setup`, `bin/sdlc-demo`.
+- Initializes the SQLite Context Engine at `.sdlc/session.db` (34 tables & FTS5 full-text search).
+- Configures your IDE MCP integration (`~/.gemini/config/mcp_config.json`, Claude, or Cursor).
+- Creates root `GEMINI.md` for instant auto-discovery by Antigravity.
+
+---
+
+### 2. Try the Demo Directly in this Repo
+
+Want to inspect or test the kit first? Run the interactive 3-second demo:
+
+```bash
 git clone git@github.com:ThaiG2Pro/sdlc-kit.git
 cd sdlc-kit
 
-# 2. Run automated setup (verifies prerequisites, inits DB, auto-configures MCP)
+# Run automated setup (verifies environment, inits DB, auto-configures MCP)
 ./bin/sdlc-setup
 
-# 3. Run the interactive 3-second end-to-end lifecycle demo (S1 → S6)
+# Run the live interactive lifecycle demo (S1 → S6 in 3 seconds)
 ./bin/sdlc-demo
-
-# 4. Use with your AI agent of choice:
-#    • Antigravity (agy): Run `agy` in this repo — all 7 MCP tools are loaded natively!
-#    • Claude Code: claude --agent sdlc-full <change-slug>
-#    • Scaffold into your project: node bin/init.mjs --target agy
 ```
 
 ---

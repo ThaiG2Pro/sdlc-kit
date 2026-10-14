@@ -86,9 +86,30 @@ def check_prerequisites():
             log_ok(f"Verified executable: {os.path.relpath(b, REPO_ROOT)}")
 
 
+def find_engine_dir() -> Optional[str]:
+    candidates = [
+        os.path.join(REPO_ROOT, ".agents", "engine"),
+        os.path.join(REPO_ROOT, ".claude", "engine"),
+        os.path.join(REPO_ROOT, ".kiro", "engine"),
+        os.path.join(REPO_ROOT, "kit", "shared", "engine"),
+        os.path.join(REPO_ROOT, "engine"),
+    ]
+    for c in candidates:
+        if os.path.isfile(os.path.join(c, "db.py")):
+            return c
+    return None
+
+
 def init_engine():
     header("2. Initializing SDLC Context Engine")
-    sys.path.insert(0, os.path.join(REPO_ROOT, "kit", "shared", "engine"))
+    engine_dir = find_engine_dir()
+    if not engine_dir:
+        log_err(f"SDLC Context Engine files (db.py) not found in {REPO_ROOT}")
+        sys.exit(1)
+
+    if engine_dir not in sys.path:
+        sys.path.insert(0, engine_dir)
+
     try:
         from db import init_db
         conn = init_db(SESSION_DB)
