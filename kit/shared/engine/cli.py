@@ -55,23 +55,23 @@ def get_db(db_path: Optional[str] = None):
 def parse_args(argv: list) -> Tuple[Optional[str], Optional[str], Dict[str, Any]]:
     """
     Sub-millisecond argument parser.
-    Extracts domain, action, and --flags with support for both --flag and --key value.
+    Extracts domain, action, and --flags with support for both --flag and --key value
+    regardless of whether flags appear before or after positional args.
     """
-    if len(argv) < 2 or argv[1] in ("-h", "--help", "help"):
+    if len(argv) < 2 or (len(argv) == 2 and argv[1] in ("-h", "--help", "help")):
         return None, None, {}
 
-    domain = argv[1]
+    domain = None
     action = None
-    i = 2
-
-    if len(argv) > 2 and not argv[2].startswith("-"):
-        action = argv[2]
-        i = 3
-
     flags: Dict[str, Any] = {}
+    i = 1
+
     while i < len(argv):
         arg = argv[i]
-        if arg.startswith("--"):
+        if arg in ("-h", "--help"):
+            flags["help"] = True
+            i += 1
+        elif arg.startswith("--"):
             key = arg[2:].replace("-", "_")
             if i + 1 < len(argv) and not argv[i + 1].startswith("-"):
                 flags[key] = argv[i + 1]
@@ -88,7 +88,15 @@ def parse_args(argv: list) -> Tuple[Optional[str], Optional[str], Dict[str, Any]
                 flags[key] = True
                 i += 1
         else:
+            if domain is None:
+                domain = arg
+            elif action is None:
+                action = arg
             i += 1
+
+    if flags.get("help") and not domain:
+        return None, None, {}
+
     return domain, action, flags
 
 
@@ -134,7 +142,7 @@ def main():
     change_id = flags.get("change") or flags.get("change_id")
 
     try:
-        conn = get_db()
+        conn = get_db(flags.get("db"))
 
         # =====================================================================
         # DOMAIN 1: CHANGE & GATE (State Machine)
@@ -145,13 +153,17 @@ def main():
             if action == "init":
                 res = sm.change_init(
                     slug=flags.get("slug", "feature"),
-                    work_type=flags.get("type", "feature"),
+                    work_type=flags.get("type") or flags.get("work_type", "feature"),
                     rigor=flags.get("rigor", "full"),
                     change_id=change_id
                 )
                 output(res)
             elif action == "get":
                 output(sm.change_get_state(change_id))
+            elif action == "list":
+                output(sm.change_list(limit=int(flags.get("limit", 20))))
+            elif action == "status":
+                output(sm.change_status_report(change_id))
             elif action == "transition":
                 output(sm.change_transition_phase(change_id, flags.get("phase")))
             elif action == "scope":

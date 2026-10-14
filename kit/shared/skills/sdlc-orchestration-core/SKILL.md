@@ -48,7 +48,7 @@ The flow gives you a **type** (`feature|cr|bugfix|hotfix|rebuild`). Read
 Never conflate them. `rigor=full` ≠ agent `sdlc-full` (that only picks phases). `scope=tiny` shrinks
 a design.md, never the pipeline or the final safety net.
 
-## Gate behavior (`{{PLATFORM_DIR}}/sdlc.config.json`)
+## Gate behavior (`./sdlc.config.json`)
 
 `gates.auto_pass`: `false` (default) → every gate needs an explicit human `approve`; `true` → on a
 0-blocker audit auto-approve and advance, but always STOP on a blocker. Also honor

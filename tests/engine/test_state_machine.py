@@ -139,6 +139,27 @@ class TestStateMachine(unittest.TestCase):
         self.assertGreater(len(logs), 0)
         self.assertEqual(logs[0]["entity_type"], "change")
 
+    def test_change_list_and_status(self):
+        # List changes
+        changes = self.sm.change_list()
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]["slug"], "user-auth")
+
+        # Status report
+        status = self.sm.change_status_report(self.change_id)
+        self.assertEqual(status["change"]["slug"], "user-auth")
+        self.assertEqual(status["change"]["current_phase"], "S1")
+        self.assertEqual(status["requirements"]["total"], 0)
+        self.assertEqual(status["tasks"]["total"], 0)
+        self.assertEqual(status["bugs"]["open"], 0)
+
+    def test_changes_view_alias(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM changes WHERE id = ?;", (self.change_id,))
+        row = cursor.fetchone()
+        self.assertIsNotNone(row)
+        self.assertEqual(row["slug"], "user-auth")
+
 
 if __name__ == "__main__":
     unittest.main()

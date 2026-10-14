@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS change_state (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- View alias: enables queries against `changes` to resolve to `change_state` (supports both `id` and `change_id`)
+CREATE VIEW IF NOT EXISTS changes AS SELECT change_id AS id, * FROM change_state;
+
 CREATE TABLE IF NOT EXISTS gate_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -174,6 +177,9 @@ CREATE TABLE IF NOT EXISTS spec_requirements (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- View alias: enables queries against `requirements` to resolve to `spec_requirements`
+CREATE VIEW IF NOT EXISTS requirements AS SELECT req_id AS id, * FROM spec_requirements;
+
 CREATE TABLE IF NOT EXISTS spec_edge_cases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -252,6 +258,9 @@ CREATE TABLE IF NOT EXISTS task_graph (
     completed_at DATETIME
 );
 
+-- View alias: enables queries against `tasks` to resolve to `task_graph`
+CREATE VIEW IF NOT EXISTS tasks AS SELECT task_id AS id, * FROM task_graph;
+
 CREATE TABLE IF NOT EXISTS dev_deviations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     change_id TEXT NOT NULL REFERENCES change_state(change_id),
@@ -298,6 +307,9 @@ CREATE TABLE IF NOT EXISTS qa_bugs (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     resolved_at DATETIME
 );
+
+-- View alias: enables queries against `bugs` to resolve to `qa_bugs`
+CREATE VIEW IF NOT EXISTS bugs AS SELECT bug_id AS id, * FROM qa_bugs;
 
 CREATE TABLE IF NOT EXISTS qa_verifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

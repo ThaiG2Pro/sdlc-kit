@@ -18,7 +18,7 @@ Verification system gắn vào SDLC gates. Chạy trước khi tạo PR (S4) ho�
 
 ## Verification Phases
 
-> Dùng ĐÚNG commands của project (`context/stack.md`) — các lệnh dưới chỉ là placeholder. Coverage threshold lấy từ `{{PLATFORM_DIR}}/sdlc.config.json`.
+> Dùng ĐÚNG commands của project (`context/stack.md`) — các lệnh dưới chỉ là placeholder. Coverage threshold lấy từ `./sdlc.config.json`.
 
 ### Phase 1: Build
 ```bash

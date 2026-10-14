@@ -53,13 +53,13 @@ def get_db(db_path: Optional[str] = None):
 TOOLS = [
     {
         "name": "sdlc_manage_lifecycle",
-        "description": "Orchestrate SDLC lifecycle: initialize changes, transition phases (S1-S6), inspect quality gates, and record/resolve blockers.",
+        "description": "Orchestrate SDLC lifecycle: initialize changes, inspect status, list changes, transition phases (S1-S6), inspect quality gates, and record/resolve blockers.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "action": {
                     "type": "string",
-                    "enum": ["init", "get", "transition", "scope", "gate_inspect", "gate_pass", "gate_block"],
+                    "enum": ["init", "get", "list", "status", "transition", "scope", "gate_inspect", "gate_pass", "gate_block"],
                     "description": "Lifecycle action to perform."
                 },
                 "change_id": {"type": "string", "description": "Target Change ID (e.g. CHG-01)."},
@@ -69,9 +69,10 @@ TOOLS = [
                 "phase": {"type": "string", "description": "Target phase (S1, S2, S3, S4, S5, S6)."},
                 "gate_name": {"type": "string", "description": "Gate name to inspect or pass."},
                 "approver": {"type": "string", "default": "orchestrator", "description": "Approver role or human identifier."},
-                "reason": {"type": "string", "description": "Reason for transition, scope escalation, or force-pass."}
+                "reason": {"type": "string", "description": "Reason for transition, scope escalation, or force-pass."},
+                "limit": {"type": "integer", "default": 20, "description": "Max changes to return for list action."}
             },
-            "required": ["action", "change_id"]
+            "required": ["action"]
         }
     },
     {
@@ -259,6 +260,11 @@ def dispatch_tool(name: str, args: Dict[str, Any]) -> Any:
                 )
             elif action == "get":
                 return sm.change_get_state(change_id)
+            elif action == "list":
+                limit = int(args.get("limit", 20))
+                return sm.change_list(limit=limit)
+            elif action == "status":
+                return sm.change_status_report(change_id)
             elif action == "transition":
                 return sm.change_transition_phase(change_id, args.get("phase"))
             elif action == "scope":

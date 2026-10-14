@@ -95,6 +95,80 @@ class SDLCStateMachine:
             "updated_at": row["updated_at"]
         }
 
+    def change_list(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """List all changes with their active status and current phase."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT change_id, ticket_id, slug, work_type, rigor, scope, current_phase, overall_status, created_at, updated_at
+            FROM change_state
+            ORDER BY updated_at DESC
+            LIMIT ?;
+        """, (limit,))
+        return [dict(row) for row in cursor.fetchall()]
+
+    def change_status_report(self, change_id: Optional[str] = None) -> Dict[str, Any]:
+        """Consolidated status report for a change or the latest active change."""
+        cursor = self.conn.cursor()
+        if not change_id:
+            cursor.execute("SELECT change_id FROM change_state ORDER BY updated_at DESC LIMIT 1;")
+            row = cursor.fetchone()
+            if not row:
+                return {"status": "NO_CHANGES", "message": "No active or recorded changes in this project."}
+            change_id = row["change_id"]
+
+        state = self.change_get_state(change_id)
+
+        cursor.execute("""
+            SELECT gate_name, status, approver, passed_at
+            FROM gate_history
+            WHERE change_id = ?
+            ORDER BY id ASC;
+        """, (change_id,))
+        gates = [dict(r) for r in cursor.fetchall()]
+
+        cursor.execute("""
+            SELECT status, count(*) as count
+            FROM task_graph
+            WHERE change_id = ?
+            GROUP BY status;
+        """, (change_id,))
+        task_summary = {r["status"]: r["count"] for r in cursor.fetchall()}
+
+        cursor.execute("""
+            SELECT tag, count(*) as count
+            FROM spec_requirements
+            WHERE change_id = ?
+            GROUP BY tag;
+        """, (change_id,))
+        req_by_tag = {r["tag"]: r["count"] for r in cursor.fetchall()}
+        req_total = sum(req_by_tag.values())
+
+        cursor.execute("""
+            SELECT status, count(*) as count
+            FROM qa_bugs
+            WHERE change_id = ?
+            GROUP BY status;
+        """, (change_id,))
+        bugs_by_status = {r["status"]: r["count"] for r in cursor.fetchall()}
+        open_bugs = sum(v for k, v in bugs_by_status.items() if k in ('OPEN', 'IN_RETEST'))
+        cursor.execute("""
+            SELECT blocker_id, phase, question, status
+            FROM blockers
+            WHERE change_id = ? AND status = 'OPEN';
+        """, (change_id,))
+        blockers = [dict(r) for r in cursor.fetchall()]
+
+        task_total = sum(task_summary.values())
+
+        return {
+            "change": state,
+            "gates": gates,
+            "tasks": {"total": task_total, "by_status": task_summary},
+            "requirements": {"total": req_total, "by_tag": req_by_tag},
+            "bugs": {"open": open_bugs, "by_status": bugs_by_status},
+            "blockers": blockers
+        }
+
     def change_transition_phase(
         self,
         change_id: str,
