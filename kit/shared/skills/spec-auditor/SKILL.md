@@ -60,6 +60,17 @@ Check for "Figma Design" section
 Check for "Out of Scope" section
 - Missing → FAIL
 
+### C7: Anti-Boilerplate Assumptions Check (BLOCKER)
+Check the assumptions recorded in proposal or Context Engine:
+- Contains generic cop-outs ("network drops", "server failure", "user has browser") → FAIL
+- Must cite specific domain, entity, auth, or concurrency boundaries.
+
+### C8: Intent Mirroring & Pre-Mortem (BLOCKER)
+Check for `## Intent Mirroring` (or `## Soi gương nhận thức`):
+- Must clearly define In-Scope ACs vs Explicit Out-of-Scope.
+- Must list Top 2 Pre-Mortem failure scenarios ("How this feature could fail in the wild").
+- Missing → FAIL
+
 ## Output Format
 
 ```
@@ -75,6 +86,8 @@ Check for "Out of Scope" section
 | C4: Edge cases | ✅/⚠️ | {count} found |
 | C5: Figma URL | ✅/⚠️ | {present/missing} |
 | C6: Scope closed | ✅/❌ | {present/missing} |
+| C7: Anti-Boilerplate Assumptions | ✅/❌ | {valid domain assumptions / generic boilerplate detected} |
+| C8: Intent Mirroring & Pre-Mortem | ✅/❌ | {present / missing} |
 
 ### Blockers (must fix before SPEC LOCK)
 - {list or "None"}

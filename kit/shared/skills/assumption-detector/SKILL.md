@@ -1,55 +1,63 @@
 ---
 name: assumption-detector
 description: >
-  Scan requirements/user input for hidden assumptions that could cause spec gaps.
-  Outputs tagged list: [RISKY] assumptions needing validation, [SAFE] documented assumptions.
-  Use during S1 after gathering knowledge, before writing proposal.md + spec deltas.
+  Scan requirements/user input for hidden assumptions and cognitive blind spots.
+  Filters out generic infrastructure boilerplate. Outputs actionable tagged list:
+  [RISKY:KNOWN_UNKNOWN] (questions to resolve), [RISKY:UNKNOWN_UNKNOWN_RISK] (latent edge hazards),
+  and [SAFE] (documented facts). Use during S1 after gathering knowledge, before writing proposal.md.
 ---
 
-# Assumption Detector
+# Assumption Detector (Cognitive Blind-Spot Hunter)
 
 ## When to Use
 - S1 Step 4a (after gathering knowledge in Step 2, before clarification)
-- When user provides vague or incomplete requirements
+- When user provides vague, brief, or deceptively simple requirements
 
 ## Input
-- User's feature description
-- Knowledge files (if any)
-- Existing domain specs (if cross-referencing)
+- User's feature description / ticket payload
+- Existing domain specs & `context/glossary.md`
+- Target codebase entity definitions
 
-## Process
+## Process & Detection Passes
 
-Scan input for these assumption categories:
+Scan input across these 5 domain-critical categories (Prioritize **High-Risk**: Money, Auth, Data Integrity, Concurrency):
 
-1. **Data assumptions** — "users already exist", "products have SKUs", "inventory is tracked"
-   - Check: does the entity exist in codebase? Is the relationship defined?
+1. **Permission & Actor Assumptions** — "only admin can do this", "authenticated user owns resource"
+   - Check: what happens if role changes mid-session? Can user A access user B's resource?
+2. **Data & State Assumptions** — "status is always active/pending", "user email is unique"
+   - Check: what if record is soft-deleted? What if parent entity is archived?
+3. **Concurrency & Timing Assumptions** — "user clicks once", "operations happen sequentially"
+   - Check: double-submit, race conditions on balance/inventory, webhook delivered out of order.
+4. **Integration & Third-Party Boundaries** — "external API returns success", "token never expires"
+   - Check: rate limits, partial responses, timeout retry storms.
+5. **Business Rule Extremes** — "discount cannot exceed 100%", "start date is before end date"
+   - Check: boundary values (0, negative, max INT), localized timezones, conflicting coupons.
 
-2. **Flow assumptions** — "user will always provide X", "system will respond within Y"
-   - Check: what if X is missing? What if timeout?
-
-3. **Permission assumptions** — "only admin can do this", "all CMS users have access"
-   - Check: is RBAC defined? Which roles?
-
-4. **Integration assumptions** — "API X is available", "webhook will be called"
-   - Check: is the integration documented? What if it fails?
-
-5. **Business rule assumptions** — "price is always positive", "campaign has start/end date"
-   - Check: is this validated? What about edge cases?
+## 🚫 Anti-Boilerplate Mandate (Strict Negative Filter)
+**NEVER output generic infrastructure or trivial boilerplate:**
+- ❌ *"Assumption: Network connection might drop"* (Banned)
+- ❌ *"Assumption: Database server might crash"* (Banned)
+- ❌ *"Assumption: User has a modern browser"* (Banned)
+Every detected assumption MUST point to a **concrete business domain hazard** or **state inconsistency**.
 
 ## Output Format
 
 ```markdown
 ## Assumptions Detected
 
-### [RISKY] — Need validation before S2
-- A1: {assumption} — Impact: {what breaks if wrong} — Question: {what to ask}
+### [RISKY:KNOWN_UNKNOWN] — Direct Questions needing User Decision
+- A1: {domain assumption} — Impact: {business failure if wrong} — Question: {concrete question to ask}
 - A2: ...
 
-### [SAFE] — Documented, low risk
-- A3: {assumption} — Source: {where confirmed}
+### [RISKY:UNKNOWN_UNKNOWN_RISK] — Latent Hazards to Harden in Architecture/QA
+- R1: {concurrency/state hazard} — Impact: {data corruption/security breach} — Proposed Guard: {architect/dev action}
+- R2: ...
+
+### [SAFE] — Documented & Confirmed
+- S1: {assumption} — Source: {file path / table definition / existing spec}
 ```
 
 ## Rules
-- Maximum 10 assumptions (prioritize by risk)
-- Every [RISKY] must have a concrete question to resolve it
-- [SAFE] must cite source (existing spec, codebase, domain knowledge)
+- Maximum 5-7 assumptions total (quality & impact over volume).
+- High-Risk domains (Auth, Money, DB Schema) MUST have zero unaddressed `[RISKY]` tags before Spec Lock.
+- Low-Risk domains (UI styling, minor helpers) apply Sensible Defaults instead of blocking.

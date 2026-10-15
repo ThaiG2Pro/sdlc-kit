@@ -63,10 +63,11 @@ already exist on disk — check, and continue from the next sub-phase rather tha
 ## Hard rules (carry verbatim)
 
 - **R8** — every major decision is an `ADR-{NNN}` with Context · Options (**≥2**, pros/cons) ·
-  Decision (chosen + why) · Consequences. Never present only one option.
+  Decision (chosen + why) · Consequences · **Blind-Spot & Known Downside** (what could go wrong and why we accept it). Never present only one option.
 - **R9** — follow project API path conventions; if porting a legacy system, preserve parity.
-- **R13** — Sketch is cheap validation: **critical gaps → STOP and recommend an S2 return** (record
-  it, return to orchestrator); minor gaps → document as assumptions and proceed.
+- **R13** — Sketch is cheap validation & Adversarial Challenge: **critical gaps → STOP and recommend an S2 return** (record
+  it, return to orchestrator); **R6** `Sketch — Gap Analysis` MUST explicitly identify at least 2 technical failure modes (concurrency, race conditions, partial failure, idempotency) that the spec did not address.
+- **R14 — Zero-Guess on High-Risk Contracts**: DB schemas, Auth guards, and API contracts cannot be guessed. If S2 is ambiguous, halt or return to S2.
 - Run `openspec change validate "<name>"` — must pass before handing back (R11).
 
 ## CPP baton you MUST write (the S3→S4 gate checks these by name)

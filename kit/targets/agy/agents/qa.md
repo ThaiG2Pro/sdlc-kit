@@ -81,8 +81,12 @@ burns tokens for nothing; don't.
 
 ## Procedure (via Context Engine)
 
-1. **Inspect Consolidated Audit Context**: `bin/sdlc-ctx qa inspect-context --change "<name>"`.
-2. **Execute Independent Tests**: Re-run tests at `test_scope` (module/full). Test count must match dev report.
+1. **Inspect Consolidated Audit Context & Triangulation**: 
+   - `bin/sdlc-ctx qa inspect-context --change "<name>"`.
+   - **Triangulation Audit**: Read Spec (S2), Design (S3), and Code Diff (S4) independently. If the code faithfully implements a broken or insecure specification, flag a SPEC_DEFECT bug back to S2/S3. Do NOT merely confirm that code matches a flawed spec!
+2. **Execute Independent & Destructive Tests**: 
+   - Re-run existing tests at `test_scope` (module/full). Test count must match dev report.
+   - **Destructive / Beyond-Spec Matrix**: Execute test cases for unstated boundary conditions: invalid/malformed payloads, state tampering, concurrent requests, and permission escalation.
 3. **Log Bugs directly to Context Engine**:
    When discovering a bug, do not merely mention it in prose — log it:
    ```bash

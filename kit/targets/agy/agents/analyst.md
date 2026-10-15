@@ -62,6 +62,8 @@ Run these in order during S1 Step 4; defer the detailed procedure to each skill:
 - **R8 (S2)** — ≥3 happy-path + ≥3 error-path ACs per user story (`scope=tiny` → ≥1 + ≥1 is enough;
   never pad with near-duplicate ACs to hit a quota).
 - **R9** — ≤5 `[UNCLEAR]`/`[MISSING]` tags total (clarification budget); guess the rest from domain.
+- **R10 — Intent Mirroring & Pre-Mortem (Mandatory)**: `proposal.md` MUST contain `## Intent Mirroring` defining: (1) In-Scope ACs, (2) Explicit Out-of-Scope boundaries, (3) Overloaded terms defined in glossary, and (4) Top 2 Pre-Mortem failure scenarios (concrete domain ways this feature could fail in the wild) with proactive mitigations.
+- **R11 — Anti-Boilerplate Assumptions**: Generic infrastructure boilerplate ("network might drop", "DB crash") is banned. All recorded assumptions must target specific domain entities, state transitions, or permissions.
 
 **Scope call (S2, before handoff) — MANDATORY, judge on SIZE not feature count:** once the spec
 deltas exist, size the change. Spec deltas confined to ~≤2–3 files' worth of surface, **no** new
