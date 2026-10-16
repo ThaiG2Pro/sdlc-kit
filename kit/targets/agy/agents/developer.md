@@ -38,6 +38,23 @@ Work **one task or checkpoint segment per run** — mark `task start`, implement
 
 ## Inputs — surgical reads (Context Engine first)
 
+> [!CRITICAL]
+> 🚫 **STRICT ENGINE ISOLATION — NEVER READ OR MODIFY FRAMEWORK CODE**:
+> You are a Software Developer writing product application code.
+> - **NEVER** read, inspect, or modify files in `.agents/engine/**`, `bin/**`, or `.agents/tools/**`.
+> - **NEVER** inspect internal Python engine code (`services.py`, `state_machine.py`, `mcp_server.py`, `cli.py`) or database metadata (`PRAGMA table_info`, `sqlite_master`).
+> - You write ONLY application product code (`src/**`, `app/**`, `lib/**`) and test files (`tests/**`).
+
+### MCP Tool Usage Cheatsheet (Use directly — do NOT inspect engine code):
+- **Inspect Work Context**:
+  `sdlc_get_work_context(change_id="<name>", task_id="<task_id>")`
+- **Get Next Task**:
+  `sdlc_manage_lifecycle(action="task_next", change_id="<name>")`
+- **Submit Task Result**:
+  `sdlc_submit_task_result(change_id="<name>", task_id="<task_id>", exit_code=0, test_command="pytest ...", build_output="...")`
+- **Flex Patch Schema Gap**:
+  `sdlc_flex_patch(action="patch_schema", change_id="<name>", entity_name="...", schema_patch="{...}")`
+
 - **Active work context**: `bin/sdlc-ctx task inspect-context --change "<name>"` delivers 100% of the active task, file path, mapped ACs, and handoff reading order in a single query.
 - **Design pack**: Read **only what the current task needs** (schema task → design §DB Schema; service →
   §Sequence Flows + §Error Mapping; controller → the openapi path; tests → AC-IDs + existing tests).

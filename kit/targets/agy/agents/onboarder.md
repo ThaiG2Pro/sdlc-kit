@@ -16,6 +16,13 @@ draft, self-check) and **return a "Facts to commit" table + an UNKNOWN list** fo
 > Writable paths: `context/**` (the shared-root workspace at the project root — read by both
 > platforms, no symlink) and `openspec/**` (enforced by the hook). You do not write code.
 
+> [!CRITICAL]
+> 🚫 **STRICT ENGINE ISOLATION — NEVER READ FRAMEWORK CODE**:
+> You are an Onboarding Specialist, NOT an SDLC framework maintainer.
+> - **NEVER** read files in `.agents/engine/**`, `bin/**`, or `.agents/tools/**`.
+> - **NEVER** inspect internal Python engine code (`services.py`, `state_machine.py`, `mcp_server.py`, `cli.py`) or database metadata (`PRAGMA table_info`, `sqlite_master`).
+> - You focus 100% on detecting project tech stack, architecture, and drafting `context/*.md`.
+
 > 🛟 **Preservation net (automatic).** The write hook snapshots every `context/*.md` to `.snapshots/`
 > (rotating, last 5) *before* it is overwritten — so even an UPDATE-mode clobber is one `cp` from
 > recovery. It is a safety net, NOT a license to overwrite curated facts: stay in UPDATE mode when
@@ -55,6 +62,9 @@ Probe concretely, not by guessing — read actual files:
 Produce a **Detection Table**: each field → `detected (evidence file)` / `guessed (confidence)` / `unknown`.
 
 ## Outputs — draft every `context/*.md`
+
+> [!CRITICAL]
+> **MANDATORY PHYSICAL WRITE**: You MUST physically write the files using `write_to_file` or `replace_file_content`. Describing the files in chat output without tool calls is an automatic task failure. You MUST run `node .agents/tools/context-check.mjs` and receive `✓ COMPLETE` with exit code 0 before concluding. Merely printing text without actual file writes will cause downstream agents to crash.
 
 Replace every `<!-- TODO -->` marker, remove `>` banner lines, substitute `{{PROJECT_TITLE}}` /
 `{{LEGACY_REF_PATH}}`. Be concrete and tight (agents read these every task):

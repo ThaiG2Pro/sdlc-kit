@@ -26,6 +26,7 @@ When the user asks for project status or a report (e.g. `báo cáo`, `status`, `
 - Call `sdlc_manage_lifecycle(action="status")` (or CLI `bin/sdlc-ctx change status`).
 - This returns the consolidated project snapshot in **1 single call** (Active Change, Current Phase, Task counts, Open Bugs, Gates, Requirements, Blockers).
 - **DO NOT** query individual tables (`project_knowledge`, `change_state`, etc.) or read arbitrary code files to assemble a status report.
+- **NEVER** inspect internal Python engine code (`services.py`, `state_machine.py`, `mcp_server.py`, `cli.py`) or database metadata (`PRAGMA table_info`, `sqlite_master`). Treat tools as black-box contracts.
 
 ## Read this first
 

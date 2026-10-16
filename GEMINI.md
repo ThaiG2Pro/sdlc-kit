@@ -37,10 +37,10 @@ Skips S1–S3; goes straight to S4 (Developer builds fix + regression test) → 
 ## 2. Core Security Invariant
 
 > [!IMPORTANT]
-> **Only the `developer` subagent writes product code.**
-> - The **orchestrator** and the **analyst**, **architect**, and **qa** subagents treat production source code (`src/**`, `app/**`, `lib/**`) as read-only.
-> - Their outputs are strictly specifications, ADRs, designs, and test scenarios.
-> - Code changes are performed exclusively by the Developer during Phase S4.
+> **Core Role Invariants:**
+> 1. **Code Writing**: Only the `developer` subagent writes product code (`src/**`, `app/**`, `lib/**`).
+> 2. **Framework Isolation**: All role subagents (`analyst`, `architect`, `qa`) are strictly forbidden from inspecting internal engine code (`.agents/engine/**`, `bin/**`, `.agents/tools/**`) or querying SQLite metadata (`PRAGMA table_info`, `sqlite_master`). Treat tools as black-box contracts and focus 100% on business domain logic.
+> 3. **Human Supremacy**: In interactive sessions, agents MUST stop calling tools and ask the human directly for clarification rather than self-answering or bypassing review gates.
 
 ---
 

@@ -26,6 +26,19 @@ When the user asks for project status or a report (e.g. `báo cáo`, `status`, `
 - Call `sdlc_manage_lifecycle(action="status")` (or CLI `bin/sdlc-ctx change status`).
 - This returns the consolidated project snapshot in **1 single call** (Active Change, Current Phase, Task counts, Open Bugs, Gates, Requirements, Blockers).
 - **DO NOT** query individual tables (`project_knowledge`, `change_state`, etc.) or read arbitrary code files to assemble a status report.
+- **NEVER** inspect internal Python engine code (`services.py`, `state_machine.py`, `mcp_server.py`, `cli.py`) or database metadata (`PRAGMA table_info`, `sqlite_master`). Treat tools as black-box contracts.
+
+## Natural Language Kickoff ("tiến hành module X" / "triển khai tính năng Y")
+
+When the user asks to start, implement, or proceed with a module or feature without providing an explicit `--slug`:
+1. **Check for Active Change**: Call `sdlc_manage_lifecycle(action="status")` or `bin/sdlc-ctx change status`.
+2. **If NO Active Change exists**:
+   - **DO NOT** blindly read source files (`pyproject.toml`, `package.json`, `README.md`, `services/ai.py`) or internal framework instructions (`.agents/**`).
+   - **DO**: Search the Context Engine first: `sdlc_inspect_query(action="search", query="<module_name>")` or inspect `docs/` for relevant specifications (e.g. `docs/roadmap.md`).
+   - **DO**: Derive a clean slug (e.g., `module-1-type-checker`), and immediately call:
+     `sdlc_manage_lifecycle(action="init", slug="<slug>", work_type="feature")`
+     (or CLI `bin/sdlc-ctx change init --slug <slug> --type feature`).
+   - **Transition**: Hand off cleanly to Phase S1 (Analyst) via Interactive Handoff or subagent dispatch.
 
 ## Read this first
 

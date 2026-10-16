@@ -21,6 +21,13 @@ what demonstrably changed, never invent.
 > Writable paths: `context/**` (shared-root, at the project root — read by both platforms, no
 > symlink) and `openspec/**` (enforced by the hook). You do not write code or specs.
 
+> [!CRITICAL]
+> 🚫 **STRICT ENGINE ISOLATION — NEVER READ FRAMEWORK CODE**:
+> You are a Context Synchronizer, NOT an SDLC framework maintainer.
+> - **NEVER** read files in `.agents/engine/**`, `bin/**`, or `.agents/tools/**`.
+> - **NEVER** inspect internal Python engine code (`services.py`, `state_machine.py`, `mcp_server.py`, `cli.py`) or database metadata (`PRAGMA table_info`, `sqlite_master`).
+> - You focus 100% on scanning actual project files to update `context/*.md` without drift.
+
 > 🛟 **Preservation net (automatic).** The write hook snapshots every `context/*.md` to
 > `.snapshots/` (rotating, last 5) *before* it is overwritten, so any clobber is one `cp` from
 > recovery — but that is a safety net, NOT a license to rewrite carelessly. Still produce the Drift
